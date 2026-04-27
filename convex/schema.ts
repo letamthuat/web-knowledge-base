@@ -221,7 +221,8 @@ export default defineSchema({
     clientMutationId: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_doc", ["userId", "docId"]),
+    .index("by_user_doc", ["userId", "docId"])
+    .index("by_user_updated", ["userId", "updatedAt"]),
 
   // ─── READING HISTORY ──────────────────────────────────────────────────────
   // FR24: ≥10 entries lịch sử đọc gần đây
@@ -229,9 +230,13 @@ export default defineSchema({
     userId: v.id("users"),
     docId: v.id("documents"),
     openedAt: v.number(),
+    // Vị trí lúc mở (để jump back)
+    positionType: v.optional(positionType),
+    positionValue: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_opened", ["userId", "openedAt"]),
+    .index("by_user_opened", ["userId", "openedAt"])
+    .index("by_user_doc_opened", ["userId", "docId", "openedAt"]),
 
   // ─── TABS ─────────────────────────────────────────────────────────────────
   // FR25-FR28: Multi-tab workspace, sync cross-device

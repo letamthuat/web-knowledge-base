@@ -1,10 +1,11 @@
 "use node";
 import { action } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { S3Client, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const CONVEX_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const CONVEX_MAX_BYTES = 100 * 1024 * 1024; // 100 MB — Convex storage limit per file
 
 function getR2Client() {
   return new S3Client({
@@ -22,6 +23,7 @@ export const requestUploadUrl = action({
     fileSizeBytes: v.number(),
     format: v.string(),
     fileName: v.string(),
+    mimeType: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{
     storageBackend: "convex" | "r2";
@@ -46,15 +48,11 @@ export const requestUploadUrl = action({
       const bucket = process.env.R2_BUCKET_NAME!;
       const key = `${identity.subject}/${Date.now()}-${args.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
-      const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-      // Tạo presigned PUT URL cho upload
-      const { PutObjectCommand } = await import("@aws-sdk/client-s3");
       const putCommand = new PutObjectCommand({
         Bucket: bucket,
         Key: key,
-        ContentLength: args.fileSizeBytes,
       });
-      const uploadUrl = await getSignedUrl(r2, putCommand, { expiresIn: 900 }); // 15 phút
+      const uploadUrl = await getSignedUrl(r2, putCommand, { expiresIn: 3600 });
 
       return {
         storageBackend: "r2",
@@ -84,6 +82,30 @@ export const generateDownloadUrl = action({
       const command = new GetObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME!,
         Key: args.storageKey,
+      });
+      return await getSignedUrl(r2, command, { expiresIn: 900 });
+    }
+  },
+});
+
+export const getDownloadUrl = action({
+  args: { docId: v.id("documents") },
+  handler: async (ctx, args): Promise<string> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const doc = await ctx.runQuery(internal.documents.queries.getByIdInternal, { docId: args.docId });
+    if (!doc) throw new Error("Document not found");
+
+    if (doc.storageBackend === "convex") {
+      const url = await ctx.storage.getUrl(doc.storageKey as never);
+      if (!url) throw new Error("File not found in storage");
+      return url;
+    } else {
+      const r2 = getR2Client();
+      const command = new GetObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME!,
+        Key: doc.storageKey,
       });
       return await getSignedUrl(r2, command, { expiresIn: 900 });
     }

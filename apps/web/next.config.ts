@@ -17,11 +17,13 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "connect-src 'self' *.convex.cloud *.convex.site wss://*.convex.cloud *.r2.cloudflarestorage.com *.resend.com",
-              "img-src 'self' data: blob: https://*.googleusercontent.com",
+              "img-src 'self' data: blob: https://*.googleusercontent.com https://*.convex.cloud https://*.convex.site https://*.r2.cloudflarestorage.com",
+              "media-src 'self' blob: https://*.convex.cloud https://*.convex.site https://*.r2.cloudflarestorage.com",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
-              "font-src 'self'",
-              "frame-src 'none'",
+              "font-src 'self' data:",
+              "frame-src 'self' blob:",
+              "worker-src 'self' blob:",
             ].join("; "),
           },
           {

@@ -5,9 +5,10 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
   FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe,
-  MoreVertical, Pencil, Trash2, Folder, FolderX,
+  MoreVertical, Pencil, Trash2, Folder, FolderX, ExternalLink,
 } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 import { api } from "@/../../../convex/_generated/api";
 import { Id } from "@/../../../convex/_generated/dataModel";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -49,6 +50,7 @@ interface DocumentCardProps {
 }
 
 export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
+  const router = useRouter();
   const [showTrashDialog, setShowTrashDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showFolderDialog, setShowFolderDialog] = useState(false);
@@ -79,6 +81,10 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
 
   const menu = (
     <DropdownMenuContent align="end">
+      <DropdownMenuItem onClick={() => router.push(`/reader/${doc._id}`)}>
+        <ExternalLink className="mr-2 h-4 w-4" aria-hidden /> Mở tài liệu
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}>
         <Pencil className="mr-2 h-4 w-4" aria-hidden /> {L.rename}
       </DropdownMenuItem>
@@ -108,6 +114,7 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
           <Icon className={`h-5 w-5 shrink-0 ${iconColor}`} aria-hidden />
           <div className="flex-1 min-w-0">
             <button
+              onClick={() => router.push(`/reader/${doc._id}`)}
               onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
               className="block truncate text-sm font-medium text-left hover:underline"
             >
@@ -160,6 +167,7 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
         </div>
 
         <button
+          onClick={() => router.push(`/reader/${doc._id}`)}
           onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
           className="mb-1 line-clamp-2 text-sm font-medium text-left leading-snug hover:underline"
         >

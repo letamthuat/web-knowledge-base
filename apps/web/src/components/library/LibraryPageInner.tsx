@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DocumentGrid } from "@/components/library/DocumentGrid";
+import { RecentHistory } from "@/components/library/RecentHistory";
 import { FilterBar, parseFilters, hasActiveFilters } from "@/components/library/FilterBar";
 import { UploadDropzone } from "@/components/library/UploadDropzone";
 import { labels } from "@/lib/i18n/labels";
@@ -245,6 +246,9 @@ export function LibraryPageInner() {
               {L.uploadButton}
             </Button>
           </div>
+
+          {/* Recent history — chỉ khi xem "Tất cả" và không filter */}
+          {scope === "all" && !isFiltered && <RecentHistory />}
 
           {/* Filter bar — chỉ khi xem "Tất cả" */}
           {scope === "all" && (

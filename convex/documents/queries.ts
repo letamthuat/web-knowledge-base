@@ -1,4 +1,4 @@
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
 export const listByUser = query({
@@ -42,5 +42,12 @@ export const getById = query({
     const doc = await ctx.db.get(args.docId);
     if (!doc || doc.userId !== (userId as never)) return null;
     return doc;
+  },
+});
+
+export const getByIdInternal = internalQuery({
+  args: { docId: v.id("documents") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.docId);
   },
 });

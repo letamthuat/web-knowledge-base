@@ -79,6 +79,7 @@ export function UploadDropzone({ onUploadComplete }: UploadDropzoneProps) {
               fileSizeBytes: file.size,
               format,
               fileName: file.name,
+              mimeType: file.type || undefined,
             });
 
             let finalStorageKey = storageKey;
@@ -111,11 +112,11 @@ export function UploadDropzone({ onUploadComplete }: UploadDropzoneProps) {
                 });
                 xhr.addEventListener("load", () => {
                   if (xhr.status >= 200 && xhr.status < 300) resolve();
-                  else reject(new Error(`HTTP ${xhr.status}`));
+                  else reject(new Error(`R2 HTTP ${xhr.status}: ${xhr.responseText?.slice(0, 200)}`));
                 });
-                xhr.addEventListener("error", () => reject(new Error("Network error")));
+                xhr.addEventListener("error", () => reject(new Error("Network/CORS error uploading to R2")));
                 xhr.open("PUT", uploadUrl);
-                xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+                // Do NOT set Content-Type — presigned URL doesn't sign it so R2 rejects signed mismatches
                 xhr.send(file);
               });
             }
@@ -131,9 +132,11 @@ export function UploadDropzone({ onUploadComplete }: UploadDropzoneProps) {
 
             updateUpload(absoluteIndex, { status: "done", progress: 100 });
             onUploadComplete?.();
-          } catch {
-            updateUpload(absoluteIndex, { status: "error", error: L.uploadError });
-            toast.error(`${file.name}: ${L.uploadError}`);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : L.uploadError;
+            console.error("[Upload] error:", msg);
+            updateUpload(absoluteIndex, { status: "error", error: msg });
+            toast.error(`${file.name}: ${msg}`);
           }
         }),
       );
