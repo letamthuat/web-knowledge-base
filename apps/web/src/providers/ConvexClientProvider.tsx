@@ -16,7 +16,7 @@ function UserExistenceGuard({ children }: { children: ReactNode }) {
   const me = useQuery((api as any).users?.queries?.me ?? (api as any)["users/queries"]?.me);
 
   useEffect(() => {
-    // Nếu có session nhưng user không tồn tại trong DB → auto signout
+    // me === undefined = query loading; me === null = user not in DB → signout
     if (session && me === null) {
       signOut();
     }
@@ -28,9 +28,7 @@ function UserExistenceGuard({ children }: { children: ReactNode }) {
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-      <UserExistenceGuard>
-        {children}
-      </UserExistenceGuard>
+      {children}
     </ConvexBetterAuthProvider>
   );
 }
