@@ -1,0 +1,87 @@
+/* eslint-disable */
+/**
+ * Generated `api` utility.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
+
+import type * as auth from "../auth.js";
+import type * as betterAuthFunctions from "../betterAuthFunctions.js";
+import type * as crons from "../crons.js";
+import type * as documents_actions from "../documents/actions.js";
+import type * as documents_cronActions from "../documents/cronActions.js";
+import type * as documents_mutations from "../documents/mutations.js";
+import type * as documents_queries from "../documents/queries.js";
+import type * as folders_mutations from "../folders/mutations.js";
+import type * as folders_queries from "../folders/queries.js";
+import type * as http from "../http.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as lib_errors from "../lib/errors.js";
+import type * as lib_telemetry from "../lib/telemetry.js";
+import type * as reading_history_mutations from "../reading_history/mutations.js";
+import type * as reading_history_queries from "../reading_history/queries.js";
+import type * as reading_progress_mutations from "../reading_progress/mutations.js";
+import type * as reading_progress_queries from "../reading_progress/queries.js";
+import type * as tags_mutations from "../tags/mutations.js";
+import type * as tags_queries from "../tags/queries.js";
+
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
+
+declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
+  betterAuthFunctions: typeof betterAuthFunctions;
+  crons: typeof crons;
+  "documents/actions": typeof documents_actions;
+  "documents/cronActions": typeof documents_cronActions;
+  "documents/mutations": typeof documents_mutations;
+  "documents/queries": typeof documents_queries;
+  "folders/mutations": typeof folders_mutations;
+  "folders/queries": typeof folders_queries;
+  http: typeof http;
+  "lib/auth": typeof lib_auth;
+  "lib/errors": typeof lib_errors;
+  "lib/telemetry": typeof lib_telemetry;
+  "reading_history/mutations": typeof reading_history_mutations;
+  "reading_history/queries": typeof reading_history_queries;
+  "reading_progress/mutations": typeof reading_progress_mutations;
+  "reading_progress/queries": typeof reading_progress_queries;
+  "tags/mutations": typeof tags_mutations;
+  "tags/queries": typeof tags_queries;
+}>;
+
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
+export declare const api: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "public">
+>;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
+export declare const internal: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "internal">
+>;
+
+export declare const components: {
+  betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
+};
