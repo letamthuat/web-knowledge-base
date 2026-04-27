@@ -3,8 +3,8 @@
 import { useState, useRef } from "react";
 import { Tag, X, Plus } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "@/../../../convex/_generated/api";
-import { Id } from "@/../../../convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

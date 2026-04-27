@@ -10,7 +10,7 @@ import rehypeSlug from "rehype-slug";
 import rehypeKatex from "rehype-katex";
 import "highlight.js/styles/github.css";
 import "katex/dist/katex.min.css";
-import { Id } from "@/../../../convex/_generated/dataModel";
+import { Id } from "@convex/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { List, X } from "lucide-react";

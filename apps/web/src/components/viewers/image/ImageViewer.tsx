@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Id } from "@/../../../convex/_generated/dataModel";
+import { Id } from "@convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 

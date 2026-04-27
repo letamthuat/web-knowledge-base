@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Id } from "@/../../../convex/_generated/dataModel";
+import { Id } from "@convex/_generated/dataModel";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { Button } from "@/components/ui/button";

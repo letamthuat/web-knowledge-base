@@ -3,8 +3,8 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useAction, useMutation } from "convex/react";
-import { api } from "@/../../../convex/_generated/api";
-import { Id } from "@/../../../convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 import { useSession } from "@/lib/auth-client";
 import { ViewerDispatcher } from "@/components/viewers/ViewerDispatcher";
 import { ProgressSaveIndicator } from "@/components/viewers/ProgressSaveIndicator";

@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
-import { api } from "@/../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {

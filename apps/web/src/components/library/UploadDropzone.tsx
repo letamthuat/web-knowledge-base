@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { api } from "@/../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";

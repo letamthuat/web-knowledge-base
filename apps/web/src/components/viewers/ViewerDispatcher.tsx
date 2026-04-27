@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Id } from "@/../../../convex/_generated/dataModel";
+import { Id } from "@convex/_generated/dataModel";
 import { PlaceholderViewer } from "./PlaceholderViewer";
 
 interface Doc {

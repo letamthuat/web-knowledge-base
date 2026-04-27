@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { Id } from "@/../../../convex/_generated/dataModel";
+import { Id } from "@convex/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { List } from "lucide-react";

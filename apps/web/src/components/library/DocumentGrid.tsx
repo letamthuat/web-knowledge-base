@@ -1,7 +1,7 @@
 "use client";
 
 import { LayoutGrid, List, Upload } from "lucide-react";
-import { Id } from "@/../../../convex/_generated/dataModel";
+import { Id } from "@convex/_generated/dataModel";
 import { DocumentCard } from "./DocumentCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";

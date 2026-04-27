@@ -3,10 +3,9 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   webpack: (config) => {
-    // Resolve convex generated files regardless of where Vercel runs the build from
     config.resolve.alias = {
       ...config.resolve.alias,
-      "@/../../../convex/_generated": path.resolve(__dirname, "../../convex/_generated"),
+      "@convex": path.resolve(__dirname, "../../convex"),
     };
     return config;
   },

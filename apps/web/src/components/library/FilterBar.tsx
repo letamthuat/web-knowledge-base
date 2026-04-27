@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { X, ChevronDown } from "lucide-react";
 import { useQuery } from "convex/react";
-import { api } from "@/../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
