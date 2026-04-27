@@ -44,7 +44,12 @@ export default function SignupPage() {
     });
 
     if (result.error) {
-      toast.error(E.unknown);
+      const msg = (result.error as any)?.message ?? "";
+      if (msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("user already")) {
+        toast.error("Email này đã được đăng ký. Vui lòng đăng nhập.");
+      } else {
+        toast.error(E.unknown);
+      }
       return;
     }
 
