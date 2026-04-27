@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { Id } from "@convex/_generated/dataModel";
+import { Id } from "@/_generated/dataModel";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { Button } from "@/components/ui/button";

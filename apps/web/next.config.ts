@@ -1,14 +1,6 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      "@convex": path.resolve(__dirname, "../../convex"),
-    };
-    return config;
-  },
   // Cloudflare Pages via OpenNext adapter — xem wrangler.toml
   // Strict mode cho React 19
   reactStrictMode: true,

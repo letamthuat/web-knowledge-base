@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
+import { api } from "@/_generated/api";
+import { Id } from "@/_generated/dataModel";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

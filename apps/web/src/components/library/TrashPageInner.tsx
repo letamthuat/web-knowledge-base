@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
+import { api } from "@/_generated/api";
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { TrashView } from "@/components/library/TrashView";

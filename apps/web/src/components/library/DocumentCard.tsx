@@ -9,8 +9,8 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
+import { api } from "@/_generated/api";
+import { Id } from "@/_generated/dataModel";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

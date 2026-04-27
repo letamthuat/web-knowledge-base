@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "node -e \"const fs=require('fs');fs.copyFileSync(require.resolve('pdfjs-dist/build/pdf.worker.min.mjs'),'public/pdf.worker.min.mjs')\" && next build",
+    "build": "node scripts/copy-convex.js && node -e \"const fs=require('fs');fs.copyFileSync(require.resolve('pdfjs-dist/build/pdf.worker.min.mjs'),'public/pdf.worker.min.mjs')\" && next build",
     "postinstall": "node -e \"const fs=require('fs');try{fs.copyFileSync(require.resolve('pdfjs-dist/build/pdf.worker.min.mjs'),'public/pdf.worker.min.mjs')}catch(e){}\"",
     "start": "next start",
     "lint": "next lint",
