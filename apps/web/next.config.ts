@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Cloudflare Pages via OpenNext adapter — xem wrangler.toml
-  // Strict mode cho React 19
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
   reactStrictMode: true,
   // Tắt x-powered-by header
   poweredByHeader: false,

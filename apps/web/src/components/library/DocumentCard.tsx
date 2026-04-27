@@ -129,7 +129,7 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
                   <Folder className="h-2.5 w-2.5" />{currentFolder.name}
                 </Badge>
               )}
-              {docTags?.map((tag) => (
+              {docTags?.map((tag: { _id: string; name: string; color?: string }) => (
                 <Badge key={tag._id} variant="secondary" className="h-4 px-1.5 text-xs" style={{ borderColor: tag.color ?? undefined }}>
                   {tag.name}
                 </Badge>

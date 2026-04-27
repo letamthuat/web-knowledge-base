@@ -3,8 +3,6 @@
 .env.local
 .env.production
 
-# Convex generated
-convex/_generated/
 
 # Next.js
 apps/web/.next/
