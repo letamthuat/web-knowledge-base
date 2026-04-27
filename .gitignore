@@ -1,0 +1,30 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Convex generated
+convex/_generated/
+
+# Next.js
+apps/web/.next/
+apps/web/.open-next/
+apps/web/out/
+
+# Node
+node_modules/
+apps/web/node_modules/
+
+# Build
+dist/
+build/
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Misc
+.DS_Store
+*.log
+coverage/
+.turbo/

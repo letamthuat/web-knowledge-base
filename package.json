@@ -1,0 +1,29 @@
+{
+  "name": "web-knowledge-base",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run web:dev\" \"npm run convex:dev\"",
+    "web:dev": "npm run dev --workspace=apps/web",
+    "convex:dev": "npx convex dev",
+    "build": "npm run build --workspace=apps/web",
+    "typecheck": "npm run typecheck --workspace=apps/web && npx tsc -p convex/tsconfig.json --noEmit",
+    "lint": "npm run lint --workspace=apps/web"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1037.0",
+    "@aws-sdk/s3-request-presigner": "^3.1037.0",
+    "@convex-dev/better-auth": "^0.6.2",
+    "better-auth": "1.2.7",
+    "convex": "^1.36.1",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "concurrently": "^9.0.0",
+    "typescript": "^5.7.0"
+  }
+}

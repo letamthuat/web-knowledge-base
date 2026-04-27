@@ -1,0 +1,5 @@
+{
+  "project": "web-knowledge-base",
+  "team": "<your-team-slug>",
+  "prodUrl": "https://<deployment-name>.convex.cloud"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Web Knowledge Base",
+  "short_name": "WKB",
+  "description": "Quản lý tài liệu cá nhân",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": []
+}
