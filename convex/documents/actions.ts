@@ -5,8 +5,6 @@ import { v } from "convex/values";
 import { S3Client, GetObjectCommand, DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const CONVEX_MAX_BYTES = 100 * 1024 * 1024; // 100 MB — Convex storage limit per file
-
 function getR2Client() {
   return new S3Client({
     region: "auto",
@@ -34,32 +32,22 @@ export const requestUploadUrl = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    if (args.fileSizeBytes <= CONVEX_MAX_BYTES) {
-      // Convex storage path
-      const uploadUrl = await ctx.storage.generateUploadUrl();
-      return {
-        storageBackend: "convex",
-        uploadUrl,
-        storageKey: "", // sẽ được điền sau khi upload xong từ Convex storage response
-      };
-    } else {
-      // R2 path — presigned PUT URL (single-part cho simplicity, multipart cho >100MB sau)
-      const r2 = getR2Client();
-      const bucket = process.env.R2_BUCKET_NAME!;
-      const key = `${identity.subject}/${Date.now()}-${args.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    // Tất cả file đều lên R2 — Convex Storage chỉ dùng cho database
+    const r2 = getR2Client();
+    const bucket = process.env.R2_BUCKET_NAME!;
+    const key = `${identity.subject}/${Date.now()}-${args.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
-      const putCommand = new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-      });
-      const uploadUrl = await getSignedUrl(r2, putCommand, { expiresIn: 3600 });
+    const putCommand = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+    const uploadUrl = await getSignedUrl(r2, putCommand, { expiresIn: 3600 });
 
-      return {
-        storageBackend: "r2",
-        uploadUrl,
-        storageKey: key,
-      };
-    }
+    return {
+      storageBackend: "r2",
+      uploadUrl,
+      storageKey: key,
+    };
   },
 });
 
