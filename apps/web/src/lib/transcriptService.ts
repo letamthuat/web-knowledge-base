@@ -1,6 +1,3 @@
-import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile, toBlobURL } from "@ffmpeg/util";
-
 export interface TranscriptSegment {
   start: number;
   end: number;
@@ -14,110 +11,72 @@ export interface TranscriptProgress {
   message: string;
 }
 
-const CHUNK_SIZE_BYTES = 20 * 1024 * 1024; // 20MB per chunk (Groq limit 25MB)
-const CHUNK_DURATION_SECS = 5 * 60; // 5 phút mỗi chunk
+// 16kHz mono 16-bit = 32KB/s → 90s ≈ 2.8MB WAV → base64 ≈ 3.7MB < 5MB Convex limit
+const CHUNK_DURATION_SECS = 90;
+const GROQ_MAX_BYTES = 24 * 1024 * 1024;
 
-let ffmpegInstance: FFmpeg | null = null;
-
-async function getFFmpeg(onProgress?: (p: TranscriptProgress) => void): Promise<FFmpeg> {
-  if (ffmpegInstance?.loaded) return ffmpegInstance;
-
-  onProgress?.({ phase: "loading", message: "Đang tải bộ xử lý âm thanh..." });
-
-  const ffmpeg = new FFmpeg();
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-  });
-
-  ffmpegInstance = ffmpeg;
-  return ffmpeg;
+// Dùng Web Audio API để decode audio rồi encode thành WAV chunks
+// Không cần ffmpeg wasm — hoạt động trên mọi browser
+async function decodeAudio(url: string): Promise<AudioBuffer> {
+  const res = await fetch(url);
+  const arrayBuffer = await res.arrayBuffer();
+  const audioCtx = new AudioContext({ sampleRate: 16000 });
+  return audioCtx.decodeAudioData(arrayBuffer);
 }
 
-// Extract audio từ video/audio file, split thành chunks ~5 phút
-export async function extractAudioChunks(
-  sourceUrl: string,
-  mimeType: string,
-  onProgress?: (p: TranscriptProgress) => void,
-): Promise<{ blob: Blob; timeOffset: number }[]> {
-  const ffmpeg = await getFFmpeg(onProgress);
+// Encode AudioBuffer slice thành WAV Blob
+function encodeWav(buffer: AudioBuffer, startSample: number, endSample: number): Blob {
+  const sampleRate = buffer.sampleRate;
+  const numChannels = 1; // mono
+  const numSamples = endSample - startSample;
+  const byteCount = numSamples * 2; // 16-bit PCM
 
-  onProgress?.({ phase: "extracting", message: "Đang trích xuất âm thanh..." });
+  const arrayBuf = new ArrayBuffer(44 + byteCount);
+  const view = new DataView(arrayBuf);
 
-  // Download source file
-  const inputData = await fetchFile(sourceUrl);
-  const ext = mimeType.includes("mp4") ? "mp4"
-    : mimeType.includes("webm") ? "webm"
-    : mimeType.includes("ogg") ? "ogg"
-    : mimeType.includes("mpeg") || mimeType.includes("mp3") ? "mp3"
-    : mimeType.includes("wav") ? "wav"
-    : "mp4";
+  // WAV header
+  const writeStr = (offset: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i));
+  };
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + byteCount, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, "data");
+  view.setUint32(40, byteCount, true);
 
-  await ffmpeg.writeFile(`input.${ext}`, inputData);
-
-  // Lấy duration
-  let duration = 0;
-  ffmpeg.on("log", ({ message }) => {
-    const m = message.match(/Duration:\s*(\d+):(\d+):(\d+\.?\d*)/);
-    if (m) {
-      duration = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]);
-    }
-  });
-
-  // Probe duration
-  await ffmpeg.exec(["-i", `input.${ext}`, "-f", "null", "-"]).catch(() => {});
-
-  if (!duration) duration = 3600; // fallback 1 giờ nếu không detect được
-
-  const chunks: { blob: Blob; timeOffset: number }[] = [];
-  const numChunks = Math.ceil(duration / CHUNK_DURATION_SECS);
-
-  for (let i = 0; i < numChunks; i++) {
-    const startTime = i * CHUNK_DURATION_SECS;
-    const chunkFile = `chunk_${i}.mp3`;
-
-    await ffmpeg.exec([
-      "-i", `input.${ext}`,
-      "-ss", String(startTime),
-      "-t", String(CHUNK_DURATION_SECS),
-      "-vn",              // no video
-      "-ar", "16000",     // 16kHz — đủ cho speech recognition, file nhỏ hơn
-      "-ac", "1",         // mono
-      "-b:a", "32k",      // bitrate thấp để giảm size
-      "-f", "mp3",
-      chunkFile,
-    ]);
-
-    const data = await ffmpeg.readFile(chunkFile) as Uint8Array;
-    const blob = new Blob([data], { type: "audio/mp3" });
-    chunks.push({ blob, timeOffset: startTime });
-
-    await ffmpeg.deleteFile(chunkFile);
+  // Mix down to mono và write PCM samples
+  const channelData = buffer.getChannelData(0);
+  let offset = 44;
+  for (let i = startSample; i < endSample; i++) {
+    const sample = Math.max(-1, Math.min(1, channelData[i]));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+    offset += 2;
   }
 
-  await ffmpeg.deleteFile(`input.${ext}`);
-  return chunks;
+  return new Blob([arrayBuf], { type: "audio/wav" });
 }
 
 // Convert Blob → base64
 async function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(",")[1]); // remove data:...;base64, prefix
-    };
+    reader.onload = () => resolve((reader.result as string).split(",")[1]);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
 }
 
-// Full transcribe pipeline
 export async function transcribeMedia(
   sourceUrl: string,
-  mimeType: string,
+  _mimeType: string,
   transcribeChunkFn: (args: {
     audioBase64: string;
     mimeType: string;
@@ -127,26 +86,44 @@ export async function transcribeMedia(
   }) => Promise<{ segments: TranscriptSegment[]; language: string }>,
   onProgress?: (p: TranscriptProgress) => void,
 ): Promise<{ segments: TranscriptSegment[]; language: string }> {
-  const chunks = await extractAudioChunks(sourceUrl, mimeType, onProgress);
+  onProgress?.({ phase: "loading", message: "Đang tải âm thanh..." });
+
+  const audioBuffer = await decodeAudio(sourceUrl);
+  const sampleRate = audioBuffer.sampleRate;
+  const totalSamples = audioBuffer.length;
+  const samplesPerChunk = CHUNK_DURATION_SECS * sampleRate;
+  const numChunks = Math.ceil(totalSamples / samplesPerChunk);
+
+  onProgress?.({ phase: "extracting", message: "Đang chuẩn bị chunks..." });
 
   const allSegments: TranscriptSegment[] = [];
   let language = "vi";
 
-  for (let i = 0; i < chunks.length; i++) {
+  for (let i = 0; i < numChunks; i++) {
+    const startSample = i * samplesPerChunk;
+    const endSample = Math.min(startSample + samplesPerChunk, totalSamples);
+    const timeOffset = i * CHUNK_DURATION_SECS;
+
     onProgress?.({
       phase: "transcribing",
       chunkIndex: i + 1,
-      totalChunks: chunks.length,
-      message: `Đang nhận dạng giọng nói... (${i + 1}/${chunks.length})`,
+      totalChunks: numChunks,
+      message: `Đang nhận dạng giọng nói... (${i + 1}/${numChunks})`,
     });
 
-    const { blob, timeOffset } = chunks[i];
-    const audioBase64 = await blobToBase64(blob);
+    const wavBlob = encodeWav(audioBuffer, startSample, endSample);
 
+    // Nếu chunk quá lớn, bỏ qua (không nên xảy ra với 5 phút @ 16kHz mono)
+    if (wavBlob.size > GROQ_MAX_BYTES) {
+      console.warn(`Chunk ${i} quá lớn (${wavBlob.size} bytes), bỏ qua`);
+      continue;
+    }
+
+    const audioBase64 = await blobToBase64(wavBlob);
     const result = await transcribeChunkFn({
       audioBase64,
-      mimeType: "audio/mp3",
-      fileName: `chunk_${i}.mp3`,
+      mimeType: "audio/wav",
+      fileName: `chunk_${i}.wav`,
       chunkIndex: i,
       timeOffsetSeconds: timeOffset,
     });
@@ -156,6 +133,5 @@ export async function transcribeMedia(
   }
 
   onProgress?.({ phase: "done", message: "Hoàn tất!" });
-
   return { segments: allSegments, language };
 }

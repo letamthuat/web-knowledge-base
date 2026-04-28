@@ -45,12 +45,12 @@ export const transcribeChunk = action({
       throw new Error(`Groq API error: ${err}`);
     }
 
-    const data = await res.json();
+    const data = await res.json() as {
+      segments?: { start: number; end: number; text: string }[];
+      language?: string;
+    };
 
-    // Shift timestamps bằng timeOffset
-    const segments = (data.segments ?? []).map((s: {
-      start: number; end: number; text: string;
-    }) => ({
+    const segments = (data.segments ?? []).map((s) => ({
       start: s.start + args.timeOffsetSeconds,
       end: s.end + args.timeOffsetSeconds,
       text: s.text.trim(),
