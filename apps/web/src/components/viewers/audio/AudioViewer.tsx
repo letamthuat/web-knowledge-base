@@ -11,6 +11,7 @@ import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { TranscriptPanel } from "@/components/viewers/transcript/TranscriptPanel";
 import { SubtitleOverlay } from "@/components/viewers/transcript/SubtitleOverlay";
 import { TranscriptButton } from "@/components/viewers/transcript/TranscriptButton";
+import { useResizable } from "@/hooks/useResizable";
 
 interface AudioViewerProps {
   doc: { _id: Id<"documents">; title: string; mimeType?: string };
@@ -39,6 +40,7 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
   const { savePosition, registerJump } = useReaderProgress();
   const restored = useRef(false);
 
+  const { containerRef, leftPercent, onMouseDown } = useResizable(50);
   const transcript = useQuery(api.transcripts.queries.getByDoc, { docId: doc._id });
   const segments = transcript?.status === "completed" ? (transcript.segments ?? []) : [];
 
@@ -198,13 +200,18 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
   // Nếu có transcript → split view: player trái, transcript phải
   if (segments.length > 0) {
     return (
-      <div className="flex flex-1 overflow-hidden">
+      <div ref={containerRef} className="flex flex-1 overflow-hidden">
         {/* Player */}
-        <div className="flex flex-[3] items-center justify-center bg-muted/40 p-8">
+        <div className="flex items-center justify-center bg-muted/40 p-8 overflow-hidden" style={{ width: `${leftPercent}%` }}>
           {playerPanel}
         </div>
+        {/* Resize handle */}
+        <div
+          onMouseDown={onMouseDown}
+          className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-primary/50 active:bg-primary transition-colors"
+        />
         {/* Transcript panel */}
-        <div className="flex flex-[2] flex-col border-l bg-background overflow-hidden">
+        <div className="flex flex-col border-l bg-background overflow-hidden flex-1">
           <TranscriptPanel segments={segments} currentTime={currentTime} />
         </div>
       </div>

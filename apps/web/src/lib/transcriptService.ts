@@ -133,5 +133,36 @@ export async function transcribeMedia(
   }
 
   onProgress?.({ phase: "done", message: "Hoàn tất!" });
-  return { segments: allSegments, language };
+  return { segments: deduplicateSegments(allSegments), language };
+}
+
+// Lọc bỏ các đoạn lặp lại liên tiếp (watermark/quảng cáo nhúng trong audio)
+function normalize(text: string) {
+  return text.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function deduplicateSegments(segments: TranscriptSegment[]): TranscriptSegment[] {
+  if (segments.length === 0) return segments;
+
+  const result: TranscriptSegment[] = [];
+  // Track số lần xuất hiện liên tiếp của mỗi text
+  let streak = 1;
+  const MAX_STREAK = 2; // cho phép tối đa 2 lần (lần đầu + 1 lần nhắc lại)
+
+  for (let i = 0; i < segments.length; i++) {
+    const cur = normalize(segments[i].text);
+    const prev = i > 0 ? normalize(segments[i - 1].text) : null;
+
+    if (cur === prev) {
+      streak++;
+    } else {
+      streak = 1;
+    }
+
+    if (streak <= MAX_STREAK) {
+      result.push(segments[i]);
+    }
+  }
+
+  return result;
 }

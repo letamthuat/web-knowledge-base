@@ -9,6 +9,7 @@ import { api } from "@/_generated/api";
 import { TranscriptPanel } from "@/components/viewers/transcript/TranscriptPanel";
 import { SubtitleOverlay } from "@/components/viewers/transcript/SubtitleOverlay";
 import { TranscriptButton } from "@/components/viewers/transcript/TranscriptButton";
+import { useResizable } from "@/hooks/useResizable";
 
 interface VideoViewerProps {
   doc: { _id: Id<"documents">; title: string; mimeType?: string };
@@ -24,6 +25,7 @@ export function VideoViewer({ doc, downloadUrl }: VideoViewerProps) {
   const restored = useRef(false);
   const lastSaveRef = useRef(0);
 
+  const { containerRef, leftPercent, onMouseDown } = useResizable(60);
   const transcript = useQuery(api.transcripts.queries.getByDoc, { docId: doc._id });
   const segments = transcript?.status === "completed" ? (transcript.segments ?? []) : [];
 
@@ -80,15 +82,14 @@ export function VideoViewer({ doc, downloadUrl }: VideoViewerProps) {
     </div>
   );
 
-  // Nếu có transcript → split view: video trên/trái, transcript phải
+  // Nếu có transcript → split view: video trái, transcript phải
   if (segments.length > 0) {
     return (
-      <div className="flex flex-1 overflow-hidden">
+      <div ref={containerRef} className="flex flex-1 overflow-hidden">
         {/* Video + subtitle */}
-        <div className="flex flex-[3] flex-col overflow-hidden">
+        <div className="flex flex-col overflow-hidden" style={{ width: `${leftPercent}%` }}>
           {videoEl}
-          {/* Transcript button dưới video */}
-          <div className="flex justify-center py-2 border-t bg-background">
+          <div className="flex justify-center py-2 border-t bg-background shrink-0">
             <TranscriptButton
               docId={doc._id}
               downloadUrl={downloadUrl}
@@ -97,8 +98,13 @@ export function VideoViewer({ doc, downloadUrl }: VideoViewerProps) {
             />
           </div>
         </div>
+        {/* Resize handle */}
+        <div
+          onMouseDown={onMouseDown}
+          className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-primary/50 active:bg-primary transition-colors"
+        />
         {/* Transcript panel */}
-        <div className="flex flex-[2] flex-col border-l bg-background overflow-hidden">
+        <div className="flex flex-col border-l bg-background overflow-hidden flex-1">
           <TranscriptPanel segments={segments} currentTime={currentTime} />
         </div>
       </div>
