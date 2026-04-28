@@ -28,9 +28,7 @@ function UserExistenceGuard({ children }: { children: ReactNode }) {
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-      <UserExistenceGuard>
-        {children}
-      </UserExistenceGuard>
+      {children}
     </ConvexBetterAuthProvider>
   );
 }
