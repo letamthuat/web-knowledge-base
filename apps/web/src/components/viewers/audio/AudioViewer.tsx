@@ -4,11 +4,16 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { Id } from "@/_generated/dataModel";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
+import { useQuery } from "convex/react";
+import { api } from "@/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { TranscriptPanel } from "@/components/viewers/transcript/TranscriptPanel";
+import { SubtitleOverlay } from "@/components/viewers/transcript/SubtitleOverlay";
+import { TranscriptButton } from "@/components/viewers/transcript/TranscriptButton";
 
 interface AudioViewerProps {
-  doc: { _id: Id<"documents">; title: string };
+  doc: { _id: Id<"documents">; title: string; mimeType?: string };
   downloadUrl: string;
 }
 
@@ -33,6 +38,9 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
   const { progress } = useReadingProgress(doc._id);
   const { savePosition, registerJump } = useReaderProgress();
   const restored = useRef(false);
+
+  const transcript = useQuery(api.transcripts.queries.getByDoc, { docId: doc._id });
+  const segments = transcript?.status === "completed" ? (transcript.segments ?? []) : [];
 
   useEffect(() => {
     registerJump((pos) => {
@@ -70,7 +78,6 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
         if (cancelled) return;
         setDuration(dur);
         setReady(true);
-        // Restore position
         if (!restored.current && progress?.positionType === "time_seconds") {
           try {
             const pos = JSON.parse(progress.positionValue);
@@ -101,96 +108,112 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
   }, [downloadUrl]);
 
   const togglePlay = useCallback(() => wsRef.current?.playPause(), []);
-
   const seek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const t = Number(e.target.value);
     if (wsRef.current && duration > 0) wsRef.current.seekTo(t / duration);
     setCurrentTime(t);
   }, [duration]);
-
   const toggleMute = useCallback(() => {
     const next = !muted;
     wsRef.current?.setMuted(next);
     setMuted(next);
   }, [muted]);
-
   const changeVolume = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const v = Number(e.target.value);
     wsRef.current?.setVolume(v);
     setVolume(v);
   }, []);
-
   const changeSpeed = useCallback((s: number) => {
     wsRef.current?.setPlaybackRate(s);
     setSpeed(s);
   }, []);
 
-  return (
-    <div className="flex flex-1 items-center justify-center bg-muted/40 p-8">
-      <div className="w-full max-w-lg rounded-2xl border bg-card p-8 shadow-lg">
-        {/* Waveform */}
-        <div className="mb-5 rounded-xl bg-muted/50 px-3 py-4">
-          <div ref={waveRef} />
-          {!ready && (
-            <div className="flex h-16 items-center justify-center">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            </div>
-          )}
-        </div>
-
-        <h2 className="mb-5 truncate text-center text-base font-semibold">{doc.title}</h2>
-
-        {/* Seek bar */}
-        <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="w-10 text-right tabular-nums">{formatTime(currentTime)}</span>
-          <input
-            type="range" min={0} max={duration || 1} step={0.5}
-            value={currentTime} onChange={seek}
-            className="flex-1 accent-primary"
-          />
-          <span className="w-10 tabular-nums">{formatTime(duration)}</span>
-        </div>
-
-        {/* Controls row */}
-        <div className="flex items-center justify-between">
-          {/* Volume */}
-          <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </Button>
-            <input
-              type="range" min={0} max={1} step={0.05}
-              value={volume} onChange={changeVolume}
-              className="w-16 accent-primary"
-            />
+  const playerPanel = (
+    <div className="w-full max-w-lg rounded-2xl border bg-card p-8 shadow-lg">
+      {/* Waveform */}
+      <div className="mb-5 rounded-xl bg-muted/50 px-3 py-4">
+        <div ref={waveRef} />
+        {!ready && (
+          <div className="flex h-16 items-center justify-center">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
+        )}
+      </div>
 
-          {/* Play/Pause */}
-          <Button size="icon" className="h-12 w-12 rounded-full" onClick={togglePlay} disabled={!ready}>
-            {playing
-              ? <Pause className="h-5 w-5" />
-              : <Play className="h-5 w-5 translate-x-0.5" />
-            }
+      <h2 className="mb-3 truncate text-center text-base font-semibold">{doc.title}</h2>
+
+      {/* Transcript button */}
+      <div className="mb-4 flex justify-center">
+        <TranscriptButton
+          docId={doc._id}
+          downloadUrl={downloadUrl}
+          mimeType={doc.mimeType ?? "audio/mpeg"}
+          hasTranscript={segments.length > 0}
+        />
+      </div>
+
+      {/* Seek bar */}
+      <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="w-10 text-right tabular-nums">{formatTime(currentTime)}</span>
+        <input
+          type="range" min={0} max={duration || 1} step={0.5}
+          value={currentTime} onChange={seek}
+          className="flex-1 accent-primary"
+        />
+        <span className="w-10 tabular-nums">{formatTime(duration)}</span>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </Button>
-
-          {/* Speed */}
-          <div className="flex items-center gap-1">
-            {SPEEDS.map((s) => (
-              <button
-                key={s}
-                onClick={() => changeSpeed(s)}
-                className={`rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
-                  speed === s
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {s}x
-              </button>
-            ))}
-          </div>
+          <input
+            type="range" min={0} max={1} step={0.05}
+            value={volume} onChange={changeVolume}
+            className="w-16 accent-primary"
+          />
+        </div>
+        <Button size="icon" className="h-12 w-12 rounded-full" onClick={togglePlay} disabled={!ready}>
+          {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 translate-x-0.5" />}
+        </Button>
+        <div className="flex items-center gap-1">
+          {SPEEDS.map((s) => (
+            <button
+              key={s}
+              onClick={() => changeSpeed(s)}
+              className={`rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
+                speed === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {s}x
+            </button>
+          ))}
         </div>
       </div>
+    </div>
+  );
+
+  // Nếu có transcript → split view: player trái, transcript phải
+  if (segments.length > 0) {
+    return (
+      <div className="flex flex-1 overflow-hidden">
+        {/* Player */}
+        <div className="flex flex-[3] items-center justify-center bg-muted/40 p-8">
+          {playerPanel}
+        </div>
+        {/* Transcript panel */}
+        <div className="flex flex-[2] flex-col border-l bg-background overflow-hidden">
+          <TranscriptPanel segments={segments} currentTime={currentTime} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 items-center justify-center bg-muted/40 p-8">
+      {playerPanel}
     </div>
   );
 }

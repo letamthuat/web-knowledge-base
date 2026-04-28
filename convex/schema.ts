@@ -452,4 +452,28 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_upload_id", ["uploadId"])
     .index("by_expires", ["expiresAt"]),
+
+  // ─── TRANSCRIPTS ─────────────────────────────────────────────────────────────
+  transcripts: defineTable({
+    docId: v.id("documents"),
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("error"),
+    ),
+    // Mảng segments với timestamp (từ Groq Whisper)
+    segments: v.optional(v.array(v.object({
+      start: v.number(),   // seconds
+      end: v.number(),     // seconds
+      text: v.string(),
+    }))),
+    language: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_doc", ["docId"])
+    .index("by_user", ["userId"]),
 });

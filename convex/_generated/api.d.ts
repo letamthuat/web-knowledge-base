@@ -27,6 +27,10 @@ import type * as reading_progress_mutations from "../reading_progress/mutations.
 import type * as reading_progress_queries from "../reading_progress/queries.js";
 import type * as tags_mutations from "../tags/mutations.js";
 import type * as tags_queries from "../tags/queries.js";
+import type * as transcripts_actions from "../transcripts/actions.js";
+import type * as transcripts_mutations from "../transcripts/mutations.js";
+import type * as transcripts_queries from "../transcripts/queries.js";
+import type * as users_queries from "../users/queries.js";
 
 import type {
   ApiFromModules,
@@ -54,6 +58,10 @@ declare const fullApi: ApiFromModules<{
   "reading_progress/queries": typeof reading_progress_queries;
   "tags/mutations": typeof tags_mutations;
   "tags/queries": typeof tags_queries;
+  "transcripts/actions": typeof transcripts_actions;
+  "transcripts/mutations": typeof transcripts_mutations;
+  "transcripts/queries": typeof transcripts_queries;
+  "users/queries": typeof users_queries;
 }>;
 
 /**
