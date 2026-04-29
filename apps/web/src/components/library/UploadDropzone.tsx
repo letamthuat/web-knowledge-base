@@ -26,20 +26,24 @@ interface FileUploadState {
 
 interface UploadDropzoneProps {
   onUploadComplete?: () => void;
+  defaultFolderId?: string;
+  defaultTab?: "upload" | "folder";
 }
 
 type Tab = "upload" | "folder";
 
-export function UploadDropzone({ onUploadComplete }: UploadDropzoneProps) {
-  const [tab, setTab] = useState<Tab>("upload");
+export function UploadDropzone({ onUploadComplete, defaultFolderId, defaultTab = "upload" }: UploadDropzoneProps) {
+  const [tab, setTab] = useState<Tab>(defaultTab);
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploads, setUploads] = useState<FileUploadState[]>([]);
   const [folderName, setFolderName] = useState("");
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(defaultFolderId ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const requestUploadUrl = useAction(api.documents.actions.requestUploadUrl);
   const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
+  const assignDoc = useMutation(api.folders.mutations.assignDoc);
   const createFolder = useMutation(api.folders.mutations.create);
   const allFolders = useQuery(api.folders.queries.listByUser);
 
@@ -122,13 +126,19 @@ export function UploadDropzone({ onUploadComplete }: UploadDropzoneProps) {
             }
 
             const title = file.name.replace(/\.[^.]+$/, "");
-            await finalizeUpload({
+            const docId = await finalizeUpload({
               title,
               format: format as "pdf" | "epub" | "docx" | "pptx" | "image" | "audio" | "video" | "markdown" | "web_clip",
               fileSizeBytes: file.size,
               storageBackend,
               storageKey: finalStorageKey,
             });
+
+            if (selectedFolderId && docId) {
+              try {
+                await assignDoc({ folderId: selectedFolderId as any, docId: docId as any });
+              } catch {}
+            }
 
             updateUpload(absoluteIndex, { status: "done", progress: 100 });
             onUploadComplete?.();
@@ -141,7 +151,8 @@ export function UploadDropzone({ onUploadComplete }: UploadDropzoneProps) {
         }),
       );
     },
-    [uploads.length, requestUploadUrl, finalizeUpload, updateUpload, onUploadComplete],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [uploads.length, requestUploadUrl, finalizeUpload, assignDoc, updateUpload, onUploadComplete, selectedFolderId],
   );
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -236,6 +247,23 @@ export function UploadDropzone({ onUploadComplete }: UploadDropzoneProps) {
             </Button>
             <p className="mt-4 text-xs text-muted-foreground">{L.supportedFormats}</p>
           </div>
+
+          {/* Folder selector */}
+          {allFolders && allFolders.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Folder className="h-4 w-4 shrink-0 text-amber-500" />
+              <select
+                value={selectedFolderId ?? ""}
+                onChange={(e) => setSelectedFolderId(e.target.value || null)}
+                className="flex-1 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Không có folder</option>
+                {allFolders.map((f) => (
+                  <option key={f._id} value={f._id}>{f.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <input
             ref={fileInputRef}

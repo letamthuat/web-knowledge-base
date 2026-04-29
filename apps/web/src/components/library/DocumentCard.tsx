@@ -58,6 +58,7 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
 
   const docTags = useQuery(api.tags.queries.listForDoc, { docId: doc._id });
   const currentFolder = useQuery(api.folders.queries.getFolderForDoc, { docId: doc._id });
+  const readingProgress = useQuery(api.reading_progress.queries.getByDoc, { docId: doc._id });
   const trashMutation = useMutation(api.documents.mutations.trash);
   const renameMutation = useMutation(api.documents.mutations.rename);
 
@@ -124,6 +125,9 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
               <span className="text-xs text-muted-foreground">{Lf[doc.format as keyof typeof Lf] ?? doc.format}</span>
               {doc.fileSizeBytes && <span className="text-xs text-muted-foreground">· {formatBytes(doc.fileSizeBytes)}</span>}
               <span className="text-xs text-muted-foreground">· {format(doc.createdAt, "dd/MM/yyyy", { locale: vi })}</span>
+              {readingProgress?.progressPct != null && readingProgress.progressPct > 0 && (
+                <span className="text-xs text-primary font-medium">· {Math.round(readingProgress.progressPct * 100)}%</span>
+              )}
               {currentFolder && (
                 <Badge variant="outline" className="h-4 px-1.5 text-xs gap-1">
                   <Folder className="h-2.5 w-2.5" />{currentFolder.name}
@@ -195,6 +199,20 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
                 </Badge>
               ))}
               {docTags.length > 3 && <Badge variant="secondary" className="h-4 px-1.5 text-xs">+{docTags.length - 3}</Badge>}
+            </div>
+          )}
+
+          {readingProgress?.progressPct != null && readingProgress.progressPct > 0 && (
+            <div className="space-y-0.5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{Math.round(readingProgress.progressPct * 100)}%</span>
+              </div>
+              <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${Math.round(readingProgress.progressPct * 100)}%` }}
+                />
+              </div>
             </div>
           )}
 

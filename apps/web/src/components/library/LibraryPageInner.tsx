@@ -31,6 +31,7 @@ export function LibraryPageInner() {
   const { data: session, isPending } = useSession();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTab, setUploadTab] = useState<"upload" | "folder">("upload");
   const [scope, setScope] = useState<ViewScope>("all");
   const [renameFolderId, setRenameFolderId] = useState<Id<"folders"> | null>(null);
   const [renameFolderName, setRenameFolderName] = useState("");
@@ -241,10 +242,16 @@ export function LibraryPageInner() {
                 <p className="text-xs text-muted-foreground mt-0.5">{allDocs.length} tài liệu</p>
               )}
             </div>
-            <Button onClick={() => setUploadOpen(true)} size="sm">
-              <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-              {L.uploadButton}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setUploadTab("folder"); setUploadOpen(true); }}>
+                <FolderPlus className="mr-1.5 h-4 w-4" aria-hidden />
+                Tạo folder
+              </Button>
+              <Button onClick={() => { setUploadTab("upload"); setUploadOpen(true); }} size="sm">
+                <Plus className="mr-1.5 h-4 w-4" aria-hidden />
+                {L.uploadButton}
+              </Button>
+            </div>
           </div>
 
           {/* Recent history — chỉ khi xem "Tất cả" và không filter */}
@@ -274,7 +281,11 @@ export function LibraryPageInner() {
           <DialogHeader>
             <DialogTitle>{labels.upload.title}</DialogTitle>
           </DialogHeader>
-          <UploadDropzone onUploadComplete={() => setUploadOpen(false)} />
+          <UploadDropzone
+            onUploadComplete={() => setUploadOpen(false)}
+            defaultFolderId={scope !== "all" ? scope : undefined}
+            defaultTab={uploadTab}
+          />
         </DialogContent>
       </Dialog>
 
