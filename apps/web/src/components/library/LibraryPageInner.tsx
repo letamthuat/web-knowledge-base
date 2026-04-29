@@ -504,10 +504,8 @@ export function LibraryPageInner() {
           {/* Filter bar — scroll ngang trên mobile */}
           {scope === "all" && !isFiltered && <RecentHistory />}
           {scope === "all" && (
-            <div className="mb-4 -mx-1 px-1 overflow-x-auto">
-              <div className="flex items-center gap-2 min-w-max pb-1">
-                <FilterBar filters={filters} />
-              </div>
+            <div className="mb-4">
+              <FilterBar filters={filters} />
             </div>
           )}
 

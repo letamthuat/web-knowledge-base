@@ -81,7 +81,7 @@ export function FilterBar({ filters }: FilterBarProps) {
   const active = hasActiveFilters(filters);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 pb-1">
       {/* Tag filter */}
       <Popover>
         <PopoverTrigger className={TRIGGER_CLS} aria-label="Lọc theo tag">
