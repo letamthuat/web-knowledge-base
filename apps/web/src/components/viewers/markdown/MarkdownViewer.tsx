@@ -50,29 +50,20 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
+  const [activeId, setActiveId] = useState<string>("");
+  const activeIdRef = useRef<string>("");
 
   const toggleToc = useCallback(() => {
-    // Capture current heading before layout shift from sidebar resize
     const el = contentRef.current;
-    if (el) {
-      const headings = Array.from(el.querySelectorAll("h1,h2,h3,h4,h5,h6")) as HTMLElement[];
-      let pinnedId: string | undefined;
-      for (const h of headings) {
-        if (h.offsetTop <= el.scrollTop + 8) pinnedId = h.id;
-        else break;
-      }
-      setTocOpen((v) => !v);
-      if (pinnedId) {
-        requestAnimationFrame(() => {
-          const heading = el.querySelector(`#${CSS.escape(pinnedId!)}`) as HTMLElement | null;
-          if (heading) el.scrollTop = heading.offsetTop;
-        });
-      }
-    } else {
-      setTocOpen((v) => !v);
+    const pinnedId = activeIdRef.current || undefined;
+    setTocOpen((v) => !v);
+    if (el && pinnedId) {
+      requestAnimationFrame(() => {
+        const heading = el.querySelector(`#${CSS.escape(pinnedId)}`) as HTMLElement | null;
+        if (heading) el.scrollTop = heading.offsetTop;
+      });
     }
   }, []);
-  const [activeId, setActiveId] = useState<string>("");
   const contentRef = useRef<HTMLDivElement>(null);
   const { savePosition, registerJump } = useReaderProgress();
   const { progress } = useReadingProgress(doc._id);
@@ -149,7 +140,10 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible.length > 0) setActiveId(visible[0].target.id);
+        if (visible.length > 0) {
+        activeIdRef.current = visible[0].target.id;
+        setActiveId(visible[0].target.id);
+      }
       },
       { root: container, rootMargin: "0px 0px -70% 0px", threshold: 0 }
     );
@@ -177,6 +171,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     const el = contentRef.current?.querySelector(`#${CSS.escape(id)}`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
+      activeIdRef.current = id;
       setActiveId(id);
     }
   }, []);
