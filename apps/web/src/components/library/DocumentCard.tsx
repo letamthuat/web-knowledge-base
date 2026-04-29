@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
   FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe,
-  MoreVertical, Pencil, Trash2, Folder, FolderX, ExternalLink,
+  MoreVertical, Pencil, Trash2, Folder, FolderX, ExternalLink, SquarePlus,
 } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
@@ -63,6 +63,19 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   const readingProgress = useQuery(api.reading_progress.queries.getByDoc, { docId: doc._id });
   const trashMutation = useMutation(api.documents.mutations.trash);
   const renameMutation = useMutation(api.documents.mutations.rename);
+  const openTabMutation = useMutation(api.tabs.mutations.openTab);
+
+  async function handleOpenInTab(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      await openTabMutation({ docId: doc._id });
+      router.push(`/reader/${doc._id}`);
+    } catch (err: unknown) {
+      const data = (err as { data?: { code?: string; messageVi?: string } })?.data;
+      if (data?.code === "VALIDATION") toast.error(data.messageVi ?? "Tối đa 10 tab cùng lúc");
+      else toast.error("Không thể mở tab");
+    }
+  }
 
   const Icon = FORMAT_ICONS[doc.format] ?? FileText;
   const iconColor = FORMAT_COLORS[doc.format] ?? "text-gray-400";
@@ -86,6 +99,9 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
     <DropdownMenuContent align="end">
       <DropdownMenuItem onClick={() => router.push(`/reader/${doc._id}`)}>
         <ExternalLink className="mr-2 h-4 w-4" aria-hidden /> Mở tài liệu
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={handleOpenInTab}>
+        <SquarePlus className="mr-2 h-4 w-4" aria-hidden /> Mở trong tab
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}>

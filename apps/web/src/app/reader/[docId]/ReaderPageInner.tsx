@@ -14,6 +14,9 @@ import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TabBar } from "@/components/tabs/TabBar";
+import { TabDropdown } from "@/components/tabs/TabDropdown";
+import { useTabSync } from "@/hooks/useTabSync";
 
 function ReaderShell({ doc, downloadUrl }: {
   doc: { _id: Id<"documents">; format: string; title: string };
@@ -21,6 +24,9 @@ function ReaderShell({ doc, downloadUrl }: {
 }) {
   const router = useRouter();
   const { saveNow, saveStatus, savePosition, progress } = useReadingProgress(doc._id);
+  const { tabs } = useTabSync();
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const showDropdown = isMobile && tabs.length >= 4;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recordOpen = useMutation((api as any).reading_history.mutations.recordOpen);
@@ -58,6 +64,9 @@ function ReaderShell({ doc, downloadUrl }: {
         </header>
 
         <div className="flex flex-1 flex-col overflow-hidden">
+          {showDropdown
+            ? <TabDropdown currentDocId={doc._id} />
+            : <TabBar currentDocId={doc._id} />}
           <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} />
         </div>
       </div>

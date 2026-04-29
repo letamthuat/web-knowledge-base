@@ -4,10 +4,13 @@ import { useQuery, useMutation } from "convex/react";
 import { useCallback } from "react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
+import { Doc } from "@/_generated/dataModel";
+
+export type TabDoc = Doc<"tabs">;
 
 export function useTabSync() {
   const tabsResult = useQuery(api.tabs.queries.listByUser);
-  const tabs = tabsResult ?? [];
+  const tabs: TabDoc[] = tabsResult ?? [];
   const isLoading = tabsResult === undefined;
 
   const openTabMutation = useMutation(api.tabs.mutations.openTab);
@@ -42,7 +45,7 @@ export function useTabSync() {
     [updateScrollStateMutation]
   );
 
-  const activeTab = tabs.find((t: { isActive: boolean }) => t.isActive) ?? null;
+  const activeTab = tabs.find((t: TabDoc) => t.isActive) ?? null;
 
   return { tabs, activeTab, isLoading, openTab, closeTab, setActive, reorderTabs, updateScrollState };
 }
