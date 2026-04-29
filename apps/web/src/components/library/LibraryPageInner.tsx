@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpen, LogOut, Settings, Trash2, Plus, Folder, FolderOpen,
   MoreVertical, Pencil, FolderPlus, ChevronRight, LayoutGrid,
-  PanelLeftClose, PanelLeftOpen, ChevronDown, Check,
+  PanelLeftClose, PanelLeftOpen, ChevronDown, File as FileIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
@@ -70,6 +70,22 @@ export function LibraryPageInner() {
     () => scope !== "all" ? (allFolders?.filter((f: any) => f.parentFolderId === scope) ?? []) : [],
     [allFolders, scope]
   );
+
+  // Map folderId -> docs trực tiếp trong folder đó (cho sidebar file tree)
+  const docsByFolder = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    if (!allDocFolders || !allDocs) return map;
+    for (const df of allDocFolders as any[]) {
+      const doc = (allDocs as any[]).find((d) => d._id === df.docId && d.status === "ready");
+      if (doc) {
+        if (!map[df.folderId]) map[df.folderId] = [];
+        map[df.folderId].push(doc);
+      }
+    }
+    return map;
+  }, [allDocFolders, allDocs]);
+
+  const allDocFolders = useQuery(api.folders.queries.listAllDocFolders);
 
   const renameFolder = useMutation(api.folders.mutations.rename);
   const deleteFolder = useMutation(api.folders.mutations.deleteFolder);
@@ -195,13 +211,13 @@ export function LibraryPageInner() {
   function FolderNode({ folder, depth = 0 }: { folder: any; depth?: number }) {
     const isActive = scope === folder._id;
     const subfolders = allFolders?.filter((f: any) => f.parentFolderId === folder._id) ?? [];
-    const hasChildren = subfolders.length > 0;
+    const docsInFolder = docsByFolder[folder._id] ?? [];
+    const hasChildren = subfolders.length > 0 || docsInFolder.length > 0;
     const isExpanded = expandedFolders.has(folder._id);
 
     return (
       <div>
-        <div className={`group flex items-center gap-1 ${depth > 0 ? "pl-" + (depth * 4) : ""}`}
-          style={{ paddingLeft: depth * 16 }}>
+        <div className={`group flex items-center gap-1`} style={{ paddingLeft: depth * 16 }}>
           {/* Expand toggle */}
           <button
             onClick={() => toggleExpanded(folder._id)}
@@ -248,10 +264,26 @@ export function LibraryPageInner() {
           </DropdownMenu>
         </div>
 
-        {/* Subfolders */}
-        {isExpanded && subfolders.map((sub: any) => (
-          <FolderNode key={sub._id} folder={sub} depth={depth + 1} />
-        ))}
+        {/* Subfolders + docs khi expanded */}
+        {isExpanded && (
+          <>
+            {subfolders.map((sub: any) => (
+              <FolderNode key={sub._id} folder={sub} depth={depth + 1} />
+            ))}
+            {docsInFolder.map((doc: any) => (
+              <button
+                key={doc._id}
+                onClick={() => router.push(`/viewer/${doc._id}`)}
+                className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
+                style={{ paddingLeft: (depth + 1) * 16 + 16 }}
+                title={doc.title}
+              >
+                <FileIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <span className="truncate text-xs text-muted-foreground">{doc.title}</span>
+              </button>
+            ))}
+          </>
+        )}
       </div>
     );
   }

@@ -46,6 +46,20 @@ export const listDocsInFolder = query({
   },
 });
 
+// Returns all document_folders assignments for the user (to build sidebar file tree)
+export const listAllDocFolders = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const userId = identity.subject;
+    return await ctx.db
+      .query("document_folders")
+      .withIndex("by_user", (q) => q.eq("userId", userId as never))
+      .collect();
+  },
+});
+
 export const getFolderForDoc = query({
   args: { docId: v.id("documents") },
   handler: async (ctx, args) => {
