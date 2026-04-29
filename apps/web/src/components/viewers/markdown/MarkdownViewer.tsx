@@ -83,25 +83,31 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     if (restored.current || !content || !contentRef.current || !progress) return;
     if (progress.positionType !== "scroll_pct") return;
     let pct: number;
+    let headingId: string | undefined;
     try {
       const pos = JSON.parse(progress.positionValue);
       if (typeof pos.pct !== "number") return;
       pct = pos.pct;
+      headingId = typeof pos.headingId === "string" ? pos.headingId : undefined;
     } catch {
       return;
     }
     restored.current = true;
 
     const el = contentRef.current;
-    // Safari mobile renders lazily — retry until scrollHeight stabilises
-    let lastHeight = 0;
     let attempts = 0;
     const tryScroll = () => {
-      const h = el.scrollHeight - el.clientHeight;
-      if (h > 10 && (h !== lastHeight || attempts < 3)) {
-        lastHeight = h;
-        el.scrollTop = pct * h;
+      // Prefer heading-based restore for cross-device accuracy
+      if (headingId) {
+        const heading = el.querySelector(`#${CSS.escape(headingId)}`) as HTMLElement | null;
+        if (heading) {
+          el.scrollTop = heading.offsetTop;
+          return;
+        }
       }
+      // Fallback: pct-based, retry until scrollHeight stabilises
+      const h = el.scrollHeight - el.clientHeight;
+      if (h > 10) el.scrollTop = pct * h;
       if (attempts++ < 8) requestAnimationFrame(tryScroll);
     };
     requestAnimationFrame(tryScroll);
@@ -133,7 +139,14 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     (e: React.UIEvent<HTMLDivElement>) => {
       const el = e.currentTarget;
       const pct = el.scrollTop / (el.scrollHeight - el.clientHeight || 1);
-      savePosition({ type: "scroll_pct", pct: Math.min(1, Math.max(0, pct)) });
+      // Find the last heading that has scrolled past the top
+      const headings = Array.from(el.querySelectorAll("h1,h2,h3,h4,h5,h6")) as HTMLElement[];
+      let headingId: string | undefined;
+      for (const h of headings) {
+        if (h.offsetTop <= el.scrollTop + 8) headingId = h.id;
+        else break;
+      }
+      savePosition({ type: "scroll_pct", pct: Math.min(1, Math.max(0, pct)), headingId });
     },
     [savePosition]
   );

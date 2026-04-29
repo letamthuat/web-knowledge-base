@@ -2,7 +2,7 @@ export type ReadingPosition =
   | { type: "pdf_page"; page: number; offset: number }
   | { type: "epub_cfi"; cfi: string }
   | { type: "time_seconds"; seconds: number }
-  | { type: "scroll_pct"; pct: number }
+  | { type: "scroll_pct"; pct: number; headingId?: string }
   | { type: "slide_index"; slide: number };
 
 export type PositionType = ReadingPosition["type"];
