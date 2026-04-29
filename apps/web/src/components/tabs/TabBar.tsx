@@ -21,7 +21,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const FORMAT_ICONS: Record<string, React.ElementType> = {
   pdf: FileText, epub: BookOpen, docx: FileType2, pptx: Presentation,
@@ -89,10 +89,15 @@ interface TabBarProps {
   showAddButton?: boolean;
 }
 
+// Session-local stack of recently closed tab docIds for Ctrl+Shift+T
+const closedTabStack: string[] = [];
+
 export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
   const router = useRouter();
-  const { tabs, isLoading, closeTab, reorderTabs } = useTabSync();
+  const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab } = useTabSync();
   const [optimisticTabs, setOptimisticTabs] = useState<TabDoc[] | null>(null);
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
 
   const displayTabs = optimisticTabs ?? tabs;
 
@@ -100,16 +105,44 @@ export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  // Ctrl+Shift+T to reopen last closed tab
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "T") {
+        e.preventDefault();
+        const docId = closedTabStack.pop();
+        if (!docId) return;
+        openTab(docId as never).then((tabId) => {
+          if (tabId) router.push(`/reader/${docId}`);
+        }).catch(() => {});
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [openTab, router]);
+
   if (isLoading || tabs.length === 0) return null;
 
   async function handleClose(e: React.MouseEvent, tab: TabDoc) {
     e.stopPropagation();
+    closedTabStack.push(tab.docId as string);
+    if (closedTabStack.length > 20) closedTabStack.shift();
     await closeTab(tab._id);
     if (tab.isActive) {
-      const next = tabs.find((t: TabDoc) => t._id !== tab._id);
+      const next = tabsRef.current.find((t: TabDoc) => t._id !== tab._id);
       if (next) router.push(`/reader/${next.docId}`);
       else router.push("/library");
     }
+  }
+
+  async function handleCloseAll() {
+    const currentTabs = tabsRef.current;
+    currentTabs.forEach((t) => {
+      closedTabStack.push(t.docId as string);
+    });
+    if (closedTabStack.length > 20) closedTabStack.splice(0, closedTabStack.length - 20);
+    await closeAll();
+    router.push("/library");
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -151,6 +184,16 @@ export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
               className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <Plus className="h-4 w-4" />
+            </button>
+          )}
+          {displayTabs.length > 1 && (
+            <button
+              onClick={handleCloseAll}
+              aria-label="Đóng tất cả tab"
+              title="Đóng tất cả (Ctrl+Shift+T để mở lại)"
+              className="flex h-9 shrink-0 items-center justify-center px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border-l"
+            >
+              Đóng tất cả
             </button>
           )}
         </div>

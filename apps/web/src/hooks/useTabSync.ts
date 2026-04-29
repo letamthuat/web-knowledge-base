@@ -15,6 +15,7 @@ export function useTabSync() {
 
   const openTabMutation = useMutation(api.tabs.mutations.openTab);
   const closeTabMutation = useMutation(api.tabs.mutations.closeTab);
+  const closeAllMutation = useMutation(api.tabs.mutations.closeAll);
   const setActiveMutation = useMutation(api.tabs.mutations.setActive);
   const reorderTabsMutation = useMutation(api.tabs.mutations.reorderTabs);
   const updateScrollStateMutation = useMutation(api.tabs.mutations.updateScrollState);
@@ -27,6 +28,11 @@ export function useTabSync() {
   const closeTab = useCallback(
     (tabId: Id<"tabs">) => closeTabMutation({ tabId }),
     [closeTabMutation]
+  );
+
+  const closeAll = useCallback(
+    () => closeAllMutation({}),
+    [closeAllMutation]
   );
 
   const setActive = useCallback(
@@ -47,5 +53,5 @@ export function useTabSync() {
 
   const activeTab = tabs.find((t: TabDoc) => t.isActive) ?? null;
 
-  return { tabs, activeTab, isLoading, openTab, closeTab, setActive, reorderTabs, updateScrollState };
+  return { tabs, activeTab, isLoading, openTab, closeTab, closeAll, setActive, reorderTabs, updateScrollState };
 }

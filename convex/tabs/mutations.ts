@@ -132,6 +132,19 @@ export const reorderTabs = mutation({
   },
 });
 
+export const closeAll = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireAuth(ctx);
+    const allTabs = await ctx.db
+      .query("tabs")
+      .withIndex("by_user", (q) => q.eq("userId", userId as never))
+      .collect();
+    await Promise.all(allTabs.map((t) => ctx.db.delete(t._id)));
+    return allTabs.map((t) => ({ docId: t.docId, order: t.order }));
+  },
+});
+
 export const updateScrollState = mutation({
   args: {
     tabId: v.id("tabs"),
