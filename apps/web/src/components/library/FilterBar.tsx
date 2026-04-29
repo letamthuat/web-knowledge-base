@@ -171,24 +171,45 @@ export function FilterBar({ filters }: FilterBarProps) {
         </PopoverContent>
       </Popover>
 
-      {/* Date range */}
-      <div className="flex items-center gap-1">
-        <input
-          type="date"
-          value={filters.from ?? ""}
-          onChange={(e) => updateUrl({ from: e.target.value || null })}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-          aria-label="Từ ngày"
-        />
-        <span className="text-xs text-muted-foreground">–</span>
-        <input
-          type="date"
-          value={filters.to ?? ""}
-          onChange={(e) => updateUrl({ to: e.target.value || null })}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-          aria-label="Đến ngày"
-        />
-      </div>
+      {/* Date range — gom vào popover */}
+      <Popover>
+        <PopoverTrigger className={TRIGGER_CLS} aria-label="Lọc theo ngày">
+          Ngày
+          {(filters.from || filters.to) && <Badge variant="secondary" className="h-4 px-1 text-xs">1</Badge>}
+          <ChevronDown className="h-3.5 w-3.5 opacity-50" aria-hidden />
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-3" align="start">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">Khoảng ngày</p>
+          <div className="space-y-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Từ ngày</label>
+              <input
+                type="date"
+                value={filters.from ?? ""}
+                onChange={(e) => updateUrl({ from: e.target.value || null })}
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Đến ngày</label>
+              <input
+                type="date"
+                value={filters.to ?? ""}
+                onChange={(e) => updateUrl({ to: e.target.value || null })}
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            {(filters.from || filters.to) && (
+              <button
+                onClick={() => updateUrl({ from: null, to: null })}
+                className="w-full text-xs text-muted-foreground hover:text-foreground text-left"
+              >
+                Xoá bộ lọc ngày
+              </button>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
 
       {/* Clear all */}
       {active && (

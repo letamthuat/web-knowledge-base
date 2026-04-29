@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpen, LogOut, Settings, Trash2, Plus, Folder, FolderOpen,
   MoreVertical, Pencil, FolderPlus, ChevronRight, LayoutGrid,
-  PanelLeftClose, PanelLeftOpen, ChevronDown, File as FileIcon,
+  PanelLeftClose, PanelLeftOpen, ChevronDown, File as FileIcon, Menu, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
@@ -25,8 +25,6 @@ const L = labels.library;
 const N = labels.nav;
 
 type ViewScope = "all" | Id<"folders">;
-
-// Breadcrumb item
 interface Crumb { id: Id<"folders">; name: string }
 
 export function LibraryPageInner() {
@@ -34,7 +32,6 @@ export function LibraryPageInner() {
   const searchParams = useSearchParams();
   const { data: session, isPending } = useSession();
 
-  // UI state
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
@@ -42,38 +39,33 @@ export function LibraryPageInner() {
   const [createFolderParent, setCreateFolderParent] = useState<Id<"folders"> | undefined>();
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
-  // Sidebar
+  // Sidebar — desktop: open by default, mobile: closed by default
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarWidth, setSidebarWidth] = useState(224); // 14rem default
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(224);
   const sidebarResizing = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Navigation
   const [scope, setScope] = useState<ViewScope>("all");
-  const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([]); // folder trail
-
-  // Folder management
+  const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([]);
   const [renameFolderId, setRenameFolderId] = useState<Id<"folders"> | null>(null);
   const [renameFolderName, setRenameFolderName] = useState("");
-
-  // Expanded folders in sidebar
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
   const allDocs = useQuery(api.documents.queries.listByUser);
   const allFolders = useQuery(api.folders.queries.listByUser);
+  const allDocFolders = useQuery(api.folders.queries.listAllDocFolders);
   const folderDocs = useQuery(
     api.folders.queries.listDocsInFolder,
     scope !== "all" ? { folderId: scope } : "skip"
   );
-  const allDocFolders = useQuery(api.folders.queries.listAllDocFolders);
 
   const subFolders = useMemo(
     () => scope !== "all" ? (allFolders?.filter((f: any) => f.parentFolderId === scope) ?? []) : [],
     [allFolders, scope]
   );
 
-  // Map folderId -> docs trực tiếp trong folder đó (cho sidebar file tree)
   const docsByFolder = useMemo(() => {
     const map: Record<string, any[]> = {};
     if (!allDocFolders || !allDocs) return map;
@@ -95,7 +87,7 @@ export function LibraryPageInner() {
     if (!isPending && !session) router.replace("/login");
   }, [session, isPending, router]);
 
-  // Sidebar resize
+  // Sidebar resize (desktop only)
   const onSidebarMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     sidebarResizing.current = true;
@@ -169,9 +161,8 @@ export function LibraryPageInner() {
 
   function navigateToFolder(folder: { _id: Id<"folders">; name: string }, parentId?: Id<"folders">) {
     setScope(folder._id);
+    setMobileSidebarOpen(false);
     if (parentId) {
-      // Going into subfolder — find parent crumb
-      const parentCrumb = breadcrumbs.find(c => c.id === parentId);
       const parentIndex = breadcrumbs.findIndex(c => c.id === parentId);
       if (parentIndex >= 0) {
         setBreadcrumbs([...breadcrumbs.slice(0, parentIndex + 1), { id: folder._id, name: folder.name }]);
@@ -203,11 +194,9 @@ export function LibraryPageInner() {
 
   const currentFolder = allFolders?.find((f: any) => f._id === scope);
   const isFiltered = scope === "all" && hasActiveFilters(filters);
-
-  // Root folders (no parent)
   const rootFolders = allFolders?.filter((f: any) => !f.parentFolderId) ?? [];
 
-  // Render folder tree node
+  // Sidebar tree node
   function FolderNode({ folder, depth = 0 }: { folder: any; depth?: number }) {
     const isActive = scope === folder._id;
     const subfolders = allFolders?.filter((f: any) => f.parentFolderId === folder._id) ?? [];
@@ -217,8 +206,7 @@ export function LibraryPageInner() {
 
     return (
       <div>
-        <div className={`group flex items-center gap-1`} style={{ paddingLeft: depth * 16 }}>
-          {/* Expand toggle */}
+        <div className="group flex items-center gap-1" style={{ paddingLeft: depth * 16 }}>
           <button
             onClick={() => toggleExpanded(folder._id)}
             className={`shrink-0 rounded p-0.5 transition-colors ${hasChildren ? "hover:bg-muted text-muted-foreground" : "invisible"}`}
@@ -228,7 +216,7 @@ export function LibraryPageInner() {
 
           <button
             onClick={() => navigateToFolder(folder, folder.parentFolderId)}
-            className={`flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors min-w-0 ${
+            className={`flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 transition-colors min-w-0 ${
               isActive ? "bg-primary text-primary-foreground font-medium" : "hover:bg-muted text-foreground"
             }`}
           >
@@ -239,32 +227,29 @@ export function LibraryPageInner() {
             <span className="flex-1 truncate text-left text-xs">{folder.name}</span>
           </button>
 
+          {/* 3-dot: visible always on mobile (no hover), hover on desktop */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-muted transition-all" aria-label="Tuỳ chọn folder">
+            <DropdownMenuTrigger
+              className="shrink-0 rounded p-1 hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+              aria-label="Tuỳ chọn folder"
+            >
               <MoreVertical className="h-3 w-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={() => {
-                setCreateFolderParent(folder._id);
-                setCreateFolderOpen(true);
-              }}>
+              <DropdownMenuItem onClick={() => { setCreateFolderParent(folder._id); setCreateFolderOpen(true); }}>
                 <FolderPlus className="mr-2 h-3.5 w-3.5" /> Tạo subfolder
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setRenameFolderId(folder._id); setRenameFolderName(folder.name); }}>
                 <Pencil className="mr-2 h-3.5 w-3.5" /> Đổi tên
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleDeleteFolder(folder._id, folder.name)}
-                className="text-destructive focus:text-destructive"
-              >
+              <DropdownMenuItem onClick={() => handleDeleteFolder(folder._id, folder.name)} className="text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-3.5 w-3.5" /> Xoá folder
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
-        {/* Subfolders + docs khi expanded */}
         {isExpanded && (
           <>
             {subfolders.map((sub: any) => (
@@ -273,7 +258,7 @@ export function LibraryPageInner() {
             {docsInFolder.map((doc: any) => (
               <button
                 key={doc._id}
-                onClick={() => router.push(`/reader/${doc._id}`)}
+                onClick={() => { router.push(`/reader/${doc._id}`); setMobileSidebarOpen(false); }}
                 className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
                 style={{ paddingLeft: (depth + 1) * 16 + 16 }}
                 title={doc.title}
@@ -288,15 +273,73 @@ export function LibraryPageInner() {
     );
   }
 
+  // Shared sidebar content
+  const SidebarContent = () => (
+    <div className="space-y-1">
+      <button
+        onClick={() => { setScope("all"); setBreadcrumbs([]); setMobileSidebarOpen(false); }}
+        className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+          scope === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted text-foreground"
+        }`}
+      >
+        <LayoutGrid className="h-4 w-4 shrink-0" />
+        <span className="flex-1 text-left truncate">Tất cả tài liệu</span>
+        {allDocs && (
+          <span className={`text-xs tabular-nums ${scope === "all" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+            {allDocs.length}
+          </span>
+        )}
+      </button>
+
+      <div className="pt-3 pb-1 flex items-center justify-between px-1">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</span>
+        <button
+          onClick={() => { setCreateFolderParent(undefined); setCreateFolderOpen(true); }}
+          className="rounded p-0.5 hover:bg-muted transition-colors"
+          title="Tạo folder mới"
+        >
+          <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+      </div>
+
+      {(!allFolders || allFolders.length === 0) && (
+        <p className="px-3 py-2 text-xs text-muted-foreground">Chưa có folder nào</p>
+      )}
+      {rootFolders.map((folder: any) => (
+        <FolderNode key={folder._id} folder={folder} />
+      ))}
+
+      <div className="pt-3">
+        <Button
+          variant="ghost" size="sm"
+          className="w-full justify-start text-muted-foreground"
+          onClick={() => { router.push("/library/trash"); setMobileSidebarOpen(false); }}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Thùng rác
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar */}
-      <header className="border-b bg-card sticky top-0 z-10">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+      {/* Navbar — full width */}
+      <header className="border-b bg-card sticky top-0 z-20">
+        <div className="flex h-14 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-2">
+            {/* Mobile: hamburger để mở drawer */}
+            <button
+              onClick={() => setMobileSidebarOpen(v => !v)}
+              className="mr-1 rounded p-1.5 hover:bg-muted transition-colors md:hidden"
+              aria-label="Mở menu"
+            >
+              <Menu className="h-4 w-4 text-muted-foreground" />
+            </button>
+            {/* Desktop: toggle sidebar */}
             <button
               onClick={() => setSidebarOpen(v => !v)}
-              className="mr-1 rounded p-1.5 hover:bg-muted transition-colors"
+              className="mr-1 rounded p-1.5 hover:bg-muted transition-colors hidden md:flex"
               aria-label={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
             >
               {sidebarOpen
@@ -309,6 +352,7 @@ export function LibraryPageInner() {
             </div>
             <span className="font-semibold">Web Knowledge Base</span>
           </div>
+
           <nav className="hidden items-center gap-1 md:flex">
             <Button variant="secondary" size="sm" aria-current={true}>{N.library}</Button>
             <Button variant="ghost" size="sm" onClick={() => router.push("/notes")}>{N.notes}</Button>
@@ -316,6 +360,7 @@ export function LibraryPageInner() {
               <Settings className="mr-1 h-4 w-4" />{N.settings}
             </Button>
           </nav>
+
           <div className="flex items-center gap-2">
             <span className="hidden text-sm text-muted-foreground md:inline">{session.user.email}</span>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -326,91 +371,70 @@ export function LibraryPageInner() {
         </div>
       </header>
 
-      <div ref={containerRef} className="mx-auto flex max-w-7xl px-4 py-6" style={{ gap: 0 }}>
-        {/* Sidebar */}
+      {/* Mobile sidebar drawer overlay */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-30 md:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          {/* Drawer */}
+          <aside className="absolute left-0 top-0 h-full w-72 bg-background border-r shadow-xl overflow-y-auto p-4">
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-semibold text-sm">Điều hướng</span>
+              <button
+                onClick={() => setMobileSidebarOpen(false)}
+                className="rounded p-1.5 hover:bg-muted transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <SidebarContent />
+          </aside>
+        </div>
+      )}
+
+      {/* Main layout — full width */}
+      <div ref={containerRef} className="flex px-4 md:px-6 py-6" style={{ gap: 0 }}>
+
+        {/* Desktop sidebar */}
         {sidebarOpen && (
           <>
-            <aside style={{ width: sidebarWidth, minWidth: sidebarWidth }} className="shrink-0 mr-0">
-              <div className="sticky top-20 space-y-1">
-                {/* All docs */}
-                <button
-                  onClick={() => { setScope("all"); setBreadcrumbs([]); }}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    scope === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted text-foreground"
-                  }`}
-                >
-                  <LayoutGrid className="h-4 w-4 shrink-0" />
-                  <span className="flex-1 text-left truncate">Tất cả tài liệu</span>
-                  {allDocs && (
-                    <span className={`text-xs tabular-nums ${scope === "all" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                      {allDocs.length}
-                    </span>
-                  )}
-                </button>
-
-                {/* Folders header */}
-                <div className="pt-3 pb-1 flex items-center justify-between px-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</span>
-                  <button
-                    onClick={() => { setCreateFolderParent(undefined); setCreateFolderOpen(true); }}
-                    className="rounded p-0.5 hover:bg-muted transition-colors"
-                    title="Tạo folder mới"
-                  >
-                    <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                </div>
-
-                {(!allFolders || allFolders.length === 0) && (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">Chưa có folder nào</p>
-                )}
-                {rootFolders.map((folder: any) => (
-                  <FolderNode key={folder._id} folder={folder} />
-                ))}
-
-                {/* Trash */}
-                <div className="pt-3">
-                  <Button
-                    variant="ghost" size="sm"
-                    className="w-full justify-start text-muted-foreground"
-                    onClick={() => router.push("/library/trash")}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Thùng rác
-                  </Button>
-                </div>
+            <aside
+              style={{ width: sidebarWidth, minWidth: sidebarWidth }}
+              className="hidden md:block shrink-0 mr-0"
+            >
+              <div className="sticky top-20 overflow-y-auto max-h-[calc(100vh-6rem)]">
+                <SidebarContent />
               </div>
             </aside>
-
             {/* Resize handle */}
             <div
               onMouseDown={onSidebarMouseDown}
-              className="w-1.5 shrink-0 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors rounded-full mx-1"
+              className="hidden md:block w-1.5 shrink-0 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors rounded-full mx-1"
             />
           </>
         )}
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              {/* Breadcrumbs */}
+          {/* Page header */}
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="min-w-0">
               {breadcrumbs.length > 0 ? (
                 <div className="flex items-center gap-1 text-sm flex-wrap">
-                  <button onClick={() => { setScope("all"); setBreadcrumbs([]); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <button onClick={() => { setScope("all"); setBreadcrumbs([]); }} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
                     Thư viện
                   </button>
                   {breadcrumbs.map((crumb, i) => (
                     <span key={crumb.id} className="flex items-center gap-1">
-                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       {i === breadcrumbs.length - 1 ? (
                         <span className="font-semibold text-foreground">{crumb.name}</span>
                       ) : (
                         <button
-                          onClick={() => {
-                            setScope(crumb.id);
-                            setBreadcrumbs(breadcrumbs.slice(0, i + 1));
-                          }}
+                          onClick={() => { setScope(crumb.id); setBreadcrumbs(breadcrumbs.slice(0, i + 1)); }}
                           className="text-muted-foreground hover:text-foreground transition-colors"
                         >
                           {crumb.name}
@@ -420,7 +444,7 @@ export function LibraryPageInner() {
                   ))}
                 </div>
               ) : (
-                <h1 className="text-xl font-bold">
+                <h1 className="text-xl font-bold truncate">
                   {scope === "all" ? L.title : currentFolder?.name ?? "Folder"}
                 </h1>
               )}
@@ -428,36 +452,40 @@ export function LibraryPageInner() {
                 <p className="text-xs text-muted-foreground mt-0.5">{allDocs.length} tài liệu</p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 variant="outline" size="sm"
-                onClick={() => {
-                  setCreateFolderParent(scope !== "all" ? scope : undefined);
-                  setCreateFolderOpen(true);
-                }}
+                onClick={() => { setCreateFolderParent(scope !== "all" ? scope : undefined); setCreateFolderOpen(true); }}
+                className="hidden sm:flex"
               >
                 <FolderPlus className="mr-1.5 h-4 w-4" />
                 Tạo folder
               </Button>
               <Button onClick={() => setUploadOpen(true)} size="sm">
                 <Plus className="mr-1.5 h-4 w-4" />
-                {L.uploadButton}
+                <span className="hidden sm:inline">{L.uploadButton}</span>
+                <span className="sm:hidden">Thêm</span>
               </Button>
             </div>
           </div>
 
+          {/* Filter bar — scroll ngang trên mobile */}
           {scope === "all" && !isFiltered && <RecentHistory />}
           {scope === "all" && (
-            <div className="mb-5">
-              <FilterBar filters={filters} />
+            <div className="mb-4 -mx-1 px-1 overflow-x-auto">
+              <div className="flex items-center gap-2 min-w-max pb-1">
+                <FilterBar filters={filters} />
+              </div>
             </div>
           )}
 
-          {/* Subfolders row — chỉ hiện khi đang xem 1 folder cụ thể */}
+          {/* Subfolders row */}
           {scope !== "all" && subFolders.length > 0 && (
-            <div className="mb-5">
+            <div className="mb-4">
               <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folder con</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {subFolders.map((sub: any) => (
                   <button
                     key={sub._id}
@@ -482,7 +510,7 @@ export function LibraryPageInner() {
         </main>
       </div>
 
-      {/* Upload dialog — chỉ upload, không có folder tab */}
+      {/* Upload dialog */}
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -495,7 +523,7 @@ export function LibraryPageInner() {
         </DialogContent>
       </Dialog>
 
-      {/* Create folder dialog — riêng biệt */}
+      {/* Create folder dialog */}
       <Dialog open={createFolderOpen} onOpenChange={(v) => { setCreateFolderOpen(v); if (!v) setCreateFolderName(""); }}>
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>

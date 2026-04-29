@@ -157,14 +157,19 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
 
   return (
     <>
-      <div className="group relative flex flex-col rounded-xl border bg-card p-4 hover:shadow-md transition-all">
-        <div className="mb-3 flex items-start justify-between">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-            <Icon className={`h-5 w-5 ${iconColor}`} aria-hidden />
+      <div className="group relative flex flex-col rounded-xl border bg-card p-3 hover:shadow-md transition-all">
+        {/* Header: icon + 3-dot */}
+        <div className="mb-2 flex items-center justify-between gap-1">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted shrink-0">
+            <Icon className={`h-4 w-4 ${iconColor}`} aria-hidden />
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-all" aria-label="Tuỳ chọn">
-              <MoreVertical className="h-4 w-4" aria-hidden />
+            {/* Always visible on mobile (touch), hover-only on desktop */}
+            <DropdownMenuTrigger
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+              aria-label="Tuỳ chọn"
+            >
+              <MoreVertical className="h-3.5 w-3.5" aria-hidden />
             </DropdownMenuTrigger>
             {menu}
           </DropdownMenu>
@@ -173,40 +178,37 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
         <button
           onClick={() => router.push(`/reader/${doc._id}`)}
           onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
-          className="mb-1 line-clamp-2 text-sm font-medium text-left leading-snug hover:underline"
+          className="mb-2 line-clamp-2 text-sm font-medium text-left leading-snug hover:underline"
         >
           {doc.title}
         </button>
 
-        <div className="mt-auto pt-2 space-y-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="mt-auto space-y-1.5">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
             <span>{Lf[doc.format as keyof typeof Lf] ?? doc.format}</span>
             {doc.fileSizeBytes && <span>· {formatBytes(doc.fileSizeBytes)}</span>}
           </div>
-          <p className="text-xs text-muted-foreground">{format(doc.createdAt, "dd/MM/yyyy", { locale: vi })}</p>
 
           {currentFolder && (
-            <Badge variant="outline" className="text-xs gap-1 px-1.5">
+            <Badge variant="outline" className="text-xs gap-1 px-1.5 h-4">
               <Folder className="h-2.5 w-2.5" />{currentFolder.name}
             </Badge>
           )}
 
           {docTags && docTags.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {docTags.slice(0, 3).map((tag) => (
+              {docTags.slice(0, 2).map((tag) => (
                 <Badge key={tag._id} variant="secondary" className="h-4 px-1.5 text-xs" style={{ borderColor: tag.color ?? undefined }}>
                   {tag.name}
                 </Badge>
               ))}
-              {docTags.length > 3 && <Badge variant="secondary" className="h-4 px-1.5 text-xs">+{docTags.length - 3}</Badge>}
+              {docTags.length > 2 && <Badge variant="secondary" className="h-4 px-1.5 text-xs">+{docTags.length - 2}</Badge>}
             </div>
           )}
 
           {readingProgress?.progressPct != null && readingProgress.progressPct > 0 && (
             <div className="space-y-0.5">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{Math.round(readingProgress.progressPct * 100)}%</span>
-              </div>
+              <span className="text-xs text-primary font-medium">{Math.round(readingProgress.progressPct * 100)}%</span>
               <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full bg-primary transition-all"
@@ -216,7 +218,7 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
             </div>
           )}
 
-          <div className="flex items-center gap-1 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 -ml-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <TagPopover docId={doc._id} />
           </div>
         </div>

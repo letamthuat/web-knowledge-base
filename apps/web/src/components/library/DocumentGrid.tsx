@@ -60,7 +60,7 @@ export function DocumentGrid({ docs, viewMode, onViewModeChange, onUploadClick, 
     <div className="space-y-4">
       <ViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} count={docs.length} />
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {docs.map((doc) => (
             <DocumentCard key={doc._id} doc={doc} viewMode="grid" />
           ))}
@@ -126,9 +126,9 @@ function DocumentGridSkeleton({ viewMode }: { viewMode: "grid" | "list" }) {
     );
   }
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
       {items.map((_, i) => (
-        <div key={i} className="rounded-xl border p-4 space-y-3">
+        <div key={i} className="rounded-xl border p-3 space-y-2">
           <Skeleton className="h-10 w-10 rounded-lg" />
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-3 w-1/2" />
