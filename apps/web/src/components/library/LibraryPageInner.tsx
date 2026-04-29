@@ -355,11 +355,6 @@ export function LibraryPageInner() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Tab bar — sticky dưới navbar */}
-      <div className="sticky top-14 z-10">
-        <TabBar currentDocId={null} />
-      </div>
-
       {/* Navbar — full width */}
       <header className="border-b bg-card sticky top-0 z-20">
         <div className="flex h-14 items-center justify-between px-4 md:px-6">
@@ -406,6 +401,9 @@ export function LibraryPageInner() {
           </div>
         </div>
       </header>
+
+      {/* Tab bar — ngay dưới navbar */}
+      <TabBar currentDocId={null} />
 
       {/* Mobile sidebar drawer overlay */}
       {mobileSidebarOpen && (
