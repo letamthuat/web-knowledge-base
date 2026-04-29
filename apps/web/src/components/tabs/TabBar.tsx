@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { X, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe } from "lucide-react";
+import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/_generated/api";
 import { useTabSync, TabDoc } from "@/hooks/useTabSync";
@@ -56,7 +56,7 @@ export function TabBar({ currentDocId }: TabBarProps) {
   const router = useRouter();
   const { tabs, isLoading, closeTab } = useTabSync();
 
-  if (isLoading || tabs.length === 0) return null;
+  if (isLoading) return null;
 
   async function handleClose(e: React.MouseEvent, tab: TabDoc) {
     e.stopPropagation();
@@ -82,6 +82,13 @@ export function TabBar({ currentDocId }: TabBarProps) {
           onClose={(e) => handleClose(e, tab)}
         />
       ))}
+      <button
+        onClick={() => router.push("/library")}
+        aria-label="Mở tab mới từ thư viện"
+        className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
     </div>
   );
 }

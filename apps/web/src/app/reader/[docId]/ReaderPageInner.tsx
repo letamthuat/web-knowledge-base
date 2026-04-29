@@ -24,9 +24,23 @@ function ReaderShell({ doc, downloadUrl }: {
 }) {
   const router = useRouter();
   const { saveNow, saveStatus, savePosition, progress } = useReadingProgress(doc._id);
-  const { tabs } = useTabSync();
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const { tabs, isLoading: tabsLoading, openTab } = useTabSync();
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
   const showDropdown = isMobile && tabs.length >= 4;
+
+  // Auto-register current doc as a tab when entering reader
+  const tabOpened = useRef(false);
+  useEffect(() => {
+    if (tabOpened.current || tabsLoading) return;
+    tabOpened.current = true;
+    openTab(doc._id).catch(() => {});
+  }, [tabsLoading, doc._id, openTab]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recordOpen = useMutation((api as any).reading_history.mutations.recordOpen);
