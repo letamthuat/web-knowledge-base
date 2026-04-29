@@ -80,7 +80,7 @@ function ReaderShell({ doc, downloadUrl }: {
         <div className="flex flex-1 flex-col overflow-hidden">
           {showDropdown
             ? <TabDropdown currentDocId={doc._id} />
-            : <TabBar currentDocId={doc._id} />}
+            : <TabBar currentDocId={doc._id} showAddButton />}
           <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} />
         </div>
       </div>

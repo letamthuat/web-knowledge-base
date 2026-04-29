@@ -50,13 +50,14 @@ function TabItem({ tabId: _tabId, docId, isActive, onClose, onClick }: TabItemPr
 
 interface TabBarProps {
   currentDocId: Id<"documents"> | null;
+  showAddButton?: boolean;
 }
 
-export function TabBar({ currentDocId }: TabBarProps) {
+export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
   const router = useRouter();
   const { tabs, isLoading, closeTab } = useTabSync();
 
-  if (isLoading) return null;
+  if (isLoading || tabs.length === 0) return null;
 
   async function handleClose(e: React.MouseEvent, tab: TabDoc) {
     e.stopPropagation();
@@ -82,13 +83,15 @@ export function TabBar({ currentDocId }: TabBarProps) {
           onClose={(e) => handleClose(e, tab)}
         />
       ))}
-      <button
-        onClick={() => router.push("/library")}
-        aria-label="Mở tab mới từ thư viện"
-        className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-      >
-        <Plus className="h-4 w-4" />
-      </button>
+      {showAddButton && (
+        <button
+          onClick={() => router.push("/library")}
+          aria-label="Mở tab mới từ thư viện"
+          className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }
