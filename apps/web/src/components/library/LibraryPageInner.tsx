@@ -66,6 +66,10 @@ export function LibraryPageInner() {
     api.folders.queries.listDocsInFolder,
     scope !== "all" ? { folderId: scope } : "skip"
   );
+  const subFolders = useMemo(
+    () => scope !== "all" ? (allFolders?.filter((f: any) => f.parentFolderId === scope) ?? []) : [],
+    [allFolders, scope]
+  );
 
   const renameFolder = useMutation(api.folders.mutations.rename);
   const deleteFolder = useMutation(api.folders.mutations.deleteFolder);
@@ -414,6 +418,25 @@ export function LibraryPageInner() {
           {scope === "all" && (
             <div className="mb-5">
               <FilterBar filters={filters} />
+            </div>
+          )}
+
+          {/* Subfolders row — chỉ hiện khi đang xem 1 folder cụ thể */}
+          {scope !== "all" && subFolders.length > 0 && (
+            <div className="mb-5">
+              <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folder con</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {subFolders.map((sub: any) => (
+                  <button
+                    key={sub._id}
+                    onClick={() => navigateToFolder(sub, scope)}
+                    className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left hover:bg-muted transition-colors"
+                  >
+                    <Folder className="h-4 w-4 shrink-0 text-amber-500" />
+                    <span className="flex-1 truncate text-sm font-medium">{sub.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
