@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 interface MermaidBlockProps {
   code: string;
 }
 
-// Singleton init promise — ensures mermaid.initialize() runs exactly once
+// Module-level SVG cache: code → svg string
+const svgCache = new Map<string, string>();
+
+// Singleton init promise
 let initPromise: Promise<typeof import("mermaid")["default"]> | null = null;
 
 function getMermaid() {
@@ -24,76 +27,69 @@ function getMermaid() {
   return initPromise;
 }
 
-// Incrementing ID to avoid mermaid's internal ID cache collisions on re-render
 let diagCounter = 0;
 
 export function MermaidBlock({ code }: MermaidBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [rendered, setRendered] = useState(false);
+  // Track whether this instance has already rendered to avoid double-render in Strict Mode
+  const doneRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
-    setError(null);
-    setRendered(false);
-
     const el = containerRef.current;
     if (!el) return;
+
+    // If cached, inject immediately — no flash
+    const cached = svgCache.get(code);
+    if (cached) {
+      el.innerHTML = cached;
+      doneRef.current = true;
+      return;
+    }
+
+    if (doneRef.current) return;
+
+    let cancelled = false;
 
     (async () => {
       try {
         const mermaid = await getMermaid();
-        if (cancelled) return;
+        if (cancelled || doneRef.current) return;
 
-        // Unique ID each render to avoid mermaid SVG ID conflicts
         const id = `mmd-${++diagCounter}`;
-
-        // mermaid.render() attaches a temp element to document.body — clean it up after
         const { svg, bindFunctions } = await mermaid.render(id, code.trim());
+
         if (cancelled) return;
 
+        // Clean up the detached SVG element mermaid appends to <body>
+        document.getElementById(id)?.remove();
+
+        svgCache.set(code, svg);
+        doneRef.current = true;
         el.innerHTML = svg;
         bindFunctions?.(el);
-        setRendered(true);
       } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Lỗi render diagram");
+        if (!cancelled && el) {
+          const msg = e instanceof Error ? e.message : String(e);
+          el.innerHTML = `<details class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900">
+            <summary class="cursor-pointer px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400">Diagram lỗi — bấm để xem</summary>
+            <pre class="px-3 pb-2 pt-1 text-xs text-red-500 whitespace-pre-wrap overflow-x-auto">${msg}</pre>
+          </details>`;
+          doneRef.current = true;
         }
       }
     })();
 
     return () => {
       cancelled = true;
+      // Do NOT reset doneRef on cleanup — Strict Mode runs cleanup+setup twice,
+      // we want the second run to skip if first already succeeded
     };
   }, [code]);
 
-  if (error) {
-    return (
-      <details className="my-4 rounded-lg border border-destructive/30 bg-destructive/5">
-        <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-destructive">
-          Diagram lỗi — bấm để xem chi tiết
-        </summary>
-        <pre className="overflow-x-auto px-4 pb-3 pt-1 text-xs text-destructive/80 whitespace-pre-wrap">
-          {error}
-        </pre>
-      </details>
-    );
-  }
-
   return (
-    <div className="relative my-4">
-      {!rendered && (
-        <div className="flex h-16 items-center justify-center rounded-lg bg-muted/40">
-          <span className="text-xs text-muted-foreground">Đang tải diagram…</span>
-        </div>
-      )}
-      <div
-        ref={containerRef}
-        className={[
-          "flex justify-center overflow-x-auto rounded-lg",
-          rendered ? "block" : "hidden",
-        ].join(" ")}
-      />
-    </div>
+    <div
+      ref={containerRef}
+      className="my-4 flex min-h-[3rem] justify-center overflow-x-auto rounded-lg"
+    />
   );
 }
