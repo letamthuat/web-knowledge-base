@@ -40,8 +40,12 @@ export const requestUploadUrl = action({
     const putCommand = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
+      ChecksumAlgorithm: undefined,
     });
-    const uploadUrl = await getSignedUrl(r2, putCommand, { expiresIn: 3600 });
+    const uploadUrl = await getSignedUrl(r2, putCommand, {
+      expiresIn: 3600,
+      unhoistableHeaders: new Set(["x-amz-checksum-crc32"]),
+    });
 
     return {
       storageBackend: "r2",
