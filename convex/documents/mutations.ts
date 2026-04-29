@@ -159,3 +159,4 @@ export const deletePermanent = mutation({
     await ctx.db.delete(args.docId);
   },
 });
+
