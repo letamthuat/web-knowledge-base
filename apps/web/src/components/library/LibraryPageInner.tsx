@@ -273,7 +273,7 @@ export function LibraryPageInner() {
             {docsInFolder.map((doc: any) => (
               <button
                 key={doc._id}
-                onClick={() => router.push(`/viewer/${doc._id}`)}
+                onClick={() => router.push(`/reader/${doc._id}`)}
                 className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
                 style={{ paddingLeft: (depth + 1) * 16 + 16 }}
                 title={doc.title}
