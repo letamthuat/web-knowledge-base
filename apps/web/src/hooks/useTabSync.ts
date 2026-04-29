@@ -6,7 +6,9 @@ import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 
 export function useTabSync() {
-  const tabs = useQuery(api.tabs.queries.listByUser) ?? [];
+  const tabsResult = useQuery(api.tabs.queries.listByUser);
+  const tabs = tabsResult ?? [];
+  const isLoading = tabsResult === undefined;
 
   const openTabMutation = useMutation(api.tabs.mutations.openTab);
   const closeTabMutation = useMutation(api.tabs.mutations.closeTab);
@@ -42,5 +44,5 @@ export function useTabSync() {
 
   const activeTab = tabs.find((t: { isActive: boolean }) => t.isActive) ?? null;
 
-  return { tabs, activeTab, openTab, closeTab, setActive, reorderTabs, updateScrollState };
+  return { tabs, activeTab, isLoading, openTab, closeTab, setActive, reorderTabs, updateScrollState };
 }

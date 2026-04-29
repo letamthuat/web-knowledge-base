@@ -28,6 +28,8 @@ export function VideoViewer({ doc, downloadUrl }: VideoViewerProps) {
   const { containerRef, leftPercent, onMouseDown } = useResizable(60);
   const transcript = useQuery(api.transcripts.queries.getByDoc, { docId: doc._id });
   const segments = transcript?.status === "completed" ? (transcript.segments ?? []) : [];
+  const translatedSegments = transcript?.status === "completed" ? transcript.translatedSegments : undefined;
+  const translatedLanguage = transcript?.translatedLanguage;
 
   useEffect(() => {
     registerJump((pos) => {
@@ -105,7 +107,7 @@ export function VideoViewer({ doc, downloadUrl }: VideoViewerProps) {
         />
         {/* Transcript panel */}
         <div className="flex flex-col border-l bg-background overflow-hidden flex-1">
-          <TranscriptPanel segments={segments} currentTime={currentTime} />
+          <TranscriptPanel segments={segments} currentTime={currentTime} translatedSegments={translatedSegments} translatedLanguage={translatedLanguage} />
         </div>
       </div>
     );

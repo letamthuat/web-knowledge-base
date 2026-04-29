@@ -1,6 +1,16 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 
+// Tạo URL để upload audio chunk tạm lên Convex Storage
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
 // Tạo hoặc reset transcript record (trạng thái pending)
 export const initTranscript = mutation({
   args: { docId: v.id("documents") },
@@ -41,8 +51,14 @@ export const saveSegments = mutation({
       text: v.string(),
     })),
     language: v.optional(v.string()),
+    translatedSegments: v.optional(v.array(v.object({
+      start: v.number(),
+      end: v.number(),
+      text: v.string(),
+    }))),
+    translatedLanguage: v.optional(v.string()),
   },
-  handler: async (ctx, { transcriptId, segments, language }) => {
+  handler: async (ctx, { transcriptId, segments, language, translatedSegments, translatedLanguage }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -50,6 +66,7 @@ export const saveSegments = mutation({
       status: "completed",
       segments,
       language,
+      ...(translatedSegments ? { translatedSegments, translatedLanguage } : {}),
       updatedAt: Date.now(),
     });
   },

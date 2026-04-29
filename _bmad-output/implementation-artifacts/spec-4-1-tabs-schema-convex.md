@@ -2,7 +2,7 @@
 title: 'Story 4.1 — Schema tabs + Convex reactive hook useTabSync'
 type: 'feature'
 created: '2026-04-29'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'd489b0390f353da5512a5cc11528052c4fd6bf27'
 context: []
 ---
@@ -110,6 +110,30 @@ if (tab.isActive && remaining.length > 0) {
 **Manual checks:**
 - Mở Convex dashboard → Functions → tabs/queries:listByUser và tabs/mutations:openTab xuất hiện
 - Gọi `openTab` 11 lần cho cùng 1 user → lần thứ 11 phải throw ConvexError (test qua dashboard Run function)
+
+## Suggested Review Order
+
+**Data layer — Convex**
+
+- Schema reference: tabs table shape, indexes `by_user` + `by_user_order`
+  [`schema.ts:243`](../../convex/schema.ts#L243)
+
+- Core mutation logic: openTab idempotency, limit enforcement, deactivate-all pattern
+  [`mutations.ts:8`](../../convex/tabs/mutations.ts#L8)
+
+- closeTab auto-promote next active tab by updatedAt
+  [`mutations.ts:66`](../../convex/tabs/mutations.ts#L66)
+
+- setActive, reorderTabs, updateScrollState with LWW idempotency
+  [`mutations.ts:92`](../../convex/tabs/mutations.ts#L92)
+
+- Reactive query sorted by order index
+  [`queries.ts:1`](../../convex/tabs/queries.ts#L1)
+
+**React hook**
+
+- useTabSync: reactive binding + isLoading sentinel to distinguish loading vs empty
+  [`useTabSync.ts:1`](../../apps/web/src/hooks/useTabSync.ts#L1)
 
 ## Spec Change Log
 

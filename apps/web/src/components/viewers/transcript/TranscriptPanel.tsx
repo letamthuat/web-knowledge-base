@@ -15,14 +15,17 @@ function formatTime(seconds: number): string {
 interface TranscriptPanelProps {
   segments: TranscriptSegment[];
   currentTime: number;
+  translatedSegments?: TranscriptSegment[];
+  translatedLanguage?: string;
 }
 
-export function TranscriptPanel({ segments, currentTime }: TranscriptPanelProps) {
+export function TranscriptPanel({ segments, currentTime, translatedSegments, translatedLanguage }: TranscriptPanelProps) {
   const activeRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [query, setQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
+  const isBilingual = !!translatedSegments && translatedSegments.length > 0;
   const activeIndex = segments.findLastIndex((s) => currentTime >= s.start);
 
   useEffect(() => {
@@ -30,25 +33,46 @@ export function TranscriptPanel({ segments, currentTime }: TranscriptPanelProps)
   }, [activeIndex, query]);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return segments.map((s, i) => ({ ...s, i }));
-    const q = query.toLowerCase();
-    return segments
-      .map((s, i) => ({ ...s, i }))
-      .filter((s) => s.text.toLowerCase().includes(q));
-  }, [segments, query]);
+    const q = query.toLowerCase().trim();
+    return segments.map((s, i) => ({ ...s, i, translated: translatedSegments?.[i] })).filter((s) => {
+      if (!q) return true;
+      return s.text.toLowerCase().includes(q) || s.translated?.text.toLowerCase().includes(q);
+    });
+  }, [segments, translatedSegments, query]);
 
   const copyAll = async () => {
-    const text = segments.map((s) => `[${formatTime(s.start)}] ${s.text}`).join("\n");
+    const text = segments.map((s, i) => {
+      const line = `[${formatTime(s.start)}] ${s.text}`;
+      if (isBilingual && translatedSegments?.[i]) {
+        return `${line}\n→ ${translatedSegments[i].text}`;
+      }
+      return line;
+    }).join("\n");
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  function highlight(text: string) {
+    if (!query.trim()) return null;
+    return text.replace(
+      new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"),
+      '<mark class="bg-yellow-200 dark:bg-yellow-800 rounded-sm">$1</mark>'
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-2 border-b shrink-0">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Transcript</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Transcript</h3>
+            {isBilingual && (
+              <span className="text-xs rounded-full bg-primary/10 text-primary px-2 py-0.5 font-medium">
+                Song ngữ
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setShowSearch((v) => !v)}
@@ -84,19 +108,15 @@ export function TranscriptPanel({ segments, currentTime }: TranscriptPanelProps)
           </div>
         )}
       </div>
+
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {filtered.length === 0 && (
           <p className="text-xs text-muted-foreground text-center pt-4">Không tìm thấy kết quả</p>
         )}
         {filtered.map((seg) => {
           const isActive = seg.i === activeIndex && !query;
-          const text = seg.text;
-          const highlighted = query.trim()
-            ? text.replace(
-                new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"),
-                '<mark class="bg-yellow-200 dark:bg-yellow-800 rounded-sm">$1</mark>'
-              )
-            : null;
+          const hl = highlight(seg.text);
+          const hlTranslated = seg.translated ? highlight(seg.translated.text) : null;
 
           return (
             <div
@@ -109,15 +129,33 @@ export function TranscriptPanel({ segments, currentTime }: TranscriptPanelProps)
               <span className="text-xs font-mono text-muted-foreground mr-2 shrink-0">
                 {formatTime(seg.start)}
               </span>
-              {highlighted ? (
+
+              {/* Original text */}
+              {hl ? (
                 <span
                   className="text-sm leading-relaxed text-muted-foreground"
-                  dangerouslySetInnerHTML={{ __html: highlighted }}
+                  dangerouslySetInnerHTML={{ __html: hl }}
                 />
               ) : (
                 <span className={`text-sm leading-relaxed ${isActive ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                  {text}
+                  {seg.text}
                 </span>
+              )}
+
+              {/* Translated text */}
+              {isBilingual && seg.translated && (
+                <div className="mt-1 border-l-2 border-primary/30 pl-2">
+                  {hlTranslated ? (
+                    <span
+                      className="text-sm leading-relaxed text-foreground/70 italic"
+                      dangerouslySetInnerHTML={{ __html: hlTranslated }}
+                    />
+                  ) : (
+                    <span className={`text-sm leading-relaxed italic ${isActive ? "text-foreground/80" : "text-foreground/60"}`}>
+                      {seg.translated.text}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           );

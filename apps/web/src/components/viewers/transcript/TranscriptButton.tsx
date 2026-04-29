@@ -27,7 +27,6 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
 
   async function handleTranscribe() {
     if (isRunning) return;
-
     let transcriptId: Id<"transcripts"> | null = null;
     try {
       transcriptId = await initTranscript({ docId });

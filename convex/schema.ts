@@ -469,7 +469,13 @@ export default defineSchema({
       end: v.number(),     // seconds
       text: v.string(),
     }))),
+    translatedSegments: v.optional(v.array(v.object({
+      start: v.number(),
+      end: v.number(),
+      text: v.string(),
+    }))),
     language: v.optional(v.string()),
+    translatedLanguage: v.optional(v.string()),
     errorMessage: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -9,7 +9,21 @@
       "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")",
       "Bash(npm install *)",
       "Bash(node -e \"require\\('@ffmpeg/ffmpeg'\\)\")",
-      "Bash(kill %1)"
+      "Bash(kill %1)",
+      "Bash(node \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\\\\apps\\\\web\\\\scripts\\\\copy-convex.js\")",
+      "Bash(mkdir -p ffmpeg)",
+      "Bash(curl -L \"https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js\" -o ffmpeg/ffmpeg-core.js)",
+      "Bash(curl -L \"https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm\" -o ffmpeg/ffmpeg-core.wasm)",
+      "Bash(curl -L \"https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/umd/ffmpeg-core.js\" -o ffmpeg-core.js)",
+      "Bash(curl -L \"https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/umd/ffmpeg-core.wasm\" -o ffmpeg-core.wasm)",
+      "Bash(curl -L \"https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/umd/ffmpeg-core.worker.js\" -o ffmpeg-core.worker.js)",
+      "Bash(npm uninstall *)",
+      "Bash(CONVEX_DEPLOYMENT=prod npx convex deploy)",
+      "Bash(cat .env.local)",
+      "Bash(cat .env)",
+      "Bash(curl -s \"https://helpful-mallard-821.convex.site/api/auth/.well-known/openid-configuration\")",
+      "Bash(python3 _bmad/scripts/resolve_customization.py --skill \".claude/skills/bmad-quick-dev\" --key workflow)",
+      "PowerShell(cd \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\"; $env:CONVEX_DEPLOYMENT = \"prod:frugal-guanaco-160\"; npx convex deploy 2>&1)"
     ]
   }
 }
