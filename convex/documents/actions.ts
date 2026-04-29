@@ -13,6 +13,8 @@ function getR2Client() {
       accessKeyId: process.env.R2_ACCESS_KEY_ID!,
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
     },
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
 }
 
@@ -40,12 +42,8 @@ export const requestUploadUrl = action({
     const putCommand = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
-      ChecksumAlgorithm: undefined,
     });
-    const uploadUrl = await getSignedUrl(r2, putCommand, {
-      expiresIn: 3600,
-      unhoistableHeaders: new Set(["x-amz-checksum-crc32"]),
-    });
+    const uploadUrl = await getSignedUrl(r2, putCommand, { expiresIn: 3600 });
 
     return {
       storageBackend: "r2",
