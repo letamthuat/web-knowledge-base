@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DocumentGrid } from "@/components/library/DocumentGrid";
 import { RecentHistory } from "@/components/library/RecentHistory";
+import { TabBar } from "@/components/tabs/TabBar";
 import { FilterBar, parseFilters, hasActiveFilters } from "@/components/library/FilterBar";
 import { UploadDropzone } from "@/components/library/UploadDropzone";
 import { labels } from "@/lib/i18n/labels";
@@ -354,6 +355,11 @@ export function LibraryPageInner() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Tab bar — sticky dưới navbar */}
+      <div className="sticky top-14 z-10">
+        <TabBar currentDocId={null} />
+      </div>
+
       {/* Navbar — full width */}
       <header className="border-b bg-card sticky top-0 z-20">
         <div className="flex h-14 items-center justify-between px-4 md:px-6">

@@ -49,7 +49,7 @@ function TabItem({ tabId: _tabId, docId, isActive, onClose, onClick }: TabItemPr
 }
 
 interface TabBarProps {
-  currentDocId: Id<"documents">;
+  currentDocId: Id<"documents"> | null;
 }
 
 export function TabBar({ currentDocId }: TabBarProps) {
@@ -75,7 +75,7 @@ export function TabBar({ currentDocId }: TabBarProps) {
           key={tab._id}
           tabId={tab._id}
           docId={tab.docId as Id<"documents">}
-          isActive={tab.docId === currentDocId}
+          isActive={currentDocId !== null && tab.docId === currentDocId}
           onClick={() => {
             if (tab.docId !== currentDocId) router.push(`/reader/${tab.docId}`);
           }}
