@@ -141,7 +141,6 @@ export const closeAll = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId as never))
       .collect();
     await Promise.all(allTabs.map((t) => ctx.db.delete(t._id)));
-    return allTabs.map((t) => ({ docId: t.docId, order: t.order }));
   },
 });
 
