@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe } from "lucide-react";
+import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, PanelLeftClose } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/_generated/api";
 import { useTabSync, TabDoc } from "@/hooks/useTabSync";
@@ -51,7 +51,7 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 10 : undefined,
   };
 
@@ -63,22 +63,27 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
       {...listeners}
       onClick={onClick}
       className={[
-        "group flex h-9 min-w-0 max-w-[180px] shrink-0 cursor-pointer select-none items-center gap-1.5 border-r px-3 text-left transition-colors",
+        "group relative flex h-8 min-w-0 max-w-[160px] shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-left transition-all duration-150",
         isActive
-          ? "border-b-2 border-b-primary bg-background text-foreground"
-          : "border-b-2 border-b-transparent bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground",
+          ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+          : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
       ].join(" ")}
     >
-      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span className="flex-1 truncate text-xs">{doc?.title ?? "…"}</span>
+      <Icon className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+      <span className="flex-1 truncate text-xs font-medium">{doc?.title ?? "…"}</span>
       <span
         role="button"
         aria-label="Đóng tab"
         onClick={onClose}
         onPointerDown={(e) => e.stopPropagation()}
-        className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded hover:bg-muted-foreground/20"
+        className={[
+          "ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded transition-all",
+          isActive
+            ? "opacity-60 hover:opacity-100 hover:bg-muted"
+            : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-muted",
+        ].join(" ")}
       >
-        <X className="h-3 w-3" />
+        <X className="h-2.5 w-2.5" />
       </span>
     </div>
   );
@@ -112,8 +117,8 @@ export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
         e.preventDefault();
         const docId = closedTabStack.pop();
         if (!docId) return;
-        openTab(docId as never).then((tabId) => {
-          if (tabId) router.push(`/reader/${docId}`);
+        openTab(docId as never).then(() => {
+          router.push(`/reader/${docId}`);
         }).catch(() => {});
       }
     }
@@ -136,10 +141,7 @@ export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
   }
 
   async function handleCloseAll() {
-    const currentTabs = tabsRef.current;
-    currentTabs.forEach((t) => {
-      closedTabStack.push(t.docId as string);
-    });
+    tabsRef.current.forEach((t) => closedTabStack.push(t.docId as string));
     if (closedTabStack.length > 20) closedTabStack.splice(0, closedTabStack.length - 20);
     await closeAll();
     router.push("/library");
@@ -163,41 +165,56 @@ export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={displayTabs.map((t) => t._id)} strategy={horizontalListSortingStrategy}>
-        <div className="flex h-9 shrink-0 items-stretch overflow-x-auto border-b bg-muted/30 scrollbar-none">
-          {displayTabs.map((tab) => (
-            <SortableTabItem
-              key={tab._id}
-              tab={tab}
-              isActive={currentDocId !== null && tab.docId === currentDocId}
-              onClick={() => {
-                if (tab.docId !== currentDocId) router.push(`/reader/${tab.docId}`);
-              }}
-              onClose={(e) => handleClose(e, tab)}
-            />
-          ))}
-          {showAddButton && (
-            <button
-              onClick={() => router.push("/library")}
-              aria-label="Mở tab mới từ thư viện"
-              className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          )}
-          {displayTabs.length > 1 && (
-            <button
-              onClick={handleCloseAll}
-              aria-label="Đóng tất cả tab"
-              title="Đóng tất cả (Ctrl+Shift+T để mở lại)"
-              className="flex h-9 shrink-0 items-center justify-center px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border-l"
-            >
-              Đóng tất cả
-            </button>
-          )}
-        </div>
-      </SortableContext>
-    </DndContext>
+    <div className="flex h-10 shrink-0 items-center gap-1 border-b bg-muted/40 px-2">
+      {/* Nút thêm tab — luôn ở đầu */}
+      {showAddButton && (
+        <button
+          onClick={() => router.push("/library")}
+          aria-label="Mở tab mới từ thư viện"
+          title="Mở tài liệu mới"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      {/* Divider nếu có nút thêm */}
+      {showAddButton && <div className="h-4 w-px shrink-0 bg-border/60" />}
+
+      {/* Tab list — scrollable */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={displayTabs.map((t) => t._id)} strategy={horizontalListSortingStrategy}>
+          <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto scrollbar-none py-1">
+            {displayTabs.map((tab) => (
+              <SortableTabItem
+                key={tab._id}
+                tab={tab}
+                isActive={currentDocId !== null && tab.docId === currentDocId}
+                onClick={() => {
+                  if (tab.docId !== currentDocId) router.push(`/reader/${tab.docId}`);
+                }}
+                onClose={(e) => handleClose(e, tab)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+
+      {/* Divider + Đóng tất cả — luôn ở cuối */}
+      {displayTabs.length > 1 && (
+        <>
+          <div className="h-4 w-px shrink-0 bg-border/60" />
+          <button
+            onClick={handleCloseAll}
+            aria-label="Đóng tất cả tab"
+            title="Đóng tất cả (Ctrl+Shift+T để mở lại)"
+            className="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+          >
+            <PanelLeftClose className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Đóng tất cả</span>
+          </button>
+        </>
+      )}
+    </div>
   );
 }
