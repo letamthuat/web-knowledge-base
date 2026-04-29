@@ -14,6 +14,24 @@ export const listByUser = query({
   },
 });
 
+export const listByParent = query({
+  args: { parentFolderId: v.optional(v.id("folders")) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const userId = identity.subject;
+    const all = await ctx.db
+      .query("folders")
+      .withIndex("by_user", (q) => q.eq("userId", userId as never))
+      .collect();
+    return all.filter((f) =>
+      args.parentFolderId
+        ? f.parentFolderId === args.parentFolderId
+        : !f.parentFolderId
+    );
+  },
+});
+
 export const listDocsInFolder = query({
   args: { folderId: v.id("folders") },
   handler: async (ctx, args) => {

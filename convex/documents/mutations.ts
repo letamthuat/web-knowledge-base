@@ -95,6 +95,38 @@ export const restore = mutation({
   },
 });
 
+export const deleteAllTrashed = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireAuth(ctx);
+    const trashed = await ctx.db
+      .query("documents")
+      .withIndex("by_user_status", (q) => q.eq("userId", userId as never).eq("status", "trashed"))
+      .collect();
+
+    for (const doc of trashed) {
+      // Xóa related data
+      const docTags = await ctx.db.query("document_tags").withIndex("by_doc", (q) => q.eq("docId", doc._id)).collect();
+      for (const dt of docTags) await ctx.db.delete(dt._id);
+      const docFolders = await ctx.db.query("document_folders").withIndex("by_doc", (q) => q.eq("docId", doc._id)).collect();
+      for (const df of docFolders) await ctx.db.delete(df._id);
+      const transcript = await ctx.db.query("transcripts").withIndex("by_doc", (q) => q.eq("docId", doc._id)).first();
+      if (transcript) await ctx.db.delete(transcript._id);
+
+      if (doc.storageBackend === "convex") {
+        try { await ctx.storage.delete(doc.storageKey as never); } catch {}
+      } else if (doc.storageBackend === "r2") {
+        await ctx.scheduler.runAfter(0, internal.documents.actions.deleteFromStorage, {
+          storageBackend: "r2",
+          storageKey: doc.storageKey,
+        });
+      }
+      await ctx.db.delete(doc._id);
+    }
+    return trashed.length;
+  },
+});
+
 export const deletePermanent = mutation({
   args: { docId: v.id("documents") },
   handler: async (ctx, args) => {

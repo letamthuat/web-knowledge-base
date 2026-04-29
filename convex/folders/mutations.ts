@@ -4,7 +4,7 @@ import { requireAuth } from "../lib/auth";
 import { convexError } from "../lib/errors";
 
 export const create = mutation({
-  args: { name: v.string() },
+  args: { name: v.string(), parentFolderId: v.optional(v.id("folders")) },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx);
     const name = args.name.trim();
@@ -13,6 +13,7 @@ export const create = mutation({
     return await ctx.db.insert("folders", {
       userId: userId as never,
       name,
+      parentFolderId: args.parentFolderId,
       createdAt: now,
       updatedAt: now,
     });

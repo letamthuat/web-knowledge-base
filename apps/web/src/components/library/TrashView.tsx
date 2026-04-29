@@ -37,9 +37,11 @@ interface TrashViewProps {
 
 export function TrashView({ docs }: TrashViewProps) {
   const [deleteTarget, setDeleteTarget] = useState<Id<"documents"> | null>(null);
+  const [clearAllOpen, setClearAllOpen] = useState(false);
 
   const restoreMutation = useMutation(api.documents.mutations.restore);
   const deleteMutation = useMutation(api.documents.mutations.deletePermanent);
+  const deleteAllTrashed = useMutation(api.documents.mutations.deleteAllTrashed);
 
   async function handleRestore(docId: Id<"documents">) {
     await restoreMutation({ docId });
@@ -51,6 +53,12 @@ export function TrashView({ docs }: TrashViewProps) {
     await deleteMutation({ docId: deleteTarget });
     setDeleteTarget(null);
     toast.success(L.deletePermanentSuccess);
+  }
+
+  async function handleClearAll() {
+    const count = await deleteAllTrashed({});
+    setClearAllOpen(false);
+    toast.success(`Đã xoá vĩnh viễn ${count} tài liệu`);
   }
 
   if (!docs) {
@@ -73,7 +81,19 @@ export function TrashView({ docs }: TrashViewProps) {
 
   return (
     <>
-      <p className="mb-4 text-xs text-muted-foreground">{L.autoDeleteNote}</p>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">{L.autoDeleteNote}</p>
+        {docs.length > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setClearAllOpen(true)}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            Xoá tất cả
+          </Button>
+        )}
+      </div>
       <div className="space-y-2">
         {docs.map((doc) => {
           const Icon = FORMAT_ICONS[doc.format] ?? FileText;
@@ -144,6 +164,26 @@ export function TrashView({ docs }: TrashViewProps) {
               className="bg-destructive hover:bg-destructive/90"
             >
               {L.deletePermanentConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={clearAllOpen} onOpenChange={setClearAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xoá tất cả tài liệu trong thùng rác?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hành động này sẽ xoá vĩnh viễn {docs.length} tài liệu và không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Huỷ</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearAll}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Xoá tất cả
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

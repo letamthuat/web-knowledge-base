@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpen, LogOut, Settings, Trash2, Plus, Folder, FolderOpen,
   MoreVertical, Pencil, FolderPlus, ChevronRight, LayoutGrid,
+  PanelLeftClose, PanelLeftOpen, ChevronDown, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
@@ -25,20 +26,38 @@ const N = labels.nav;
 
 type ViewScope = "all" | Id<"folders">;
 
+// Breadcrumb item
+interface Crumb { id: Id<"folders">; name: string }
+
 export function LibraryPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, isPending } = useSession();
+
+  // UI state
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadTab, setUploadTab] = useState<"upload" | "folder">("upload");
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [createFolderName, setCreateFolderName] = useState("");
+  const [createFolderParent, setCreateFolderParent] = useState<Id<"folders"> | undefined>();
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+
+  // Sidebar
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(224); // 14rem default
+  const sidebarResizing = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Navigation
   const [scope, setScope] = useState<ViewScope>("all");
+  const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([]); // folder trail
+
+  // Folder management
   const [renameFolderId, setRenameFolderId] = useState<Id<"folders"> | null>(null);
   const [renameFolderName, setRenameFolderName] = useState("");
 
-  useEffect(() => {
-    if (!isPending && !session) router.replace("/login");
-  }, [session, isPending, router]);
+  // Expanded folders in sidebar
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
   const allDocs = useQuery(api.documents.queries.listByUser);
@@ -50,20 +69,43 @@ export function LibraryPageInner() {
 
   const renameFolder = useMutation(api.folders.mutations.rename);
   const deleteFolder = useMutation(api.folders.mutations.deleteFolder);
+  const createFolder = useMutation(api.folders.mutations.create);
+
+  useEffect(() => {
+    if (!isPending && !session) router.replace("/login");
+  }, [session, isPending, router]);
+
+  // Sidebar resize
+  const onSidebarMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    sidebarResizing.current = true;
+    const onMove = (ev: MouseEvent) => {
+      if (!sidebarResizing.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const w = ev.clientX - rect.left;
+      setSidebarWidth(Math.min(400, Math.max(160, w)));
+    };
+    const onUp = () => {
+      sidebarResizing.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, []);
 
   const docsToShow = useMemo(() => {
     if (scope !== "all") return folderDocs ?? undefined;
     if (!allDocs) return undefined;
-    if (allDocs === null) return [];
     let docs = allDocs;
-    if (filters.formats.length > 0) docs = docs.filter((d) => filters.formats.includes(d.format));
+    if (filters.formats.length > 0) docs = docs.filter((d: any) => filters.formats.includes(d.format));
     if (filters.from) {
       const from = new Date(filters.from).getTime();
-      docs = docs.filter((d) => d.createdAt >= from);
+      docs = docs.filter((d: any) => d.createdAt >= from);
     }
     if (filters.to) {
       const to = new Date(filters.to).getTime() + 86400000;
-      docs = docs.filter((d) => d.createdAt <= to);
+      docs = docs.filter((d: any) => d.createdAt <= to);
     }
     return docs;
   }, [scope, folderDocs, allDocs, filters]);
@@ -79,9 +121,7 @@ export function LibraryPageInner() {
     try {
       await renameFolder({ folderId: renameFolderId, name: renameFolderName.trim() });
       toast.success("Đã đổi tên folder");
-    } catch {
-      toast.error("Đổi tên thất bại");
-    }
+    } catch { toast.error("Đổi tên thất bại"); }
     setRenameFolderId(null);
   }
 
@@ -89,11 +129,47 @@ export function LibraryPageInner() {
     if (!confirm(`Xoá folder "${name}"? Tài liệu bên trong sẽ không bị xoá.`)) return;
     try {
       await deleteFolder({ folderId });
-      if (scope === folderId) setScope("all");
+      if (scope === folderId) { setScope("all"); setBreadcrumbs([]); }
       toast.success("Đã xoá folder");
-    } catch {
-      toast.error("Xoá folder thất bại");
+    } catch { toast.error("Xoá folder thất bại"); }
+  }
+
+  async function handleCreateFolder() {
+    const name = createFolderName.trim();
+    if (!name) return;
+    setIsCreatingFolder(true);
+    try {
+      await createFolder({ name, parentFolderId: createFolderParent });
+      toast.success(`Đã tạo folder "${name}"`);
+      setCreateFolderName("");
+      setCreateFolderOpen(false);
+    } catch { toast.error("Tạo folder thất bại"); }
+    finally { setIsCreatingFolder(false); }
+  }
+
+  function navigateToFolder(folder: { _id: Id<"folders">; name: string }, parentId?: Id<"folders">) {
+    setScope(folder._id);
+    if (parentId) {
+      // Going into subfolder — find parent crumb
+      const parentCrumb = breadcrumbs.find(c => c.id === parentId);
+      const parentIndex = breadcrumbs.findIndex(c => c.id === parentId);
+      if (parentIndex >= 0) {
+        setBreadcrumbs([...breadcrumbs.slice(0, parentIndex + 1), { id: folder._id, name: folder.name }]);
+      } else {
+        const parent = allFolders?.find((f: any) => f._id === parentId);
+        setBreadcrumbs(parent ? [{ id: parentId, name: parent.name }, { id: folder._id, name: folder.name }] : [{ id: folder._id, name: folder.name }]);
+      }
+    } else {
+      setBreadcrumbs([{ id: folder._id, name: folder.name }]);
     }
+  }
+
+  function toggleExpanded(folderId: string) {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      next.has(folderId) ? next.delete(folderId) : next.add(folderId);
+      return next;
+    });
   }
 
   if (isPending) {
@@ -105,8 +181,76 @@ export function LibraryPageInner() {
   }
   if (!session) return null;
 
-  const currentFolder = allFolders?.find((f) => f._id === scope);
+  const currentFolder = allFolders?.find((f: any) => f._id === scope);
   const isFiltered = scope === "all" && hasActiveFilters(filters);
+
+  // Root folders (no parent)
+  const rootFolders = allFolders?.filter((f: any) => !f.parentFolderId) ?? [];
+
+  // Render folder tree node
+  function FolderNode({ folder, depth = 0 }: { folder: any; depth?: number }) {
+    const isActive = scope === folder._id;
+    const subfolders = allFolders?.filter((f: any) => f.parentFolderId === folder._id) ?? [];
+    const hasChildren = subfolders.length > 0;
+    const isExpanded = expandedFolders.has(folder._id);
+
+    return (
+      <div>
+        <div className={`group flex items-center gap-1 ${depth > 0 ? "pl-" + (depth * 4) : ""}`}
+          style={{ paddingLeft: depth * 16 }}>
+          {/* Expand toggle */}
+          <button
+            onClick={() => toggleExpanded(folder._id)}
+            className={`shrink-0 rounded p-0.5 transition-colors ${hasChildren ? "hover:bg-muted text-muted-foreground" : "invisible"}`}
+          >
+            <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
+          </button>
+
+          <button
+            onClick={() => navigateToFolder(folder, folder.parentFolderId)}
+            className={`flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors min-w-0 ${
+              isActive ? "bg-primary text-primary-foreground font-medium" : "hover:bg-muted text-foreground"
+            }`}
+          >
+            {isActive
+              ? <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+              : <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+            }
+            <span className="flex-1 truncate text-left text-xs">{folder.name}</span>
+          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger className="shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-muted transition-all" aria-label="Tuỳ chọn folder">
+              <MoreVertical className="h-3 w-3" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => {
+                setCreateFolderParent(folder._id);
+                setCreateFolderOpen(true);
+              }}>
+                <FolderPlus className="mr-2 h-3.5 w-3.5" /> Tạo subfolder
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setRenameFolderId(folder._id); setRenameFolderName(folder.name); }}>
+                <Pencil className="mr-2 h-3.5 w-3.5" /> Đổi tên
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleDeleteFolder(folder._id, folder.name)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-3.5 w-3.5" /> Xoá folder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Subfolders */}
+        {isExpanded && subfolders.map((sub: any) => (
+          <FolderNode key={sub._id} folder={sub} depth={depth + 1} />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -114,8 +258,18 @@ export function LibraryPageInner() {
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSidebarOpen(v => !v)}
+              className="mr-1 rounded p-1.5 hover:bg-muted transition-colors"
+              aria-label={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
+            >
+              {sidebarOpen
+                ? <PanelLeftClose className="h-4 w-4 text-muted-foreground" />
+                : <PanelLeftOpen className="h-4 w-4 text-muted-foreground" />
+              }
+            </button>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <BookOpen className="h-5 w-5 text-primary-foreground" aria-hidden />
+              <BookOpen className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="font-semibold">Web Knowledge Base</span>
           </div>
@@ -123,148 +277,146 @@ export function LibraryPageInner() {
             <Button variant="secondary" size="sm" aria-current={true}>{N.library}</Button>
             <Button variant="ghost" size="sm" onClick={() => router.push("/notes")}>{N.notes}</Button>
             <Button variant="ghost" size="sm" onClick={() => router.push("/settings")}>
-              <Settings className="mr-1 h-4 w-4" aria-hidden />{N.settings}
+              <Settings className="mr-1 h-4 w-4" />{N.settings}
             </Button>
           </nav>
           <div className="flex items-center gap-2">
             <span className="hidden text-sm text-muted-foreground md:inline">{session.user.email}</span>
-            <Button variant="ghost" size="sm" onClick={handleLogout} aria-label="Đăng xuất">
-              <LogOut className="h-4 w-4" aria-hidden />
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" />
               <span className="ml-1 hidden md:inline">{N.logout}</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-7xl gap-0 px-4 py-6">
+      <div ref={containerRef} className="mx-auto flex max-w-7xl px-4 py-6" style={{ gap: 0 }}>
         {/* Sidebar */}
-        <aside className="w-56 shrink-0 mr-6">
-          <div className="sticky top-20 space-y-1">
-            {/* All docs */}
-            <button
-              onClick={() => setScope("all")}
-              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                scope === "all"
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted text-foreground"
-              }`}
-            >
-              <LayoutGrid className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="flex-1 text-left truncate">Tất cả tài liệu</span>
-              {allDocs && allDocs !== null && (
-                <span className={`text-xs tabular-nums ${scope === "all" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                  {allDocs.length}
-                </span>
-              )}
-            </button>
+        {sidebarOpen && (
+          <>
+            <aside style={{ width: sidebarWidth, minWidth: sidebarWidth }} className="shrink-0 mr-0">
+              <div className="sticky top-20 space-y-1">
+                {/* All docs */}
+                <button
+                  onClick={() => { setScope("all"); setBreadcrumbs([]); }}
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    scope === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted text-foreground"
+                  }`}
+                >
+                  <LayoutGrid className="h-4 w-4 shrink-0" />
+                  <span className="flex-1 text-left truncate">Tất cả tài liệu</span>
+                  {allDocs && (
+                    <span className={`text-xs tabular-nums ${scope === "all" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                      {allDocs.length}
+                    </span>
+                  )}
+                </button>
 
-            {/* Divider + Folders label */}
-            <div className="pt-3 pb-1 flex items-center justify-between px-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</span>
-              <button
-                onClick={() => setUploadOpen(true)}
-                className="rounded p-0.5 hover:bg-muted transition-colors"
-                title="Tạo folder mới"
-                aria-label="Tạo folder mới"
-              >
-                <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            </div>
-
-            {/* Folder list */}
-            {(!allFolders || allFolders.length === 0) && (
-              <p className="px-3 py-2 text-xs text-muted-foreground">Chưa có folder nào</p>
-            )}
-            {allFolders?.map((folder) => {
-              const isActive = scope === folder._id;
-              return (
-                <div key={folder._id} className="group flex items-center gap-1">
+                {/* Folders header */}
+                <div className="pt-3 pb-1 flex items-center justify-between px-1">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</span>
                   <button
-                    onClick={() => setScope(folder._id)}
-                    className={`flex flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors min-w-0 ${
-                      isActive
-                        ? "bg-primary text-primary-foreground font-medium"
-                        : "hover:bg-muted text-foreground"
-                    }`}
+                    onClick={() => { setCreateFolderParent(undefined); setCreateFolderOpen(true); }}
+                    className="rounded p-0.5 hover:bg-muted transition-colors"
+                    title="Tạo folder mới"
                   >
-                    {isActive
-                      ? <FolderOpen className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-                      : <Folder className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
-                    }
-                    <span className="flex-1 truncate text-left">{folder.name}</span>
-                    <ChevronRight className={`h-3 w-3 shrink-0 transition-opacity ${isActive ? "opacity-70" : "opacity-0 group-hover:opacity-50"}`} />
+                    <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 hover:bg-muted transition-all" aria-label="Tuỳ chọn folder">
-                      <MoreVertical className="h-3.5 w-3.5" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={() => { setRenameFolderId(folder._id); setRenameFolderName(folder.name); }}>
-                        <Pencil className="mr-2 h-3.5 w-3.5" /> Đổi tên
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteFolder(folder._id, folder.name)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Xoá folder
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
-              );
-            })}
 
-            {/* Divider */}
-            <div className="pt-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-muted-foreground"
-                onClick={() => router.push("/library/trash")}
-              >
-                <Trash2 className="mr-2 h-4 w-4" aria-hidden />
-                Thùng rác
-              </Button>
-            </div>
-          </div>
-        </aside>
+                {(!allFolders || allFolders.length === 0) && (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">Chưa có folder nào</p>
+                )}
+                {rootFolders.map((folder: any) => (
+                  <FolderNode key={folder._id} folder={folder} />
+                ))}
+
+                {/* Trash */}
+                <div className="pt-3">
+                  <Button
+                    variant="ghost" size="sm"
+                    className="w-full justify-start text-muted-foreground"
+                    onClick={() => router.push("/library/trash")}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Thùng rác
+                  </Button>
+                </div>
+              </div>
+            </aside>
+
+            {/* Resize handle */}
+            <div
+              onMouseDown={onSidebarMouseDown}
+              className="w-1.5 shrink-0 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors rounded-full mx-1"
+            />
+          </>
+        )}
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
           {/* Header */}
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold">
-                {scope === "all" ? L.title : currentFolder?.name ?? "Folder"}
-              </h1>
-              {scope === "all" && allDocs && allDocs !== null && (
+              {/* Breadcrumbs */}
+              {breadcrumbs.length > 0 ? (
+                <div className="flex items-center gap-1 text-sm flex-wrap">
+                  <button onClick={() => { setScope("all"); setBreadcrumbs([]); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                    Thư viện
+                  </button>
+                  {breadcrumbs.map((crumb, i) => (
+                    <span key={crumb.id} className="flex items-center gap-1">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      {i === breadcrumbs.length - 1 ? (
+                        <span className="font-semibold text-foreground">{crumb.name}</span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setScope(crumb.id);
+                            setBreadcrumbs(breadcrumbs.slice(0, i + 1));
+                          }}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {crumb.name}
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <h1 className="text-xl font-bold">
+                  {scope === "all" ? L.title : currentFolder?.name ?? "Folder"}
+                </h1>
+              )}
+              {scope === "all" && allDocs && (
                 <p className="text-xs text-muted-foreground mt-0.5">{allDocs.length} tài liệu</p>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setUploadTab("folder"); setUploadOpen(true); }}>
-                <FolderPlus className="mr-1.5 h-4 w-4" aria-hidden />
+              <Button
+                variant="outline" size="sm"
+                onClick={() => {
+                  setCreateFolderParent(scope !== "all" ? scope : undefined);
+                  setCreateFolderOpen(true);
+                }}
+              >
+                <FolderPlus className="mr-1.5 h-4 w-4" />
                 Tạo folder
               </Button>
-              <Button onClick={() => { setUploadTab("upload"); setUploadOpen(true); }} size="sm">
-                <Plus className="mr-1.5 h-4 w-4" aria-hidden />
+              <Button onClick={() => setUploadOpen(true)} size="sm">
+                <Plus className="mr-1.5 h-4 w-4" />
                 {L.uploadButton}
               </Button>
             </div>
           </div>
 
-          {/* Recent history — chỉ khi xem "Tất cả" và không filter */}
           {scope === "all" && !isFiltered && <RecentHistory />}
-
-          {/* Filter bar — chỉ khi xem "Tất cả" */}
           {scope === "all" && (
             <div className="mb-5">
               <FilterBar filters={filters} />
             </div>
           )}
 
-          {/* Document grid */}
           <DocumentGrid
             docs={docsToShow}
             viewMode={viewMode}
@@ -275,7 +427,7 @@ export function LibraryPageInner() {
         </main>
       </div>
 
-      {/* Upload dialog */}
+      {/* Upload dialog — chỉ upload, không có folder tab */}
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -284,8 +436,37 @@ export function LibraryPageInner() {
           <UploadDropzone
             onUploadComplete={() => setUploadOpen(false)}
             defaultFolderId={scope !== "all" ? scope : undefined}
-            defaultTab={uploadTab}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Create folder dialog — riêng biệt */}
+      <Dialog open={createFolderOpen} onOpenChange={(v) => { setCreateFolderOpen(v); if (!v) setCreateFolderName(""); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>
+              {createFolderParent
+                ? `Tạo subfolder trong "${allFolders?.find((f: any) => f._id === createFolderParent)?.name}"`
+                : "Tạo folder mới"
+              }
+            </DialogTitle>
+          </DialogHeader>
+          <input
+            autoFocus
+            value={createFolderName}
+            onChange={(e) => setCreateFolderName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); }}
+            placeholder="Tên folder..."
+            maxLength={100}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCreateFolderOpen(false)}>Huỷ</Button>
+            <Button size="sm" disabled={!createFolderName.trim() || isCreatingFolder} onClick={handleCreateFolder}>
+              <FolderPlus className="mr-1.5 h-4 w-4" />
+              Tạo
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
