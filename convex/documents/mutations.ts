@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { convexError } from "../lib/errors";
+import { api } from "../_generated/api";
 
 export const finalizeUpload = mutation({
   args: {
@@ -117,14 +118,24 @@ export const deletePermanent = mutation({
       .collect();
     for (const df of docFolders) await ctx.db.delete(df._id);
 
-    // Xoá file trong Convex storage nếu storageBackend là convex
+    // Xoá file khỏi storage backend
     if (doc.storageBackend === "convex") {
       try {
         await ctx.storage.delete(doc.storageKey as never);
-      } catch {
-        // Ignore storage delete errors
-      }
+      } catch {}
+    } else if (doc.storageBackend === "r2") {
+      await ctx.scheduler.runAfter(0, api.documents.actions.deleteFromStorage, {
+        storageBackend: "r2",
+        storageKey: doc.storageKey,
+      });
     }
+
+    // Xoá transcript nếu có
+    const transcript = await ctx.db
+      .query("transcripts")
+      .withIndex("by_doc", (q) => q.eq("docId", args.docId))
+      .first();
+    if (transcript) await ctx.db.delete(transcript._id);
 
     await ctx.db.delete(args.docId);
   },
