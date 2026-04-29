@@ -32,7 +32,7 @@ function ReaderShell({ doc, downloadUrl }: {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-  const showDropdown = isMobile && tabs.length >= 4;
+  const showDropdown = isMobile;
 
   // Auto-register current doc as a tab when entering reader
   const tabOpened = useRef(false);
