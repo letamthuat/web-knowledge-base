@@ -66,6 +66,8 @@ export function LibraryPageInner() {
     api.folders.queries.listDocsInFolder,
     scope !== "all" ? { folderId: scope } : "skip"
   );
+  const allDocFolders = useQuery(api.folders.queries.listAllDocFolders);
+
   const subFolders = useMemo(
     () => scope !== "all" ? (allFolders?.filter((f: any) => f.parentFolderId === scope) ?? []) : [],
     [allFolders, scope]
@@ -84,8 +86,6 @@ export function LibraryPageInner() {
     }
     return map;
   }, [allDocFolders, allDocs]);
-
-  const allDocFolders = useQuery(api.folders.queries.listAllDocFolders);
 
   const renameFolder = useMutation(api.folders.mutations.rename);
   const deleteFolder = useMutation(api.folders.mutations.deleteFolder);
