@@ -25,11 +25,15 @@ import type * as reading_history_mutations from "../reading_history/mutations.js
 import type * as reading_history_queries from "../reading_history/queries.js";
 import type * as reading_progress_mutations from "../reading_progress/mutations.js";
 import type * as reading_progress_queries from "../reading_progress/queries.js";
+import type * as tabs_mutations from "../tabs/mutations.js";
+import type * as tabs_queries from "../tabs/queries.js";
 import type * as tags_mutations from "../tags/mutations.js";
 import type * as tags_queries from "../tags/queries.js";
 import type * as transcripts_actions from "../transcripts/actions.js";
 import type * as transcripts_mutations from "../transcripts/mutations.js";
 import type * as transcripts_queries from "../transcripts/queries.js";
+import type * as users_actions from "../users/actions.js";
+import type * as users_mutations from "../users/mutations.js";
 import type * as users_queries from "../users/queries.js";
 
 import type {
@@ -56,11 +60,15 @@ declare const fullApi: ApiFromModules<{
   "reading_history/queries": typeof reading_history_queries;
   "reading_progress/mutations": typeof reading_progress_mutations;
   "reading_progress/queries": typeof reading_progress_queries;
+  "tabs/mutations": typeof tabs_mutations;
+  "tabs/queries": typeof tabs_queries;
   "tags/mutations": typeof tags_mutations;
   "tags/queries": typeof tags_queries;
   "transcripts/actions": typeof transcripts_actions;
   "transcripts/mutations": typeof transcripts_mutations;
   "transcripts/queries": typeof transcripts_queries;
+  "users/actions": typeof users_actions;
+  "users/mutations": typeof users_mutations;
   "users/queries": typeof users_queries;
 }>;
 
