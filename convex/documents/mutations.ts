@@ -95,6 +95,21 @@ export const restore = mutation({
   },
 });
 
+async function deleteDocRelatedData(ctx: any, docId: any, userId: any) {
+  const results = await Promise.all([
+    ctx.db.query("document_tags").withIndex("by_doc", (q: any) => q.eq("docId", docId)).collect(),
+    ctx.db.query("document_folders").withIndex("by_doc", (q: any) => q.eq("docId", docId)).collect(),
+    ctx.db.query("transcripts").withIndex("by_doc", (q: any) => q.eq("docId", docId)).collect(),
+    ctx.db.query("highlights").withIndex("by_doc", (q: any) => q.eq("docId", docId)).collect(),
+    ctx.db.query("reading_progress").withIndex("by_user_doc", (q: any) => q.eq("userId", userId).eq("docId", docId)).collect(),
+    ctx.db.query("reading_history").withIndex("by_user_doc_opened", (q: any) => q.eq("userId", userId).eq("docId", docId)).collect(),
+    ctx.db.query("notes").withIndex("by_user_doc", (q: any) => q.eq("userId", userId).eq("docId", docId)).collect(),
+  ]);
+  for (const rows of results) {
+    for (const row of rows) await ctx.db.delete(row._id);
+  }
+}
+
 export const deleteAllTrashed = mutation({
   args: {},
   handler: async (ctx) => {
@@ -105,13 +120,7 @@ export const deleteAllTrashed = mutation({
       .collect();
 
     for (const doc of trashed) {
-      // Xóa related data
-      const docTags = await ctx.db.query("document_tags").withIndex("by_doc", (q) => q.eq("docId", doc._id)).collect();
-      for (const dt of docTags) await ctx.db.delete(dt._id);
-      const docFolders = await ctx.db.query("document_folders").withIndex("by_doc", (q) => q.eq("docId", doc._id)).collect();
-      for (const df of docFolders) await ctx.db.delete(df._id);
-      const transcript = await ctx.db.query("transcripts").withIndex("by_doc", (q) => q.eq("docId", doc._id)).first();
-      if (transcript) await ctx.db.delete(transcript._id);
+      await deleteDocRelatedData(ctx, doc._id, userId as never);
 
       if (doc.storageBackend === "convex") {
         try { await ctx.storage.delete(doc.storageKey as never); } catch {}
@@ -136,38 +145,16 @@ export const deletePermanent = mutation({
       throw convexError("NOT_FOUND", "Document not found", "Không tìm thấy tài liệu");
     }
 
-    // Xoá document_tags liên quan
-    const docTags = await ctx.db
-      .query("document_tags")
-      .withIndex("by_doc", (q) => q.eq("docId", args.docId))
-      .collect();
-    for (const dt of docTags) await ctx.db.delete(dt._id);
+    await deleteDocRelatedData(ctx, args.docId, userId as never);
 
-    // Xoá document_folders liên quan
-    const docFolders = await ctx.db
-      .query("document_folders")
-      .withIndex("by_doc", (q) => q.eq("docId", args.docId))
-      .collect();
-    for (const df of docFolders) await ctx.db.delete(df._id);
-
-    // Xoá file khỏi storage backend
     if (doc.storageBackend === "convex") {
-      try {
-        await ctx.storage.delete(doc.storageKey as never);
-      } catch {}
+      try { await ctx.storage.delete(doc.storageKey as never); } catch {}
     } else if (doc.storageBackend === "r2") {
       await ctx.scheduler.runAfter(0, internal.documents.actions.deleteFromStorage, {
         storageBackend: "r2",
         storageKey: doc.storageKey,
       });
     }
-
-    // Xoá transcript nếu có
-    const transcript = await ctx.db
-      .query("transcripts")
-      .withIndex("by_doc", (q) => q.eq("docId", args.docId))
-      .first();
-    if (transcript) await ctx.db.delete(transcript._id);
 
     await ctx.db.delete(args.docId);
   },
