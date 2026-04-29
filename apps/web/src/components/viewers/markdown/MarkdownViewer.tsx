@@ -49,7 +49,7 @@ function extractToc(markdown: string): TocEntry[] {
 export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tocOpen, setTocOpen] = useState(true);
+  const [tocOpen, setTocOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
   const [activeId, setActiveId] = useState<string>("");
   const contentRef = useRef<HTMLDivElement>(null);
   const { savePosition, registerJump } = useReaderProgress();
@@ -81,19 +81,30 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
   // Restore scroll position after content renders
   useEffect(() => {
     if (restored.current || !content || !contentRef.current || !progress) return;
-    if (progress.positionType === "scroll_pct") {
-      try {
-        const pos = JSON.parse(progress.positionValue);
-        if (typeof pos.pct === "number") {
-          const el = contentRef.current;
-          // Use rAF to wait for layout after render
-          requestAnimationFrame(() => {
-            el.scrollTop = pos.pct * (el.scrollHeight - el.clientHeight);
-          });
-        }
-      } catch {}
+    if (progress.positionType !== "scroll_pct") return;
+    let pct: number;
+    try {
+      const pos = JSON.parse(progress.positionValue);
+      if (typeof pos.pct !== "number") return;
+      pct = pos.pct;
+    } catch {
+      return;
     }
     restored.current = true;
+
+    const el = contentRef.current;
+    // Safari mobile renders lazily — retry until scrollHeight stabilises
+    let lastHeight = 0;
+    let attempts = 0;
+    const tryScroll = () => {
+      const h = el.scrollHeight - el.clientHeight;
+      if (h > 10 && (h !== lastHeight || attempts < 3)) {
+        lastHeight = h;
+        el.scrollTop = pct * h;
+      }
+      if (attempts++ < 8) requestAnimationFrame(tryScroll);
+    };
+    requestAnimationFrame(tryScroll);
   }, [content, progress]);
 
   // Track active heading via IntersectionObserver on the content scroll area
