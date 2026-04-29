@@ -50,6 +50,28 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
+
+  const toggleToc = useCallback(() => {
+    // Capture current heading before layout shift from sidebar resize
+    const el = contentRef.current;
+    if (el) {
+      const headings = Array.from(el.querySelectorAll("h1,h2,h3,h4,h5,h6")) as HTMLElement[];
+      let pinnedId: string | undefined;
+      for (const h of headings) {
+        if (h.offsetTop <= el.scrollTop + 8) pinnedId = h.id;
+        else break;
+      }
+      setTocOpen((v) => !v);
+      if (pinnedId) {
+        requestAnimationFrame(() => {
+          const heading = el.querySelector(`#${CSS.escape(pinnedId!)}`) as HTMLElement | null;
+          if (heading) el.scrollTop = heading.offsetTop;
+        });
+      }
+    } else {
+      setTocOpen((v) => !v);
+    }
+  }, []);
   const [activeId, setActiveId] = useState<string>("");
   const contentRef = useRef<HTMLDivElement>(null);
   const { savePosition, registerJump } = useReaderProgress();
@@ -198,7 +220,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
               variant="ghost"
               size="icon"
               className="h-6 w-6"
-              onClick={() => setTocOpen(false)}
+              onClick={toggleToc}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -240,7 +262,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
         <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
           <div>
             {hasToc && (
-              <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setTocOpen((v) => !v)}>
+              <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={toggleToc}>
                 <List className="h-3.5 w-3.5" />
                 {tocOpen ? "Ẩn mục lục" : "Mục lục"}
               </Button>
