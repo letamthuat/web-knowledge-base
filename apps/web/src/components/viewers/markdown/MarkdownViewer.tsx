@@ -272,7 +272,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
         </div>
 
         {/* Content area */}
-        <div ref={contentRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
+        <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden" onScroll={handleScroll}>
           <div className="mx-auto max-w-3xl px-6 py-8" style={{ zoom: scale }}>
             <article className="prose prose-neutral dark:prose-invert max-w-none">
               <ReactMarkdown
