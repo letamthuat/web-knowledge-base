@@ -6,6 +6,7 @@ import {
   BookOpen, LogOut, Settings, Trash2, Plus, Folder, FolderOpen,
   MoreVertical, Pencil, FolderPlus, ChevronRight, LayoutGrid,
   PanelLeftClose, PanelLeftOpen, ChevronDown, File as FileIcon, Menu, X,
+  CheckSquare, FolderInput,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
@@ -52,6 +53,19 @@ export function LibraryPageInner() {
   const [renameFolderName, setRenameFolderName] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
+  // Multi-select
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkFolderOpen, setBulkFolderOpen] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function clearSelection() { setSelectedIds(new Set()); }
+
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
   const allDocs = useQuery(api.documents.queries.listByUser);
   const allFolders = useQuery(api.folders.queries.listByUser);
@@ -82,6 +96,8 @@ export function LibraryPageInner() {
   const renameFolder = useMutation(api.folders.mutations.rename);
   const deleteFolder = useMutation(api.folders.mutations.deleteFolder);
   const createFolder = useMutation(api.folders.mutations.create);
+  const trashDoc = useMutation(api.documents.mutations.trash);
+  const assignDoc = useMutation(api.folders.mutations.assignDoc);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -157,6 +173,20 @@ export function LibraryPageInner() {
       setCreateFolderOpen(false);
     } catch { toast.error("Tạo folder thất bại"); }
     finally { setIsCreatingFolder(false); }
+  }
+
+  async function handleBulkTrash() {
+    if (!confirm(`Chuyển ${selectedIds.size} tài liệu vào thùng rác?`)) return;
+    await Promise.all([...selectedIds].map(id => trashDoc({ docId: id as Id<"documents"> })));
+    toast.success(`Đã chuyển ${selectedIds.size} tài liệu vào thùng rác`);
+    clearSelection();
+  }
+
+  async function handleBulkAssignFolder(folderId: Id<"folders">) {
+    await Promise.all([...selectedIds].map(id => assignDoc({ docId: id as Id<"documents">, folderId })));
+    toast.success(`Đã chuyển ${selectedIds.size} tài liệu vào folder`);
+    setBulkFolderOpen(false);
+    clearSelection();
   }
 
   function navigateToFolder(folder: { _id: Id<"folders">; name: string }, parentId?: Id<"folders">) {
@@ -506,9 +536,51 @@ export function LibraryPageInner() {
             onViewModeChange={setViewMode}
             onUploadClick={() => setUploadOpen(true)}
             isFiltered={isFiltered}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
           />
         </main>
       </div>
+
+      {/* Bulk action toolbar — nổi ở bottom khi có selection */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-2xl border bg-background shadow-2xl px-4 py-3">
+          <span className="text-sm font-medium text-foreground mr-1">
+            {selectedIds.size} đã chọn
+          </span>
+
+          {/* Chuyển vào folder */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors">
+              <FolderInput className="h-4 w-4" />
+              Chuyển folder
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" side="top" className="w-48 max-h-64 overflow-y-auto">
+              {(!allFolders || allFolders.length === 0) ? (
+                <p className="px-2 py-1.5 text-xs text-muted-foreground">Chưa có folder nào</p>
+              ) : (
+                allFolders.map((f: any) => (
+                  <DropdownMenuItem key={f._id} onClick={() => handleBulkAssignFolder(f._id)}>
+                    <Folder className="mr-2 h-4 w-4 text-amber-500" />
+                    {f.name}
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Xoá vào thùng rác */}
+          <Button variant="destructive" size="sm" onClick={handleBulkTrash}>
+            <Trash2 className="mr-1.5 h-4 w-4" />
+            Xoá
+          </Button>
+
+          {/* Bỏ chọn */}
+          <Button variant="ghost" size="sm" onClick={clearSelection}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Upload dialog */}
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>

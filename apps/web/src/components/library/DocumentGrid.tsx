@@ -24,9 +24,14 @@ interface DocumentGridProps {
   onViewModeChange: (mode: "grid" | "list") => void;
   onUploadClick: () => void;
   isFiltered?: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
 }
 
-export function DocumentGrid({ docs, viewMode, onViewModeChange, onUploadClick, isFiltered }: DocumentGridProps) {
+export function DocumentGrid({
+  docs, viewMode, onViewModeChange, onUploadClick, isFiltered,
+  selectedIds, onToggleSelect,
+}: DocumentGridProps) {
   if (docs === undefined) {
     return <DocumentGridSkeleton viewMode={viewMode} />;
   }
@@ -34,7 +39,7 @@ export function DocumentGrid({ docs, viewMode, onViewModeChange, onUploadClick, 
   if (docs.length === 0) {
     return (
       <div className="space-y-4">
-        <ViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} count={0} />
+        <ViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} count={0} selectedCount={selectedIds.size} />
         <div className="flex min-h-[360px] flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 text-center">
           {isFiltered ? (
             <>
@@ -58,17 +63,29 @@ export function DocumentGrid({ docs, viewMode, onViewModeChange, onUploadClick, 
 
   return (
     <div className="space-y-4">
-      <ViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} count={docs.length} />
+      <ViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} count={docs.length} selectedCount={selectedIds.size} />
       {viewMode === "grid" ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {docs.map((doc) => (
-            <DocumentCard key={doc._id} doc={doc} viewMode="grid" />
+            <DocumentCard
+              key={doc._id}
+              doc={doc}
+              viewMode="grid"
+              isSelected={selectedIds.has(doc._id)}
+              onToggleSelect={() => onToggleSelect(doc._id)}
+            />
           ))}
         </div>
       ) : (
         <div className="space-y-2">
           {docs.map((doc) => (
-            <DocumentCard key={doc._id} doc={doc} viewMode="list" />
+            <DocumentCard
+              key={doc._id}
+              doc={doc}
+              viewMode="list"
+              isSelected={selectedIds.has(doc._id)}
+              onToggleSelect={() => onToggleSelect(doc._id)}
+            />
           ))}
         </div>
       )}
@@ -76,30 +93,32 @@ export function DocumentGrid({ docs, viewMode, onViewModeChange, onUploadClick, 
   );
 }
 
-function ViewToggle({ viewMode, onViewModeChange, count }: {
-  viewMode: "grid" | "list"; onViewModeChange: (m: "grid" | "list") => void; count: number;
+function ViewToggle({ viewMode, onViewModeChange, count, selectedCount }: {
+  viewMode: "grid" | "list"; onViewModeChange: (m: "grid" | "list") => void; count: number; selectedCount: number;
 }) {
   return (
     <div className="flex items-center justify-between">
-      <p className="text-sm text-muted-foreground">{count} tài liệu</p>
+      <p className="text-sm text-muted-foreground">
+        {selectedCount > 0 ? (
+          <span className="text-primary font-medium">Đã chọn {selectedCount}</span>
+        ) : (
+          `${count} tài liệu`
+        )}
+      </p>
       <div className="flex items-center rounded-md border p-0.5">
         <Button
           variant={viewMode === "grid" ? "secondary" : "ghost"}
-          size="icon"
-          className="h-7 w-7"
+          size="icon" className="h-7 w-7"
           onClick={() => onViewModeChange("grid")}
-          aria-label={L.gridView}
-          aria-pressed={viewMode === "grid"}
+          aria-label={L.gridView} aria-pressed={viewMode === "grid"}
         >
           <LayoutGrid className="h-4 w-4" aria-hidden />
         </Button>
         <Button
           variant={viewMode === "list" ? "secondary" : "ghost"}
-          size="icon"
-          className="h-7 w-7"
+          size="icon" className="h-7 w-7"
           onClick={() => onViewModeChange("list")}
-          aria-label={L.listView}
-          aria-pressed={viewMode === "list"}
+          aria-label={L.listView} aria-pressed={viewMode === "list"}
         >
           <List className="h-4 w-4" aria-hidden />
         </Button>
@@ -129,10 +148,9 @@ function DocumentGridSkeleton({ viewMode }: { viewMode: "grid" | "list" }) {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
       {items.map((_, i) => (
         <div key={i} className="rounded-xl border p-3 space-y-2">
-          <Skeleton className="h-10 w-10 rounded-lg" />
+          <Skeleton className="h-7 w-7 rounded-md" />
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-3 w-1/2" />
-          <Skeleton className="h-3 w-1/3" />
         </div>
       ))}
     </div>

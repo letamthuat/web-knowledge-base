@@ -47,9 +47,11 @@ interface Doc {
 interface DocumentCardProps {
   doc: Doc;
   viewMode: "grid" | "list";
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
+export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect }: DocumentCardProps) {
   const router = useRouter();
   const [showTrashDialog, setShowTrashDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -111,7 +113,26 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
   if (viewMode === "list") {
     return (
       <>
-        <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors">
+        <div className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors ${isSelected ? "ring-2 ring-primary border-primary bg-primary/5" : ""}`}>
+          {/* Checkbox */}
+          {onToggleSelect && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+              className={`shrink-0 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all
+                ${isSelected
+                  ? "bg-primary border-primary"
+                  : "bg-background border-muted-foreground/40 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                }`}
+              aria-label={isSelected ? "Bỏ chọn" : "Chọn tài liệu"}
+              aria-pressed={isSelected}
+            >
+              {isSelected && (
+                <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 12 12">
+                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </button>
+          )}
           <Icon className={`h-5 w-5 shrink-0 ${iconColor}`} aria-hidden />
           <div className="flex-1 min-w-0">
             <button
@@ -157,14 +178,33 @@ export function DocumentCard({ doc, viewMode }: DocumentCardProps) {
 
   return (
     <>
-      <div className="group relative flex flex-col rounded-xl border bg-card p-3 hover:shadow-md transition-all">
+      <div className={`group relative flex flex-col rounded-xl border bg-card p-3 hover:shadow-md transition-all ${isSelected ? "ring-2 ring-primary border-primary" : ""}`}>
+        {/* Checkbox — top-left, always visible on mobile, hover on desktop */}
+        {onToggleSelect && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+            className={`absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all
+              ${isSelected
+                ? "bg-primary border-primary"
+                : "bg-background border-muted-foreground/40 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+              }`}
+            aria-label={isSelected ? "Bỏ chọn" : "Chọn tài liệu"}
+            aria-pressed={isSelected}
+          >
+            {isSelected && (
+              <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 12 12">
+                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </button>
+        )}
+
         {/* Header: icon + 3-dot */}
         <div className="mb-2 flex items-center justify-between gap-1">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted shrink-0">
+          <div className={`flex h-7 w-7 items-center justify-center rounded-md bg-muted shrink-0 transition-all ${onToggleSelect ? "ml-5" : ""}`}>
             <Icon className={`h-4 w-4 ${iconColor}`} aria-hidden />
           </div>
           <DropdownMenu>
-            {/* Always visible on mobile (touch), hover-only on desktop */}
             <DropdownMenuTrigger
               className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
               aria-label="Tuỳ chọn"
