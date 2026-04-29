@@ -1,5 +1,5 @@
 "use node";
-import { action } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { S3Client, GetObjectCommand, DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -102,15 +102,12 @@ export const getDownloadUrl = action({
   },
 });
 
-export const deleteFromStorage = action({
+export const deleteFromStorage = internalAction({
   args: {
     storageBackend: v.union(v.literal("convex"), v.literal("r2"), v.literal("b2")),
     storageKey: v.string(),
   },
-  handler: async (ctx, args): Promise<void> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
+  handler: async (_ctx, args): Promise<void> => {
     if (args.storageBackend === "r2") {
       const r2 = getR2Client();
       await r2.send(new DeleteObjectCommand({
@@ -118,6 +115,5 @@ export const deleteFromStorage = action({
         Key: args.storageKey,
       }));
     }
-    // Convex storage delete handled in mutation directly
   },
 });

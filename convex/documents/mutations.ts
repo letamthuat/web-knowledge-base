@@ -2,7 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { convexError } from "../lib/errors";
-import { api } from "../_generated/api";
+import { internal } from "../_generated/api";
 
 export const finalizeUpload = mutation({
   args: {
@@ -124,7 +124,7 @@ export const deletePermanent = mutation({
         await ctx.storage.delete(doc.storageKey as never);
       } catch {}
     } else if (doc.storageBackend === "r2") {
-      await ctx.scheduler.runAfter(0, api.documents.actions.deleteFromStorage, {
+      await ctx.scheduler.runAfter(0, internal.documents.actions.deleteFromStorage, {
         storageBackend: "r2",
         storageKey: doc.storageKey,
       });
