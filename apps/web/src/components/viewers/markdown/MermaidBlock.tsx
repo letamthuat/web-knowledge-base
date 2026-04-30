@@ -27,8 +27,39 @@ function getMermaid() {
   return initPromise;
 }
 
+// Mermaid v11 reserved words that break erDiagram relationship labels
+const ER_RESERVED = new Set([
+  "to", "po", "as", "at", "of", "in", "is", "on", "or", "by",
+  "and", "for", "the", "has", "use", "via", "per",
+]);
+
+/**
+ * erDiagram labels (the last word after the relationship syntax) must not be
+ * mermaid reserved keywords. If they contain a reserved word as a segment
+ * (split by underscore), wrap the whole label in quotes.
+ *
+ * Example:  ||--o{ TO : generates_to  →  ||--o{ TO : "generates_to"
+ */
+function sanitizeMermaid(code: string): string {
+  if (!code.trimStart().startsWith("erDiagram")) return code;
+
+  // Match lines like:  ENTITY_A ||--o{ ENTITY_B : label
+  return code.replace(
+    /^(\s*\w[\w_]*\s+[\|o}{]+[-–—]+[\|o}{]+\s+\w[\w_]*\s*:\s*)([^\n"]+)/gm,
+    (_, prefix, label) => {
+      const trimmed = label.trim();
+      // Already quoted — leave alone
+      if (trimmed.startsWith('"')) return prefix + label;
+      // Check if any underscore segment is a reserved word
+      const parts = trimmed.split("_");
+      const needsQuote = parts.some((p: string) => ER_RESERVED.has(p.toLowerCase()));
+      return needsQuote ? `${prefix}"${trimmed}"` : prefix + label;
+    }
+  );
+}
+
 export function MermaidBlock({ code }: MermaidBlockProps) {
-  const key = code.trim();
+  const key = sanitizeMermaid(code.trim());
 
   // If already cached, render synchronously — zero flicker on remount
   const [svg, setSvg] = useState<string | null>(() => svgCache.get(key) ?? null);
