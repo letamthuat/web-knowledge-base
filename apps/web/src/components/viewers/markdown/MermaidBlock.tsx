@@ -27,35 +27,50 @@ function getMermaid() {
   return initPromise;
 }
 
-// Mermaid v11 reserved words that break erDiagram relationship labels
+// Mermaid v11 erDiagram reserved words — cannot be used as entity names or labels unquoted
 const ER_RESERVED = new Set([
   "to", "po", "as", "at", "of", "in", "is", "on", "or", "by",
-  "and", "for", "the", "has", "use", "via", "per",
+  "and", "for", "the", "has", "use", "via", "per", "do", "if",
 ]);
 
 /**
- * erDiagram labels (the last word after the relationship syntax) must not be
- * mermaid reserved keywords. If they contain a reserved word as a segment
- * (split by underscore), wrap the whole label in quotes.
- *
- * Example:  ||--o{ TO : generates_to  →  ||--o{ TO : "generates_to"
+ * Sanitize erDiagram code for mermaid v11:
+ * 1. Entity names that are reserved words → rename with _T suffix globally
+ * 2. Relationship labels containing reserved segments → wrap in quotes
  */
-function sanitizeMermaid(code: string): string {
-  if (!code.trimStart().startsWith("erDiagram")) return code;
+function sanitizeMermaid(raw: string): string {
+  const trimmed = raw.trimStart();
+  if (!trimmed.startsWith("erDiagram")) return raw;
 
-  // Match lines like:  ENTITY_A ||--o{ ENTITY_B : label
-  return code.replace(
-    /^(\s*\w[\w_]*\s+[\|o}{]+[-–—]+[\|o}{]+\s+\w[\w_]*\s*:\s*)([^\n"]+)/gm,
+  // Collect reserved entity names from relationship lines
+  const reservedEntities = new Set<string>();
+  const relLineRe = /^\s*(\w[\w_]*)\s+[\|o}{]{2,}[-–—]+[\|o}{]{2,}\s+(\w[\w_]*)\s*:/gm;
+  let m: RegExpExecArray | null;
+  while ((m = relLineRe.exec(raw)) !== null) {
+    if (ER_RESERVED.has(m[1].toLowerCase())) reservedEntities.add(m[1]);
+    if (ER_RESERVED.has(m[2].toLowerCase())) reservedEntities.add(m[2]);
+  }
+
+  let code = raw;
+
+  // Rename reserved entity names with _T suffix (whole-word replacement)
+  for (const name of reservedEntities) {
+    code = code.replace(new RegExp(`\\b${name}\\b`, "g"), `${name}_T`);
+  }
+
+  // Wrap relationship labels that contain reserved word segments
+  code = code.replace(
+    /^(\s*\w[\w_]*\s+[\|o}{]{2,}[-–—]+[\|o}{]{2,}\s+\w[\w_]*\s*:\s*)([^\n"]+)/gm,
     (_, prefix, label) => {
-      const trimmed = label.trim();
-      // Already quoted — leave alone
-      if (trimmed.startsWith('"')) return prefix + label;
-      // Check if any underscore segment is a reserved word
-      const parts = trimmed.split("_");
+      const t = label.trim();
+      if (t.startsWith('"')) return prefix + label;
+      const parts = t.split(/[_\s]+/);
       const needsQuote = parts.some((p: string) => ER_RESERVED.has(p.toLowerCase()));
-      return needsQuote ? `${prefix}"${trimmed}"` : prefix + label;
+      return needsQuote ? `${prefix}"${t}"` : prefix + label;
     }
   );
+
+  return code;
 }
 
 export function MermaidBlock({ code }: MermaidBlockProps) {
