@@ -203,68 +203,64 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
         </div>
       </div>
 
-      {/* Fullscreen overlay */}
+      {/* Fullscreen overlay — solid white bg, no transparency */}
       {fullscreen && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col bg-black/90"
-          onClick={(e) => { if (e.target === e.currentTarget) setFullscreen(false); }}
-        >
+        <div className="fixed inset-0 z-50 flex flex-col bg-white">
           {/* Fullscreen toolbar */}
-          <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2">
-            <span className="text-sm text-white/60">Diagram</span>
+          <div className="flex shrink-0 items-center justify-between border-b bg-gray-50 px-4 py-2">
+            <span className="text-sm text-gray-500">Diagram</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => changeZoom(-0.25)}
                 title="Thu nhỏ"
-                className="flex h-8 w-8 items-center justify-center rounded-md bg-white/10 text-white hover:bg-white/20"
+                className="flex h-8 w-8 items-center justify-center rounded-md border text-gray-600 hover:bg-gray-100"
               >
                 <ZoomOut className="h-4 w-4" />
               </button>
-              <span className="min-w-[3.5rem] text-center text-sm text-white">
+              <span className="min-w-[3.5rem] text-center text-sm text-gray-700">
                 {Math.round(zoom * 100)}%
               </span>
               <button
                 onClick={() => changeZoom(0.25)}
                 title="Phóng to"
-                className="flex h-8 w-8 items-center justify-center rounded-md bg-white/10 text-white hover:bg-white/20"
+                className="flex h-8 w-8 items-center justify-center rounded-md border text-gray-600 hover:bg-gray-100"
               >
                 <ZoomIn className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setZoom(1)}
                 title="Reset zoom"
-                className="flex h-8 w-8 items-center justify-center rounded-md bg-white/10 text-white hover:bg-white/20"
+                className="flex h-8 w-8 items-center justify-center rounded-md border text-gray-600 hover:bg-gray-100"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
-              <div className="mx-2 h-5 w-px bg-white/20" />
+              <div className="mx-2 h-5 w-px bg-gray-200" />
               <button
                 onClick={() => setFullscreen(false)}
                 title="Đóng (Esc)"
-                className="flex h-8 w-8 items-center justify-center rounded-md bg-white/10 text-white hover:bg-red-500/60"
+                className="flex h-8 w-8 items-center justify-center rounded-md border text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
           </div>
 
-          {/* Scrollable SVG area */}
-          <div className="flex-1 overflow-auto">
+          {/* Scrollable SVG area — white bg, clean */}
+          <div className="flex-1 overflow-auto bg-white">
             <div
               style={{
                 transform: `scale(${zoom})`,
                 transformOrigin: "top center",
                 transition: "transform 0.15s",
-                minHeight: "100%",
               }}
               dangerouslySetInnerHTML={{ __html: svg }}
-              className="flex min-h-full items-start justify-center p-8"
+              className="flex justify-center p-8"
             />
           </div>
 
           {/* Hint */}
-          <div className="shrink-0 py-2 text-center text-xs text-white/30">
-            Nhấn Esc hoặc click ngoài để đóng · Cuộn để xem toàn bộ
+          <div className="shrink-0 border-t bg-gray-50 py-1.5 text-center text-xs text-gray-400">
+            Nhấn Esc để đóng · Cuộn để xem toàn bộ
           </div>
         </div>
       )}
