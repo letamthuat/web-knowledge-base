@@ -33,8 +33,26 @@ const ER_RESERVED = new Set([
   "and", "for", "the", "has", "use", "via", "per", "do", "if",
 ]);
 
+/**
+ * stateDiagram-v2: note lines with a second colon or special chars break the parser.
+ * Convert inline note to multiline block syntax:
+ *   note right of X : text   →   note right of X\n    text\nend note
+ */
+function sanitizeStateDiagram(raw: string): string {
+  if (!raw.trimStart().startsWith("stateDiagram")) return raw;
+  return raw.replace(
+    /^(\s*note\s+(?:right|left)\s+of\s+\w[\w_]*)\s*:\s*(.+)$/gm,
+    (_, noteHead, noteText) => {
+      const indent = noteHead.match(/^(\s*)/)?.[1] ?? "    ";
+      return `${noteHead}\n${indent}    ${noteText.trim()}\n${indent}end note`;
+    }
+  );
+}
+
 function sanitizeMermaid(raw: string): string {
   const trimmed = raw.trimStart();
+
+  if (trimmed.startsWith("stateDiagram")) return sanitizeStateDiagram(raw);
   if (!trimmed.startsWith("erDiagram")) return raw;
 
   const reservedEntities = new Set<string>();
