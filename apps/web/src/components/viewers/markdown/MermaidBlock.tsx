@@ -50,6 +50,8 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
         setSvg(rendered);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
+        // Log code để debug syntax errors
+        console.warn("[Mermaid] render failed:", msg, "\n---\n", key);
         errorCache.set(key, msg);
         setError(msg);
       }
@@ -61,11 +63,12 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
     return (
       <details className="my-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900">
         <summary className="cursor-pointer px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400">
-          Diagram lỗi — bấm để xem
+          Diagram lỗi — bấm để xem chi tiết
         </summary>
-        <pre className="overflow-x-auto px-3 pb-2 pt-1 text-xs text-red-500 whitespace-pre-wrap">
-          {error}
-        </pre>
+        <div className="px-3 pb-3 pt-1 space-y-2">
+          <pre className="text-xs text-red-500 whitespace-pre-wrap">{error}</pre>
+          <pre className="text-xs text-muted-foreground bg-muted/50 rounded p-2 overflow-x-auto whitespace-pre-wrap">{key}</pre>
+        </div>
       </details>
     );
   }
