@@ -50,6 +50,7 @@ interface AnnotationPanelProps {
   onEditDocNote: (id: Id<"notes">) => void;
   onDeleteDocNote: (id: Id<"notes">) => void;
   onDeleteHighlightNote: (id: Id<"highlights">) => void;
+  onDeleteHighlightRecord: (id: Id<"highlights">) => void;
 }
 
 type Tab = "highlights" | "notes";
@@ -57,7 +58,7 @@ type Tab = "highlights" | "notes";
 export function AnnotationPanel({
   highlights, docNotes, onClose,
   onScrollTo, onEditHighlightNote, onDeleteHighlight,
-  onAddDocNote, onEditDocNote, onDeleteDocNote, onDeleteHighlightNote,
+  onAddDocNote, onEditDocNote, onDeleteDocNote, onDeleteHighlightNote, onDeleteHighlightRecord,
 }: AnnotationPanelProps) {
   const [tab, setTab] = useState<Tab>("highlights");
 
@@ -127,6 +128,7 @@ export function AnnotationPanel({
                   onScrollTo={() => onScrollTo(item._id)}
                   onEdit={() => onEditHighlightNote(item._id)}
                   onDeleteNote={() => onDeleteHighlightNote(item._id)}
+                  onDeleteRecord={() => onDeleteHighlightRecord(item._id)}
                 />
               ))}
 
@@ -273,11 +275,12 @@ function DocNoteRow({ note, onEdit, onDelete }: {
   );
 }
 
-function HighlightNoteRow({ item, onScrollTo, onEdit, onDeleteNote }: {
+function HighlightNoteRow({ item, onScrollTo, onEdit, onDeleteNote, onDeleteRecord }: {
   item: HighlightItem;
   onScrollTo: () => void;
   onEdit: () => void;
   onDeleteNote: () => void;
+  onDeleteRecord: () => void;
 }) {
   const dotColor = item.color === "custom" && item.customColor ? item.customColor : COLOR_DOT[item.color];
   return (
@@ -305,9 +308,18 @@ function HighlightNoteRow({ item, onScrollTo, onEdit, onDeleteNote }: {
           Sửa
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); onDeleteNote(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (item.color === "purple") {
+              // Tạo bằng nút "Ghi chú" — xoá cả record
+              onDeleteRecord();
+            } else {
+              // Highlight màu khác — chỉ xoá note, giữ highlight
+              if (window.confirm("Ghi chú sẽ bị xoá, highlight vẫn còn. Tiếp tục?")) onDeleteNote();
+            }
+          }}
           className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-red-400 hover:bg-red-50"
-          title="Xoá ghi chú (giữ highlight)"
+          title="Xoá ghi chú"
         >
           <X className="h-3 w-3" />
         </button>
