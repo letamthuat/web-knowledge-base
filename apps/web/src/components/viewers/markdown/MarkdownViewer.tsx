@@ -13,13 +13,13 @@ import "katex/dist/katex.min.css";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { List, X, StickyNote } from "lucide-react";
+import { List, X, Highlighter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MermaidBlock } from "./MermaidBlock";
 import { HighlightMenu } from "./HighlightMenu";
 import { HighlightLayer } from "./HighlightLayer";
 import { NotePopover } from "./NotePopover";
-import { NotePanel } from "./NotePanel";
+import { AnnotationPanel } from "./AnnotationPanel";
 import { NoteHoverCard } from "./NoteHoverCard";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
 import { useHighlights, type HighlightColor, type HighlightPosition } from "@/hooks/useHighlights";
@@ -384,22 +384,25 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {/* Notes panel toggle */}
+            {/* Annotation panel toggle */}
             <button
               onClick={() => setNotePanelOpen((v) => !v)}
               className={[
                 "relative flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
                 notePanelOpen
-                  ? "bg-violet-100 text-violet-700"
+                  ? "bg-amber-100 text-amber-700"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               ].join(" ")}
-              title="Ghi chú"
+              title="Highlights & Ghi chú"
             >
-              <StickyNote className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Ghi chú</span>
-              {highlights.filter((h: any) => h.note).length > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-violet-600 px-1 text-[10px] font-medium text-white">
-                  {highlights.filter((h: any) => h.note).length}
+              <Highlighter className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Highlights</span>
+              {highlights.length > 0 && (
+                <span className={[
+                  "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium",
+                  notePanelOpen ? "bg-amber-600 text-white" : "bg-amber-500 text-white",
+                ].join(" ")}>
+                  {highlights.length}
                 </span>
               )}
             </button>
@@ -484,21 +487,20 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
         })()}
       </div>
 
-      {/* Note panel — right sidebar */}
+      {/* Annotation panel — right sidebar (highlights + notes tabs) */}
       {notePanelOpen && (
-        <NotePanel
-          notes={(highlights as any[]).filter((h) => h.note).map((h) => ({
+        <AnnotationPanel
+          highlights={(highlights as any[]).map((h) => ({
             _id: h._id,
             color: h.color,
             selectedText: h.selectedText,
             note: h.note,
+            createdAt: h.createdAt ?? 0,
           }))}
           onClose={() => setNotePanelOpen(false)}
           onScrollTo={scrollToHighlight}
-          onEdit={(id) => {
-            const h = (highlights as any[]).find((hl) => hl._id === id);
-            if (h) openNotePopover(id, window.innerWidth / 2, window.innerHeight / 2);
-          }}
+          onEditNote={(id) => openNotePopover(id, window.innerWidth / 2, window.innerHeight / 2)}
+          onDelete={(id) => removeHighlight(id).catch(() => {})}
         />
       )}
     </div>
