@@ -5,7 +5,7 @@ import { useCallback } from "react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 
-export type HighlightColor = "yellow" | "green" | "blue" | "pink";
+export type HighlightColor = "yellow" | "green" | "blue" | "pink" | "purple" | "custom";
 
 export interface HighlightPosition {
   xpath: string;
@@ -22,10 +22,11 @@ export function useHighlights(docId: Id<"documents">) {
   const updateNoteMutation = useMutation(api.highlights.mutations.updateNote);
 
   const addHighlight = useCallback(
-    (color: HighlightColor, position: HighlightPosition) =>
+    (color: HighlightColor, position: HighlightPosition, customColor?: string) =>
       createMutation({
         docId,
         color,
+        customColor,
         positionType: "scroll_pct",
         positionValue: JSON.stringify(position),
         selectedText: position.text,

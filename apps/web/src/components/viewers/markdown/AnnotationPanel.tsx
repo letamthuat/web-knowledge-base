@@ -10,6 +10,8 @@ const COLOR_BG: Record<HighlightColor, string> = {
   green:  "#bbf7d0",
   blue:   "#bfdbfe",
   pink:   "#fbcfe8",
+  purple: "#e9d5ff",
+  custom: "#f3f4f6",
 };
 
 const COLOR_DOT: Record<HighlightColor, string> = {
@@ -17,11 +19,14 @@ const COLOR_DOT: Record<HighlightColor, string> = {
   green:  "#22c55e",
   blue:   "#3b82f6",
   pink:   "#ec4899",
+  purple: "#7c3aed",
+  custom: "#6b7280",
 };
 
 interface HighlightItem {
   _id: Id<"highlights">;
   color: HighlightColor;
+  customColor?: string;
   selectedText?: string;
   note?: string;
   createdAt: number;
@@ -186,18 +191,20 @@ function HighlightRow({ item, onScrollTo, onEditNote, onDelete }: {
   onEditNote: () => void;
   onDelete: () => void;
 }) {
+  const dotColor = item.color === "custom" && item.customColor ? item.customColor : COLOR_DOT[item.color];
+  const bgColor = item.color === "custom" && item.customColor ? item.customColor + "66" : COLOR_BG[item.color];
   return (
     <div
       className="group mx-2 mb-2 cursor-pointer rounded-lg border border-transparent bg-muted/40 transition-all hover:border-border hover:bg-muted/80 hover:shadow-sm"
       onClick={onScrollTo}
     >
       <div className="flex items-start gap-2 px-2.5 pt-2.5 pb-1.5">
-        <span className="mt-0.5 h-3 w-1.5 shrink-0 rounded-full" style={{ background: COLOR_DOT[item.color] }} />
+        <span className="mt-0.5 h-3 w-1.5 shrink-0 rounded-full" style={{ background: dotColor }} />
         <div className="min-w-0 flex-1">
           {item.selectedText ? (
             <p
               className="text-[12px] leading-relaxed text-gray-700 line-clamp-3 rounded px-0.5"
-              style={{ background: COLOR_BG[item.color] }}
+              style={{ background: bgColor }}
             >
               {item.selectedText.slice(0, 120)}{item.selectedText.length > 120 ? "…" : ""}
             </p>

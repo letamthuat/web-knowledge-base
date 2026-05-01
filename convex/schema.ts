@@ -44,6 +44,8 @@ const highlightColor = v.union(
   v.literal("green"),
   v.literal("blue"),
   v.literal("pink"),
+  v.literal("purple"), // màu mặc định cho "Ghi chú" action
+  v.literal("custom"), // hex tự chọn — xem customColor field
 );
 
 export default defineSchema({
@@ -282,6 +284,9 @@ export default defineSchema({
 
     // Short note đính kèm (FR30 — Ctrl+N)
     note: v.optional(v.string()),
+
+    // Hex color khi color = "custom" (e.g. "#a78bfa")
+    customColor: v.optional(v.string()),
 
     // Voice note (FR39)
     voiceNoteStorageId: v.optional(v.id("_storage")),

@@ -7,6 +7,7 @@ import type { HighlightColor, HighlightPosition } from "@/hooks/useHighlights";
 interface Highlight {
   _id: Id<"highlights">;
   color: HighlightColor;
+  customColor?: string;
   positionValue: string;
   selectedText?: string;
   note?: string;
@@ -24,6 +25,8 @@ const COLOR_CLASS: Record<HighlightColor, string> = {
   green:  "hl-green",
   blue:   "hl-blue",
   pink:   "hl-pink",
+  purple: "hl-purple",
+  custom: "hl-custom",
 };
 
 function getNodeByXPath(xpath: string, root: HTMLElement): Node | null {
@@ -105,6 +108,7 @@ export function HighlightLayer({ contentRef, highlights, onClickHighlight, onCli
       const hId = h._id;
       const hColor = h.color;
       const hNote = h.note;
+      const hCustomColor = h.customColor;
 
       const clickHandler = (e: MouseEvent) => {
         e.stopPropagation();
@@ -116,6 +120,10 @@ export function HighlightLayer({ contentRef, highlights, onClickHighlight, onCli
       };
       const mark = wrapRange(range, hId, colorClass, clickHandler);
       if (mark) {
+        // Apply inline bg for custom color
+        if (h.color === "custom" && hCustomColor) {
+          mark.style.background = hCustomColor;
+        }
         if (hNote) mark.classList.add("hl-has-note");
         marks.push(mark);
       }

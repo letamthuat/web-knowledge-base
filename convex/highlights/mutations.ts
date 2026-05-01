@@ -6,7 +6,8 @@ import { convexError } from "../lib/errors";
 export const create = mutation({
   args: {
     docId: v.id("documents"),
-    color: v.union(v.literal("yellow"), v.literal("green"), v.literal("blue"), v.literal("pink")),
+    color: v.union(v.literal("yellow"), v.literal("green"), v.literal("blue"), v.literal("pink"), v.literal("purple"), v.literal("custom")),
+    customColor: v.optional(v.string()),
     positionType: v.string(),
     positionValue: v.string(),
     selectedText: v.optional(v.string()),
@@ -20,6 +21,7 @@ export const create = mutation({
       userId: userId as never,
       docId: args.docId,
       color: args.color,
+      customColor: args.customColor,
       type: "text",
       positionType: args.positionType as never,
       positionValue: args.positionValue,

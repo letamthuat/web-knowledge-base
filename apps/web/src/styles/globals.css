@@ -63,7 +63,11 @@ mark.hl-yellow { background: #fef08a; color: inherit; border-radius: 2px; }
 mark.hl-green  { background: #bbf7d0; color: inherit; border-radius: 2px; }
 mark.hl-blue   { background: #bfdbfe; color: inherit; border-radius: 2px; }
 mark.hl-pink   { background: #fbcfe8; color: inherit; border-radius: 2px; }
+mark.hl-purple { background: #e9d5ff; color: inherit; border-radius: 2px; }
+/* hl-custom: background set inline via style attribute */
+mark.hl-custom { color: inherit; border-radius: 2px; }
 
+/* Note indicator — dashed violet underline on any highlight that has a note */
 mark.hl-has-note {
   border-bottom: 2px dashed #7c3aed;
   padding-bottom: 1px;

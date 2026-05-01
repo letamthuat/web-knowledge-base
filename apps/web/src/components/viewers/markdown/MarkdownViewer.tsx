@@ -448,7 +448,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
         {/* Highlight layer — re-anchors saved highlights onto DOM */}
         <HighlightLayer
           contentRef={contentRef}
-          highlights={highlights}
+          highlights={(highlights as any[]).map((h) => ({ ...h, customColor: h.customColor }))}
           onClickHighlight={handleClickHighlight}
           onClickNoteHighlight={handleClickNoteHighlight}
         />
@@ -460,13 +460,21 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
             y={hlMenu.y}
             existingId={hlMenu.existingId}
             existingColor={hlMenu.existingColor}
-            onSelectColor={(color) => {
+            onSelectColor={(color, customColor) => {
               if (hlMenu.pendingPos) {
-                addHighlight(color, hlMenu.pendingPos).catch(() => {});
-              } else if (hlMenu.existingId) {
-                // Recolor: remove old, add new — simplified
+                addHighlight(color, hlMenu.pendingPos, customColor).catch(() => {});
               }
             }}
+            onNoteAction={hlMenu.pendingPos ? () => {
+              // Create purple highlight then immediately open note popover
+              if (hlMenu.pendingPos) {
+                addHighlight("purple", hlMenu.pendingPos)
+                  .then((id) => {
+                    if (id) setNotePopover({ x: hlMenu.x, y: hlMenu.y, highlightId: id as any, initialNote: "" });
+                  })
+                  .catch(() => {});
+              }
+            } : undefined}
             onOpenNote={hlMenu.existingId
               ? () => openNotePopover(hlMenu.existingId!, hlMenu.x, hlMenu.y)
               : undefined}
@@ -513,6 +521,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
           highlights={(highlights as any[]).map((h) => ({
             _id: h._id,
             color: h.color,
+            customColor: h.customColor,
             selectedText: h.selectedText,
             note: h.note,
             createdAt: h.createdAt ?? 0,
