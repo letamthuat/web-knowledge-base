@@ -18,9 +18,10 @@ interface NoteHoverCardProps {
   note: string;
   color: HighlightColor;
   onEdit: () => void;
+  onClose: () => void;
 }
 
-export function NoteHoverCard({ x, y, selectedText, note, color, onEdit }: NoteHoverCardProps) {
+export function NoteHoverCard({ x, y, selectedText, note, color, onEdit, onClose }: NoteHoverCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y + 12 });
 
@@ -33,6 +34,15 @@ export function NoteHoverCard({ x, y, selectedText, note, color, onEdit }: NoteH
     const top = y + 12 + h > window.innerHeight - 8 ? y - h - 8 : y + 12;
     setPos({ left, top });
   }, [x, y]);
+
+  // Click outside closes the card
+  useEffect(() => {
+    function onPointerDown(e: PointerEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    window.addEventListener("pointerdown", onPointerDown, { capture: true });
+    return () => window.removeEventListener("pointerdown", onPointerDown, { capture: true });
+  }, [onClose]);
 
   return (
     <div

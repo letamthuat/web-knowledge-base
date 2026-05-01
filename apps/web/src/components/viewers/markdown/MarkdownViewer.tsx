@@ -89,7 +89,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     initialNote: string;
   } | null>(null);
   const [notePanelOpen, setNotePanelOpen] = useState(false);
-  const [hoverCard, setHoverCard] = useState<{
+  const [noteCard, setNoteCard] = useState<{
     x: number; y: number;
     highlightId: Id<"highlights">;
   } | null>(null);
@@ -173,9 +173,8 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     }
   }, []);
 
-  const handleHoverHighlight = useCallback((id: Id<"highlights"> | null, x: number, y: number) => {
-    if (!id) { setHoverCard(null); return; }
-    setHoverCard({ x, y, highlightId: id });
+  const handleClickNoteHighlight = useCallback((id: Id<"highlights">, x: number, y: number) => {
+    setNoteCard({ x, y, highlightId: id });
   }, []);
 
   // Ctrl/Cmd+N — open note for the last-clicked highlight
@@ -428,7 +427,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
           contentRef={contentRef}
           highlights={highlights}
           onClickHighlight={handleClickHighlight}
-          onHoverHighlight={handleHoverHighlight}
+          onClickNoteHighlight={handleClickNoteHighlight}
         />
 
         {/* Floating highlight menu */}
@@ -464,21 +463,22 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
           />
         )}
 
-        {/* Hover card for notes */}
-        {hoverCard && (() => {
-          const h = highlights.find((hl: any) => hl._id === hoverCard.highlightId);
-          if (!h || !(h as any).note) return null;
+        {/* Note card — shown on click, closed on outside click */}
+        {noteCard && (() => {
+          const h = (highlights as any[]).find((hl) => hl._id === noteCard.highlightId);
+          if (!h?.note) return null;
           return (
             <NoteHoverCard
-              x={hoverCard.x}
-              y={hoverCard.y}
-              selectedText={(h as any).selectedText ?? ""}
-              note={(h as any).note}
-              color={(h as any).color}
+              x={noteCard.x}
+              y={noteCard.y}
+              selectedText={h.selectedText ?? ""}
+              note={h.note}
+              color={h.color}
               onEdit={() => {
-                setHoverCard(null);
-                openNotePopover(hoverCard.highlightId, hoverCard.x, hoverCard.y);
+                setNoteCard(null);
+                openNotePopover(noteCard.highlightId, noteCard.x, noteCard.y);
               }}
+              onClose={() => setNoteCard(null)}
             />
           );
         })()}

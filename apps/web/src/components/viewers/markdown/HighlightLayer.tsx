@@ -16,7 +16,7 @@ interface HighlightLayerProps {
   contentRef: React.RefObject<HTMLDivElement | null>;
   highlights: Highlight[];
   onClickHighlight: (id: Id<"highlights">, color: HighlightColor, x: number, y: number) => void;
-  onHoverHighlight?: (id: Id<"highlights"> | null, x: number, y: number) => void;
+  onClickNoteHighlight?: (id: Id<"highlights">, x: number, y: number) => void;
 }
 
 const COLOR_CLASS: Record<HighlightColor, string> = {
@@ -50,7 +50,7 @@ function wrapRange(range: Range, id: string, colorClass: string, onClick: (e: Mo
   }
 }
 
-export function HighlightLayer({ contentRef, highlights, onClickHighlight, onHoverHighlight }: HighlightLayerProps) {
+export function HighlightLayer({ contentRef, highlights, onClickHighlight, onClickNoteHighlight }: HighlightLayerProps) {
   useEffect(() => {
     const el = contentRef.current;
     if (!el || highlights.length === 0) return;
@@ -106,26 +106,17 @@ export function HighlightLayer({ contentRef, highlights, onClickHighlight, onHov
       const hColor = h.color;
       const hNote = h.note;
 
-      const mark = wrapRange(range, hId, colorClass, (e) => {
+      const clickHandler = (e: MouseEvent) => {
         e.stopPropagation();
-        onClickHighlight(hId, hColor, e.clientX, e.clientY);
-      });
-      if (mark) {
-        if (hNote) {
-          mark.classList.add("hl-has-note");
-          if (onHoverHighlight) {
-            let hoverTimer: ReturnType<typeof setTimeout> | null = null;
-            mark.addEventListener("mouseenter", (e) => {
-              hoverTimer = setTimeout(() => {
-                onHoverHighlight(hId, (e as MouseEvent).clientX, (e as MouseEvent).clientY);
-              }, 300);
-            });
-            mark.addEventListener("mouseleave", () => {
-              if (hoverTimer) clearTimeout(hoverTimer);
-              onHoverHighlight(null, 0, 0);
-            });
-          }
+        if (hNote && onClickNoteHighlight) {
+          onClickNoteHighlight(hId, e.clientX, e.clientY);
+        } else {
+          onClickHighlight(hId, hColor, e.clientX, e.clientY);
         }
+      };
+      const mark = wrapRange(range, hId, colorClass, clickHandler);
+      if (mark) {
+        if (hNote) mark.classList.add("hl-has-note");
         marks.push(mark);
       }
     }
