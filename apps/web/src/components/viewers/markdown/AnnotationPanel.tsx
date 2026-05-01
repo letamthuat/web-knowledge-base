@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, PenLine, StickyNote, Highlighter, Plus, Trash2 } from "lucide-react";
+import { X, PenLine, StickyNote, Highlighter, Trash2 } from "lucide-react";
 import { Id } from "@/_generated/dataModel";
 import type { HighlightColor } from "@/hooks/useHighlights";
 
@@ -107,17 +107,6 @@ export function AnnotationPanel({
           </div>
         ) : (
           <div className="flex flex-1 flex-col overflow-hidden">
-            {/* Add note button */}
-            <div className="shrink-0 border-b px-3 py-2">
-              <button
-                onClick={onAddDocNote}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-violet-300 py-1.5 text-xs text-violet-600 hover:bg-violet-50"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Thêm ghi chú mới
-              </button>
-            </div>
-
             <div className="flex-1 overflow-y-auto py-2">
               {/* Doc notes (free-form) */}
               {docNotes.map((note) => (

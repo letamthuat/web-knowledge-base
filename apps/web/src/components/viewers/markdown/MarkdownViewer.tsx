@@ -13,7 +13,7 @@ import "katex/dist/katex.min.css";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { List, X, Highlighter, PenLine } from "lucide-react";
+import { List, X, Highlighter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MermaidBlock } from "./MermaidBlock";
 import { HighlightMenu } from "./HighlightMenu";
@@ -417,16 +417,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
                 </span>
               )}
             </button>
-            {/* Quick add note button */}
-            <button
-              onClick={() => setDocNotePopover({ initialBody: "", initialTitle: "" })}
-              className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="Thêm ghi chú"
-            >
-              <PenLine className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Ghi chú</span>
-            </button>
-            <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
+<ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
           </div>
         </div>
 
