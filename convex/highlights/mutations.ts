@@ -32,6 +32,21 @@ export const create = mutation({
   },
 });
 
+export const updateNote = mutation({
+  args: {
+    highlightId: v.id("highlights"),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    const highlight = await ctx.db.get(args.highlightId);
+    if (!highlight || highlight.userId !== (userId as never)) {
+      throw convexError("NOT_FOUND", "Highlight not found", "Không tìm thấy highlight");
+    }
+    await ctx.db.patch(args.highlightId, { note: args.note, updatedAt: Date.now() });
+  },
+});
+
 export const remove = mutation({
   args: { highlightId: v.id("highlights") },
   handler: async (ctx, args) => {

@@ -9,6 +9,7 @@ interface Highlight {
   color: HighlightColor;
   positionValue: string;
   selectedText?: string;
+  note?: string;
 }
 
 interface HighlightLayerProps {
@@ -102,12 +103,19 @@ export function HighlightLayer({ contentRef, highlights, onClickHighlight }: Hig
       const colorClass = COLOR_CLASS[h.color];
       const hId = h._id;
       const hColor = h.color;
+      const hNote = h.note;
 
       const mark = wrapRange(range, hId, colorClass, (e) => {
         e.stopPropagation();
         onClickHighlight(hId, hColor, e.clientX, e.clientY);
       });
-      if (mark) marks.push(mark);
+      if (mark) {
+        if (hNote) {
+          mark.classList.add("hl-has-note");
+          mark.title = hNote;
+        }
+        marks.push(mark);
+      }
     }
 
     return () => {

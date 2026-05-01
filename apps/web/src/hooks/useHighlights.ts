@@ -19,6 +19,7 @@ export function useHighlights(docId: Id<"documents">) {
 
   const createMutation = useMutation(api.highlights.mutations.create);
   const removeMutation = useMutation(api.highlights.mutations.remove);
+  const updateNoteMutation = useMutation(api.highlights.mutations.updateNote);
 
   const addHighlight = useCallback(
     (color: HighlightColor, position: HighlightPosition) =>
@@ -38,5 +39,11 @@ export function useHighlights(docId: Id<"documents">) {
     [removeMutation]
   );
 
-  return { highlights, addHighlight, removeHighlight };
+  const updateNote = useCallback(
+    (highlightId: Id<"highlights">, note?: string) =>
+      updateNoteMutation({ highlightId, note }),
+    [updateNoteMutation]
+  );
+
+  return { highlights, addHighlight, removeHighlight, updateNote };
 }

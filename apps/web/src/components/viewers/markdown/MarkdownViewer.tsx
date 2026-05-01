@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { MermaidBlock } from "./MermaidBlock";
 import { HighlightMenu } from "./HighlightMenu";
 import { HighlightLayer } from "./HighlightLayer";
+import { NotePopover } from "./NotePopover";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
 import { useHighlights, type HighlightColor, type HighlightPosition } from "@/hooks/useHighlights";
 import type { Components } from "react-markdown";
@@ -74,11 +75,16 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
   const restored = useRef(false);
 
   // ── Highlight state ──
-  const { highlights, addHighlight, removeHighlight } = useHighlights(doc._id);
+  const { highlights, addHighlight, removeHighlight, updateNote } = useHighlights(doc._id);
   const [hlMenu, setHlMenu] = useState<{
     x: number; y: number;
     existingId?: Id<"highlights">; existingColor?: HighlightColor;
     pendingPos?: HighlightPosition;
+  } | null>(null);
+  const [notePopover, setNotePopover] = useState<{
+    x: number; y: number;
+    highlightId: Id<"highlights">;
+    initialNote: string;
   } | null>(null);
 
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -140,6 +146,25 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     },
     []
   );
+
+  const openNotePopover = useCallback((highlightId: Id<"highlights">, x: number, y: number) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const h = highlights.find((hl: any) => hl._id === highlightId);
+    setNotePopover({ x, y, highlightId, initialNote: (h?.note as string | undefined) ?? "" });
+  }, [highlights]);
+
+  // Ctrl/Cmd+N — open note for the last-clicked highlight
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "n" && hlMenu?.existingId) {
+        e.preventDefault();
+        openNotePopover(hlMenu.existingId, hlMenu.x, hlMenu.y);
+        setHlMenu(null);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [hlMenu, openNotePopover]);
 
   useEffect(() => {
     registerJump((pos) => {
@@ -373,8 +398,22 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
                 // Recolor: remove old, add new — simplified
               }
             }}
+            onOpenNote={hlMenu.existingId
+              ? () => openNotePopover(hlMenu.existingId!, hlMenu.x, hlMenu.y)
+              : undefined}
             onDelete={hlMenu.existingId ? () => removeHighlight(hlMenu.existingId!).catch(() => {}) : undefined}
             onClose={() => setHlMenu(null)}
+          />
+        )}
+
+        {/* Note popover */}
+        {notePopover && (
+          <NotePopover
+            x={notePopover.x}
+            y={notePopover.y}
+            initialNote={notePopover.initialNote}
+            onSave={(note) => updateNote(notePopover.highlightId, note || undefined).catch(() => {})}
+            onClose={() => setNotePopover(null)}
           />
         )}
       </div>

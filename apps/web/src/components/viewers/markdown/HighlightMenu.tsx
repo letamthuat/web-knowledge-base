@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { X } from "lucide-react";
+import { X, PenLine } from "lucide-react";
 import type { HighlightColor } from "@/hooks/useHighlights";
 import { Id } from "@/_generated/dataModel";
 
@@ -15,16 +15,17 @@ const COLORS: { value: HighlightColor; bg: string; label: string }[] = [
 interface HighlightMenuProps {
   x: number;
   y: number;
-  /** If set, we're clicking an existing highlight → show delete */
+  /** If set, we're clicking an existing highlight → show note + delete */
   existingId?: Id<"highlights">;
   existingColor?: HighlightColor;
   onSelectColor: (color: HighlightColor) => void;
+  onOpenNote?: () => void;
   onDelete?: () => void;
   onClose: () => void;
 }
 
 export function HighlightMenu({
-  x, y, existingId, onSelectColor, onDelete, onClose,
+  x, y, existingId, onSelectColor, onOpenNote, onDelete, onClose,
 }: HighlightMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -63,16 +64,27 @@ export function HighlightMenu({
           className="h-6 w-6 rounded-full border border-black/10 transition-transform hover:scale-110"
         />
       ))}
-      {existingId && onDelete && (
+      {existingId && (
         <>
           <div className="mx-1 h-4 w-px bg-gray-200" />
-          <button
-            title="Xoá highlight"
-            onClick={() => { onDelete(); onClose(); }}
-            className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          {onOpenNote && (
+            <button
+              title="Thêm / sửa ghi chú"
+              onClick={() => { onOpenNote(); onClose(); }}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-violet-50 hover:text-violet-600"
+            >
+              <PenLine className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              title="Xoá highlight"
+              onClick={() => { onDelete(); onClose(); }}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </>
       )}
     </div>
