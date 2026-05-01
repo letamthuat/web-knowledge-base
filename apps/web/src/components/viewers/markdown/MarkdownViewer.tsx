@@ -527,6 +527,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
           onScrollTo={scrollToHighlight}
           onEditHighlightNote={(id) => openNotePopover(id, window.innerWidth / 2, window.innerHeight / 2)}
           onDeleteHighlight={(id) => removeHighlight(id).catch(() => {})}
+          onDeleteHighlightNote={(id) => updateNote(id, undefined).catch(() => {})}
           onAddDocNote={() => setDocNotePopover({ initialBody: "", initialTitle: "" })}
           onEditDocNote={(id) => {
             const n = (docNotes as any[]).find((n) => n._id === id);

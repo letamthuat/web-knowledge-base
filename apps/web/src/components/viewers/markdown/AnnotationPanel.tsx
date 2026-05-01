@@ -49,6 +49,7 @@ interface AnnotationPanelProps {
   onAddDocNote: () => void;
   onEditDocNote: (id: Id<"notes">) => void;
   onDeleteDocNote: (id: Id<"notes">) => void;
+  onDeleteHighlightNote: (id: Id<"highlights">) => void;
 }
 
 type Tab = "highlights" | "notes";
@@ -56,7 +57,7 @@ type Tab = "highlights" | "notes";
 export function AnnotationPanel({
   highlights, docNotes, onClose,
   onScrollTo, onEditHighlightNote, onDeleteHighlight,
-  onAddDocNote, onEditDocNote, onDeleteDocNote,
+  onAddDocNote, onEditDocNote, onDeleteDocNote, onDeleteHighlightNote,
 }: AnnotationPanelProps) {
   const [tab, setTab] = useState<Tab>("highlights");
 
@@ -125,6 +126,7 @@ export function AnnotationPanel({
                   item={item}
                   onScrollTo={() => onScrollTo(item._id)}
                   onEdit={() => onEditHighlightNote(item._id)}
+                  onDeleteNote={() => onDeleteHighlightNote(item._id)}
                 />
               ))}
 
@@ -263,18 +265,20 @@ function DocNoteRow({ note, onEdit, onDelete }: {
   );
 }
 
-function HighlightNoteRow({ item, onScrollTo, onEdit }: {
+function HighlightNoteRow({ item, onScrollTo, onEdit, onDeleteNote }: {
   item: HighlightItem;
   onScrollTo: () => void;
   onEdit: () => void;
+  onDeleteNote: () => void;
 }) {
+  const dotColor = item.color === "custom" && item.customColor ? item.customColor : COLOR_DOT[item.color];
   return (
     <div
       className="group mx-2 mb-2 cursor-pointer rounded-lg border border-transparent bg-muted/40 transition-all hover:border-border hover:shadow-sm"
       onClick={onScrollTo}
     >
       <div className="flex items-start gap-2 px-2.5 pt-2 pb-1">
-        <span className="mt-0.5 h-2.5 w-1.5 shrink-0 rounded-full" style={{ background: COLOR_DOT[item.color] }} />
+        <span className="mt-0.5 h-2.5 w-1.5 shrink-0 rounded-full" style={{ background: dotColor }} />
         <div className="min-w-0 flex-1">
           {item.selectedText && (
             <p className="mb-1 text-[11px] text-muted-foreground line-clamp-1 italic">
@@ -284,13 +288,20 @@ function HighlightNoteRow({ item, onScrollTo, onEdit }: {
           <p className="text-[12px] text-gray-700 leading-relaxed line-clamp-4 whitespace-pre-wrap">{item.note}</p>
         </div>
       </div>
-      <div className="flex justify-end px-2 py-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="flex items-center justify-end gap-1 border-t border-transparent px-2 py-1 opacity-0 transition-opacity group-hover:border-border/50 group-hover:opacity-100">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
           className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-violet-600 hover:bg-violet-50"
         >
           <PenLine className="h-3 w-3" />
           Sửa
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDeleteNote(); }}
+          className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-red-400 hover:bg-red-50"
+          title="Xoá ghi chú (giữ highlight)"
+        >
+          <X className="h-3 w-3" />
         </button>
       </div>
     </div>
