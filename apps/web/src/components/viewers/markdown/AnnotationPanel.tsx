@@ -218,8 +218,16 @@ function HighlightRow({ item, onScrollTo, onEditNote, onDelete }: {
           {item.note ? "Sửa note" : "Thêm note"}
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (item.note) {
+              if (window.confirm("Highlight này có ghi chú đính kèm. Xoá sẽ mất cả ghi chú. Tiếp tục?")) onDelete();
+            } else {
+              onDelete();
+            }
+          }}
           className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-red-400 hover:bg-red-50"
+          title="Xoá highlight"
         >
           <X className="h-3 w-3" />
         </button>
