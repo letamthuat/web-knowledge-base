@@ -57,3 +57,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Highlight colors for MarkdownViewer */
+mark.hl-yellow { background: #fef08a; color: inherit; border-radius: 2px; }
+mark.hl-green  { background: #bbf7d0; color: inherit; border-radius: 2px; }
+mark.hl-blue   { background: #bfdbfe; color: inherit; border-radius: 2px; }
+mark.hl-pink   { background: #fbcfe8; color: inherit; border-radius: 2px; }

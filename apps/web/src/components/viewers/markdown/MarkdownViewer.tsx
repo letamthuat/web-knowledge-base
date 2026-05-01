@@ -16,7 +16,10 @@ import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { List, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MermaidBlock } from "./MermaidBlock";
+import { HighlightMenu } from "./HighlightMenu";
+import { HighlightLayer } from "./HighlightLayer";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
+import { useHighlights, type HighlightColor, type HighlightPosition } from "@/hooks/useHighlights";
 import type { Components } from "react-markdown";
 import GithubSlugger from "github-slugger";
 
@@ -69,6 +72,74 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
   const { progress } = useReadingProgress(doc._id);
   const { scale, zoomIn, zoomOut, reset: resetZoom } = useZoom(1, 0.1, 0.5, 2);
   const restored = useRef(false);
+
+  // ── Highlight state ──
+  const { highlights, addHighlight, removeHighlight } = useHighlights(doc._id);
+  const [hlMenu, setHlMenu] = useState<{
+    x: number; y: number;
+    existingId?: Id<"highlights">; existingColor?: HighlightColor;
+    pendingPos?: HighlightPosition;
+  } | null>(null);
+
+  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+
+    const range = sel.getRangeAt(0);
+    const text = range.toString().trim();
+    if (!text) return;
+
+    // Must be inside the prose content area
+    const el = contentRef.current;
+    if (!el || !el.contains(range.commonAncestorContainer)) return;
+
+    // Compute XPath of the common ancestor relative to content root
+    function getXPath(node: Node, root: Node): string {
+      if (node === root) return ".";
+      const parts: string[] = [];
+      let cur: Node | null = node;
+      while (cur && cur !== root) {
+        if (cur.nodeType === Node.ELEMENT_NODE) {
+          const el = cur as Element;
+          const tag = el.tagName.toLowerCase();
+          let idx = 1;
+          let sib = el.previousElementSibling;
+          while (sib) { if (sib.tagName === el.tagName) idx++; sib = sib.previousElementSibling; }
+          parts.unshift(`${tag}[${idx}]`);
+        }
+        cur = cur.parentNode;
+      }
+      return parts.length ? parts.join("/") : ".";
+    }
+
+    const ancestor = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+      ? range.commonAncestorContainer.parentNode!
+      : range.commonAncestorContainer;
+    const xpath = getXPath(ancestor, el);
+
+    // Calculate offsets within the ancestor's text content
+    const anchorText = ancestor.textContent ?? "";
+    const startOffset = range.startOffset + (range.startContainer !== ancestor
+      ? (ancestor.textContent ?? "").indexOf(range.startContainer.textContent ?? "")
+      : 0);
+
+    const pos: HighlightPosition = {
+      xpath,
+      startOffset: Math.max(0, startOffset),
+      endOffset: Math.max(0, startOffset + text.length),
+      text,
+    };
+
+    setHlMenu({ x: e.clientX, y: e.clientY, pendingPos: pos });
+    sel.removeAllRanges();
+  }, []);
+
+  const handleClickHighlight = useCallback(
+    (id: Id<"highlights">, color: HighlightColor, x: number, y: number) => {
+      setHlMenu({ x, y, existingId: id, existingColor: color });
+    },
+    []
+  );
 
   useEffect(() => {
     registerJump((pos) => {
@@ -267,7 +338,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
         </div>
 
         {/* Content area */}
-        <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden" onScroll={handleScroll}>
+        <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden" onScroll={handleScroll} onMouseUp={handleMouseUp}>
           <div className="mx-auto max-w-3xl px-6 py-8" style={{ zoom: scale }}>
             <article className="prose prose-neutral dark:prose-invert max-w-none">
               <ReactMarkdown
@@ -280,6 +351,32 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
             </article>
           </div>
         </div>
+
+        {/* Highlight layer — re-anchors saved highlights onto DOM */}
+        <HighlightLayer
+          contentRef={contentRef}
+          highlights={highlights}
+          onClickHighlight={handleClickHighlight}
+        />
+
+        {/* Floating highlight menu */}
+        {hlMenu && (
+          <HighlightMenu
+            x={hlMenu.x}
+            y={hlMenu.y}
+            existingId={hlMenu.existingId}
+            existingColor={hlMenu.existingColor}
+            onSelectColor={(color) => {
+              if (hlMenu.pendingPos) {
+                addHighlight(color, hlMenu.pendingPos).catch(() => {});
+              } else if (hlMenu.existingId) {
+                // Recolor: remove old, add new — simplified
+              }
+            }}
+            onDelete={hlMenu.existingId ? () => removeHighlight(hlMenu.existingId!).catch(() => {}) : undefined}
+            onClose={() => setHlMenu(null)}
+          />
+        )}
       </div>
     </div>
   );
