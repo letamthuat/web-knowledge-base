@@ -13,7 +13,7 @@ import "katex/dist/katex.min.css";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { List, X, Highlighter } from "lucide-react";
+import { List, X, Highlighter, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MermaidBlock } from "./MermaidBlock";
 import { HighlightMenu } from "./HighlightMenu";
@@ -21,8 +21,10 @@ import { HighlightLayer } from "./HighlightLayer";
 import { NotePopover } from "./NotePopover";
 import { AnnotationPanel } from "./AnnotationPanel";
 import { NoteHoverCard } from "./NoteHoverCard";
+import { DocNotePopover } from "./DocNotePopover";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
 import { useHighlights, type HighlightColor, type HighlightPosition } from "@/hooks/useHighlights";
+import { useNotes } from "@/hooks/useNotes";
 import type { Components } from "react-markdown";
 import GithubSlugger from "github-slugger";
 
@@ -92,6 +94,14 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
   const [noteCard, setNoteCard] = useState<{
     x: number; y: number;
     highlightId: Id<"highlights">;
+  } | null>(null);
+
+  // ── Doc notes (free-form, not tied to highlight) ──
+  const { notes: docNotes, addNote, updateNote: updateDocNote, removeNote } = useNotes(doc._id);
+  const [docNotePopover, setDocNotePopover] = useState<{
+    noteId?: Id<"notes">;
+    initialBody: string;
+    initialTitle?: string;
   } | null>(null);
 
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -385,10 +395,11 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
           </div>
           <div className="flex items-center gap-2">
             {/* Annotation panel toggle */}
+            {/* Annotation panel toggle */}
             <button
               onClick={() => setNotePanelOpen((v) => !v)}
               className={[
-                "relative flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
+                "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
                 notePanelOpen
                   ? "bg-amber-100 text-amber-700"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -405,6 +416,15 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
                   {highlights.length}
                 </span>
               )}
+            </button>
+            {/* Quick add note button */}
+            <button
+              onClick={() => setDocNotePopover({ initialBody: "", initialTitle: "" })}
+              className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="Thêm ghi chú"
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Ghi chú</span>
             </button>
             <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
           </div>
@@ -497,10 +517,42 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
             note: h.note,
             createdAt: h.createdAt ?? 0,
           }))}
+          docNotes={(docNotes as any[]).map((n) => ({
+            _id: n._id,
+            title: n.title,
+            body: n.body,
+            createdAt: n.createdAt ?? 0,
+          }))}
           onClose={() => setNotePanelOpen(false)}
           onScrollTo={scrollToHighlight}
-          onEditNote={(id) => openNotePopover(id, window.innerWidth / 2, window.innerHeight / 2)}
-          onDelete={(id) => removeHighlight(id).catch(() => {})}
+          onEditHighlightNote={(id) => openNotePopover(id, window.innerWidth / 2, window.innerHeight / 2)}
+          onDeleteHighlight={(id) => removeHighlight(id).catch(() => {})}
+          onAddDocNote={() => setDocNotePopover({ initialBody: "", initialTitle: "" })}
+          onEditDocNote={(id) => {
+            const n = (docNotes as any[]).find((n) => n._id === id);
+            if (n) setDocNotePopover({ noteId: id, initialBody: n.body, initialTitle: n.title });
+          }}
+          onDeleteDocNote={(id) => removeNote(id).catch(() => {})}
+        />
+      )}
+
+      {/* Doc note popover */}
+      {docNotePopover && (
+        <DocNotePopover
+          noteId={docNotePopover.noteId}
+          initialBody={docNotePopover.initialBody}
+          initialTitle={docNotePopover.initialTitle}
+          onSave={(body, title) => {
+            if (docNotePopover.noteId) {
+              updateDocNote(docNotePopover.noteId, body, title).catch(() => {});
+            } else {
+              addNote(body, title).catch(() => {});
+            }
+          }}
+          onDelete={docNotePopover.noteId
+            ? () => removeNote(docNotePopover.noteId!).catch(() => {})
+            : undefined}
+          onClose={() => setDocNotePopover(null)}
         />
       )}
     </div>
