@@ -64,12 +64,7 @@ mark.hl-green  { background: #bbf7d0; color: inherit; border-radius: 2px; }
 mark.hl-blue   { background: #bfdbfe; color: inherit; border-radius: 2px; }
 mark.hl-pink   { background: #fbcfe8; color: inherit; border-radius: 2px; }
 
-mark.hl-has-note { position: relative; }
-mark.hl-has-note::after {
-  content: '';
-  position: absolute;
-  top: -3px; right: -3px;
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: #7c3aed;
+mark.hl-has-note {
+  border-bottom: 2px dashed #7c3aed;
+  padding-bottom: 1px;
 }

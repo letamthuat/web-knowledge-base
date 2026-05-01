@@ -13,12 +13,14 @@ import "katex/dist/katex.min.css";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { List, X } from "lucide-react";
+import { List, X, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MermaidBlock } from "./MermaidBlock";
 import { HighlightMenu } from "./HighlightMenu";
 import { HighlightLayer } from "./HighlightLayer";
 import { NotePopover } from "./NotePopover";
+import { NotePanel } from "./NotePanel";
+import { NoteHoverCard } from "./NoteHoverCard";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
 import { useHighlights, type HighlightColor, type HighlightPosition } from "@/hooks/useHighlights";
 import type { Components } from "react-markdown";
@@ -86,6 +88,11 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     highlightId: Id<"highlights">;
     initialNote: string;
   } | null>(null);
+  const [notePanelOpen, setNotePanelOpen] = useState(false);
+  const [hoverCard, setHoverCard] = useState<{
+    x: number; y: number;
+    highlightId: Id<"highlights">;
+  } | null>(null);
 
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const sel = window.getSelection();
@@ -152,6 +159,24 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     const h = highlights.find((hl: any) => hl._id === highlightId);
     setNotePopover({ x, y, highlightId, initialNote: (h?.note as string | undefined) ?? "" });
   }, [highlights]);
+
+  const scrollToHighlight = useCallback((highlightId: Id<"highlights">) => {
+    const el = contentRef.current;
+    if (!el) return;
+    const mark = el.querySelector(`mark[data-highlight-id="${highlightId}"]`) as HTMLElement | null;
+    if (mark) {
+      mark.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Brief flash to draw attention
+      mark.style.outline = "2px solid #7c3aed";
+      mark.style.outlineOffset = "2px";
+      setTimeout(() => { mark.style.outline = ""; mark.style.outlineOffset = ""; }, 1200);
+    }
+  }, []);
+
+  const handleHoverHighlight = useCallback((id: Id<"highlights"> | null, x: number, y: number) => {
+    if (!id) { setHoverCard(null); return; }
+    setHoverCard({ x, y, highlightId: id });
+  }, []);
 
   // Ctrl/Cmd+N — open note for the last-clicked highlight
   useEffect(() => {
@@ -349,7 +374,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
 
       {/* ── Main content — independent scroll ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Toolbar: TOC toggle + zoom */}
+        {/* Toolbar: TOC toggle + zoom + notes */}
         <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
           <div>
             {hasToc && (
@@ -359,7 +384,28 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
               </Button>
             )}
           </div>
-          <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
+          <div className="flex items-center gap-2">
+            {/* Notes panel toggle */}
+            <button
+              onClick={() => setNotePanelOpen((v) => !v)}
+              className={[
+                "relative flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
+                notePanelOpen
+                  ? "bg-violet-100 text-violet-700"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ].join(" ")}
+              title="Ghi chú"
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Ghi chú</span>
+              {highlights.filter((h: any) => h.note).length > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-violet-600 px-1 text-[10px] font-medium text-white">
+                  {highlights.filter((h: any) => h.note).length}
+                </span>
+              )}
+            </button>
+            <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
+          </div>
         </div>
 
         {/* Content area */}
@@ -382,6 +428,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
           contentRef={contentRef}
           highlights={highlights}
           onClickHighlight={handleClickHighlight}
+          onHoverHighlight={handleHoverHighlight}
         />
 
         {/* Floating highlight menu */}
@@ -416,7 +463,44 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
             onClose={() => setNotePopover(null)}
           />
         )}
+
+        {/* Hover card for notes */}
+        {hoverCard && (() => {
+          const h = highlights.find((hl: any) => hl._id === hoverCard.highlightId);
+          if (!h || !(h as any).note) return null;
+          return (
+            <NoteHoverCard
+              x={hoverCard.x}
+              y={hoverCard.y}
+              selectedText={(h as any).selectedText ?? ""}
+              note={(h as any).note}
+              color={(h as any).color}
+              onEdit={() => {
+                setHoverCard(null);
+                openNotePopover(hoverCard.highlightId, hoverCard.x, hoverCard.y);
+              }}
+            />
+          );
+        })()}
       </div>
+
+      {/* Note panel — right sidebar */}
+      {notePanelOpen && (
+        <NotePanel
+          notes={(highlights as any[]).filter((h) => h.note).map((h) => ({
+            _id: h._id,
+            color: h.color,
+            selectedText: h.selectedText,
+            note: h.note,
+          }))}
+          onClose={() => setNotePanelOpen(false)}
+          onScrollTo={scrollToHighlight}
+          onEdit={(id) => {
+            const h = (highlights as any[]).find((hl) => hl._id === id);
+            if (h) openNotePopover(id, window.innerWidth / 2, window.innerHeight / 2);
+          }}
+        />
+      )}
     </div>
   );
 }
