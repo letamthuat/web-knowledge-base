@@ -24,7 +24,23 @@ function ReaderShell({ doc, downloadUrl }: {
 }) {
   const router = useRouter();
   const { saveNow, saveStatus, savePosition, progress } = useReadingProgress(doc._id);
-  const { tabs, isLoading: tabsLoading, openTab } = useTabSync();
+  const { tabs: allTabs, isLoading: tabsLoading, openTab, updateScrollState } = useTabSync();
+
+  // Find the tab for this doc so we can persist scroll state into it
+  const currentTab = allTabs.find((t) => t.docId === doc._id) ?? null;
+  const currentTabId = currentTab?._id ?? null;
+
+  // Wrap savePosition to also update scrollState in the tab (immediate, no throttle)
+  const savePositionWithTab = useCallback(
+    (pos: ReadingPosition, total?: number) => {
+      savePosition(pos, total);
+      if (currentTabId) {
+        const scrollState = JSON.stringify(pos);
+        updateScrollState(currentTabId, scrollState).catch(() => {});
+      }
+    },
+    [savePosition, updateScrollState, currentTabId]
+  );
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -65,7 +81,7 @@ function ReaderShell({ doc, downloadUrl }: {
   }, [progress, doc._id, recordOpen]);
 
   return (
-    <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition, jumpTo, registerJump }}>
+    <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition: savePositionWithTab, jumpTo, registerJump }}>
       <div className="flex h-screen flex-col overflow-hidden bg-background">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4">
           <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
