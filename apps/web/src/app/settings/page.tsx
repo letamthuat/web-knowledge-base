@@ -7,7 +7,8 @@ import { api } from "@/_generated/api";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2 } from "lucide-react";
+import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2, ArchiveIcon } from "lucide-react";
+import { useBackupDownload } from "@/hooks/useBackupDownload";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -45,6 +46,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const deleteAccount = useAction(api.users.actions.deleteAccount);
   const stats = useQuery(api.documents.queries.getStorageStats);
+  const { downloadBackup, isDownloading } = useBackupDownload();
   const [confirm, setConfirm] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -154,6 +156,31 @@ export default function SettingsPage() {
               </div>
             </>
           )}
+        </div>
+
+        {/* Backup */}
+        <div className="mb-6 rounded-xl border bg-card p-6 space-y-4">
+          <h2 className="font-semibold flex items-center gap-2">
+            <ArchiveIcon className="h-4 w-4 text-muted-foreground" />
+            Sao lưu dữ liệu
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Tải xuống toàn bộ tài liệu và ghi chú dưới dạng file ZIP. Bao gồm file gốc của tài liệu, tất cả ghi chú (.md) và highlights.
+          </p>
+          <div className="flex items-center gap-3">
+            <Button onClick={downloadBackup} disabled={isDownloading} className="gap-2">
+              {isDownloading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Đang chuẩn bị...</>
+              ) : (
+                <><ArchiveIcon className="h-4 w-4" /> Tải xuống toàn bộ</>
+              )}
+            </Button>
+            {stats && (
+              <span className="text-xs text-muted-foreground">
+                {stats.docCount} tài liệu · {stats.noteCount} ghi chú
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Danger zone */}

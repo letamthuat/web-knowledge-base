@@ -1,4 +1,4 @@
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
 export const listByDoc = query({
@@ -28,6 +28,23 @@ export const listAllByUser = query({
       .collect();
     notes.sort((a, b) => b.updatedAt - a.updatedAt);
     return await Promise.all(
+      notes.map(async (n) => ({
+        ...n,
+        docTitle: n.docId ? (await ctx.db.get(n.docId))?.title ?? null : null,
+      }))
+    );
+  },
+});
+
+export const listAllByUserInternal = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const notes = await ctx.db
+      .query("notes")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId as never))
+      .collect();
+    notes.sort((a, b) => b.updatedAt - a.updatedAt);
+    return Promise.all(
       notes.map(async (n) => ({
         ...n,
         docTitle: n.docId ? (await ctx.db.get(n.docId))?.title ?? null : null,

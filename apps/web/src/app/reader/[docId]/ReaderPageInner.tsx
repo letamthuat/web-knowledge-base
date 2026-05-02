@@ -12,9 +12,10 @@ import { ReaderProgressContext } from "@/components/viewers/ReaderProgressContex
 import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopover";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
-import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu } from "lucide-react";
+import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
+import { toast } from "sonner";
 import { TabBar } from "@/components/tabs/TabBar";
 import { TabDropdown } from "@/components/tabs/TabDropdown";
 import { useTabSync } from "@/hooks/useTabSync";
@@ -45,6 +46,24 @@ function ReaderShell({ doc, downloadUrl }: {
     },
     [savePosition, updateScrollState, currentTabId]
   );
+  const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
+  const FORMAT_EXT: Record<string, string> = {
+    pdf: ".pdf", epub: ".epub", docx: ".docx", pptx: ".pptx",
+    image: ".jpg", audio: ".mp3", video: ".mp4", markdown: ".md", web_clip: ".html",
+  };
+  async function handleDownload() {
+    try {
+      const url = await getDownloadUrl({ docId: doc._id });
+      const ext = FORMAT_EXT[doc.format] ?? "";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.title.endsWith(ext) ? doc.title : doc.title + ext;
+      a.click();
+    } catch {
+      toast.error("Không thể tải xuống tài liệu");
+    }
+  }
+
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -182,6 +201,10 @@ function ReaderShell({ doc, downloadUrl }: {
           <div className="flex items-center gap-2 shrink-0">
             <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
             <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
+            <Button variant="ghost" size="sm" onClick={handleDownload} title="Tải xuống tài liệu" className="gap-1">
+              <Download className="h-4 w-4" />
+              <span className="hidden md:inline">Tải xuống</span>
+            </Button>
             <span className="hidden lg:inline text-sm text-muted-foreground">{session?.user?.email}</span>
             <Button variant="ghost" size="sm" onClick={async () => { await signOut(); router.push("/login"); }} className="gap-1">
               <LogOut className="h-4 w-4" />

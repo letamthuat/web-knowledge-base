@@ -5,9 +5,9 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
   FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe,
-  MoreVertical, Pencil, Trash2, Folder, FolderX, ExternalLink, SquarePlus,
+  MoreVertical, Pencil, Trash2, Folder, FolderX, ExternalLink, SquarePlus, Download,
 } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
@@ -23,6 +23,11 @@ import { toast } from "sonner";
 
 const L = labels.document;
 const Lf = labels.formats;
+
+const FORMAT_EXT: Record<string, string> = {
+  pdf: ".pdf", epub: ".epub", docx: ".docx", pptx: ".pptx",
+  image: ".jpg", audio: ".mp3", video: ".mp4", markdown: ".md", web_clip: ".html",
+};
 
 const FORMAT_ICONS: Record<string, React.ElementType> = {
   pdf: FileText, epub: BookOpen, docx: FileType2, pptx: Presentation,
@@ -64,6 +69,21 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   const trashMutation = useMutation(api.documents.mutations.trash);
   const renameMutation = useMutation(api.documents.mutations.rename);
   const openTabMutation = useMutation(api.tabs.mutations.openTab);
+  const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
+
+  async function handleDownload(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      const url = await getDownloadUrl({ docId: doc._id });
+      const ext = FORMAT_EXT[doc.format] ?? "";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.title.endsWith(ext) ? doc.title : doc.title + ext;
+      a.click();
+    } catch {
+      toast.error("Không thể tải xuống tài liệu");
+    }
+  }
 
   async function handleOpenInTab(e: React.MouseEvent) {
     e.stopPropagation();
@@ -102,6 +122,9 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
       </DropdownMenuItem>
       <DropdownMenuItem onClick={handleOpenInTab}>
         <SquarePlus className="mr-2 h-4 w-4" aria-hidden /> Mở trong tab
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={handleDownload}>
+        <Download className="mr-2 h-4 w-4" aria-hidden /> Tải xuống
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}>

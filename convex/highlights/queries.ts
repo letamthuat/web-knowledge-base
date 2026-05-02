@@ -1,4 +1,4 @@
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
 export const listByDoc = query({
@@ -11,6 +11,18 @@ export const listByDoc = query({
       .query("highlights")
       .withIndex("by_user_doc", (q) =>
         q.eq("userId", userId as never).eq("docId", args.docId)
+      )
+      .collect();
+  },
+});
+
+export const listByDocInternal = internalQuery({
+  args: { userId: v.string(), docId: v.id("documents") },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("highlights")
+      .withIndex("by_user_doc", (q) =>
+        q.eq("userId", args.userId as never).eq("docId", args.docId)
       )
       .collect();
   },

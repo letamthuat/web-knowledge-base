@@ -102,6 +102,54 @@ export const getDownloadUrl = action({
   },
 });
 
+export const getBackupData = action({
+  args: {},
+  handler: async (ctx): Promise<{
+    docs: { id: string; title: string; format: string; createdAt: number; downloadUrl: string }[];
+    notes: { id: string; title: string; body: string; docTitle: string | null; updatedAt: number }[];
+    highlights: { docId: string; docTitle: string; text: string; note: string | null; createdAt: number }[];
+  }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    const userId = identity.subject;
+
+    // Fetch all docs
+    const allDocs = await ctx.runQuery(internal.documents.queries.listByUserInternal, { userId });
+    const r2 = getR2Client();
+
+    // Generate presigned download URLs for each doc
+    const docs = await Promise.all(allDocs.map(async (doc) => {
+      let downloadUrl = "";
+      try {
+        const cmd = new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME!, Key: doc.storageKey });
+        downloadUrl = await getSignedUrl(r2, cmd, { expiresIn: 3600 });
+      } catch {}
+      return { id: doc._id, title: doc.title, format: doc.format, createdAt: doc.createdAt, downloadUrl };
+    }));
+
+    // Fetch all notes
+    const allNotes = await ctx.runQuery(internal.notes.queries.listAllByUserInternal, { userId });
+    const notes = allNotes.map((n) => ({
+      id: n._id,
+      title: n.title,
+      body: n.body,
+      docTitle: n.docTitle ?? null,
+      updatedAt: n.updatedAt,
+    }));
+
+    // Fetch highlights for all docs
+    const highlightRows: { docId: string; docTitle: string; text: string; note: string | null; createdAt: number }[] = [];
+    for (const doc of allDocs) {
+      const hl = await ctx.runQuery(internal.highlights.queries.listByDocInternal, { userId, docId: doc._id });
+      for (const h of hl) {
+        highlightRows.push({ docId: doc._id, docTitle: doc.title, text: h.selectedText ?? "", note: h.note ?? null, createdAt: h.createdAt });
+      }
+    }
+
+    return { docs, notes, highlights: highlightRows };
+  },
+});
+
 export const copyNoteFileToLibrary = action({
   args: {
     sourceStorageKey: v.string(),

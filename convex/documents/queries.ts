@@ -80,3 +80,15 @@ export const getByIdInternal = internalQuery({
     return await ctx.db.get(args.docId);
   },
 });
+
+export const listByUserInternal = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("documents")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", args.userId as never).eq("status", "ready"),
+      )
+      .collect();
+  },
+});
