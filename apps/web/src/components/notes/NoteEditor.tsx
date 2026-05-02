@@ -8,7 +8,7 @@ import "@blocknote/mantine/style.css";
 import { useMutation } from "convex/react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, Upload, ExternalLink } from "lucide-react";
 
 function parseBlocks(body: string) {
   try {
@@ -114,6 +114,26 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     scheduleSave(JSON.stringify(editor?.document ?? []));
   };
 
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportMarkdown = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editor) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const text = await file.text();
+    // Extract title from first H1 if present
+    const h1Match = text.match(/^#\s+(.+)/m);
+    if (h1Match) {
+      const newTitle = h1Match[1].trim();
+      setTitle(newTitle);
+      latestTitle.current = newTitle;
+    }
+    const blocks = await editor.tryParseMarkdownToBlocks(text);
+    editor.replaceBlocks(editor.document, blocks);
+    scheduleSave(JSON.stringify(blocks));
+  }, [editor, scheduleSave]);
+
   const handleExportMarkdown = useCallback(async () => {
     if (!editor) return;
     const md = await editor.blocksToMarkdownLossy(editor.document);
@@ -145,6 +165,21 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
           ) : (
             <span className="text-[11px] text-amber-500">Đang lưu...</span>
           )}
+          <button
+            onClick={() => importInputRef.current?.click()}
+            title="Nhập từ Markdown"
+            className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            .md
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".md,text/markdown,text/plain"
+            className="hidden"
+            onChange={handleImportMarkdown}
+          />
           <button
             onClick={handleExportMarkdown}
             title="Xuất Markdown"
