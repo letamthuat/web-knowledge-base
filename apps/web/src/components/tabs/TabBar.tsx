@@ -24,6 +24,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { NoteTab } from "@/hooks/useNoteTabs";
+import { useRecording } from "@/contexts/RecordingContext";
+import { AudioRecordingPill } from "@/components/recording/AudioRecordingPill";
+import { ScreenRecordingPill } from "@/components/recording/ScreenRecordingPill";
 
 const FORMAT_ICONS: Record<string, React.ElementType> = {
   pdf: FileText, epub: BookOpen, docx: FileType2, pptx: Presentation,
@@ -116,6 +119,7 @@ const closedTabStack: string[] = [];
 
 export function TabBar({ currentDocId, showAddButton = false, notesActive = false, noteTabs = [], activeNoteId, onCloseNoteTab, onSelectNoteTab }: TabBarProps) {
   const router = useRouter();
+  const { audioRecorder, screenRecorder } = useRecording();
   const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab } = useTabSync();
   const [optimisticTabs, setOptimisticTabs] = useState<TabDoc[] | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -231,6 +235,33 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                 <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
                 Ghi chú
               </button>
+              <div className="my-1 h-px bg-border/60" />
+              <button
+                onClick={async () => {
+                  setAddMenuOpen(false);
+                  if (audioRecorder.state !== "idle") return;
+                  try { await audioRecorder.start(); } catch { /* user denied */ }
+                }}
+                disabled={audioRecorder.state !== "idle"}
+                title={audioRecorder.state !== "idle" ? "Đang có phiên ghi âm" : undefined}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span>🎤</span>
+                Ghi âm
+              </button>
+              <button
+                onClick={async () => {
+                  setAddMenuOpen(false);
+                  if (screenRecorder.state !== "idle") return;
+                  try { await screenRecorder.start(); } catch { /* user denied */ }
+                }}
+                disabled={screenRecorder.state !== "idle"}
+                title={screenRecorder.state !== "idle" ? "Đang có phiên quay màn hình" : undefined}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span>🖥️</span>
+                Quay màn hình
+              </button>
             </div>
           )}
         </div>
@@ -290,6 +321,10 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
           </div>
         </SortableContext>
       </DndContext>
+
+      {/* Recording pills */}
+      <AudioRecordingPill />
+      <ScreenRecordingPill />
 
       {/* Divider + Đóng tất cả — luôn ở cuối */}
       {(displayTabs.length > 1 || (displayTabs.length >= 1 && noteTabs.length >= 1) || noteTabs.length > 1) && (

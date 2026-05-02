@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import { ConvexClientProvider } from "@/providers/ConvexClientProvider";
+import { RecordingProvider } from "@/contexts/RecordingContext";
+import { AudioRecordingPillFloating } from "@/components/recording/AudioRecordingPill";
+import { ScreenRecordingPillFloating } from "@/components/recording/ScreenRecordingPill";
 import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
@@ -37,7 +40,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <body className={inter.className}>
         {/* ConvexClientProvider bọc ConvexReactClient + Better Auth session */}
         <ConvexClientProvider>
-          {children}
+          <RecordingProvider>
+            {children}
+            <AudioRecordingPillFloating />
+            <ScreenRecordingPillFloating />
+          </RecordingProvider>
           {/* Toast notifications dùng tiếng Việt (NFR37) */}
           <Toaster
             richColors

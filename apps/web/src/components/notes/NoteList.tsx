@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Id } from "@/_generated/dataModel";
-import { FilePlus, StickyNote, X } from "lucide-react";
+import { FilePlus, StickyNote, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRecording } from "@/contexts/RecordingContext";
 
 interface NoteItem {
   _id: Id<"notes">;
@@ -44,22 +45,80 @@ function bodyPreview(body: string): string {
 }
 
 export function NoteList({ notes, selectedId, onSelect, onNew, onDelete }: NoteListProps) {
-  // Tick every 30s to refresh relative timestamps
   const [, setTick] = useState(0);
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const newMenuRef = useRef<HTMLDivElement>(null);
+  const { audioRecorder, screenRecorder } = useRecording();
+
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!newMenuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) setNewMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [newMenuOpen]);
 
   return (
     <aside className="flex w-72 shrink-0 flex-col border-r bg-card">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
         <span className="text-sm font-semibold">Ghi chú</span>
-        <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={onNew}>
-          <FilePlus className="h-3.5 w-3.5" />
-          Mới
-        </Button>
+        <div ref={newMenuRef} className="relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 h-7 text-xs"
+            onClick={() => setNewMenuOpen((v) => !v)}
+          >
+            <FilePlus className="h-3.5 w-3.5" />
+            Mới
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
+          {newMenuOpen && (
+            <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border bg-popover shadow-md">
+              <button
+                onClick={() => { setNewMenuOpen(false); onNew(); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+              >
+                <span>📄</span>
+                Ghi chú mới
+              </button>
+              <div className="my-1 h-px bg-border/60" />
+              <button
+                onClick={async () => {
+                  setNewMenuOpen(false);
+                  if (audioRecorder.state !== "idle") return;
+                  try { await audioRecorder.start(); } catch { /* user denied */ }
+                }}
+                disabled={audioRecorder.state !== "idle"}
+                title={audioRecorder.state !== "idle" ? "Đang có phiên ghi âm" : undefined}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span>🎤</span>
+                Ghi âm
+              </button>
+              <button
+                onClick={async () => {
+                  setNewMenuOpen(false);
+                  if (screenRecorder.state !== "idle") return;
+                  try { await screenRecorder.start(); } catch { /* user denied */ }
+                }}
+                disabled={screenRecorder.state !== "idle"}
+                title={screenRecorder.state !== "idle" ? "Đang có phiên quay màn hình" : undefined}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span>🖥️</span>
+                Quay màn hình
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* List */}

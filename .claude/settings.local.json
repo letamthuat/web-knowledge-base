@@ -60,7 +60,8 @@
       "Bash(Get-ChildItem -Path \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\" -Force)",
       "PowerShell(Stop-Process -Id 20080 -Force)",
       "PowerShell(head -20)",
-      "Bash(npm list *)"
+      "Bash(npm list *)",
+      "Bash(python3 \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\\\\_bmad\\\\scripts\\\\resolve_customization.py\" --skill \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\\\\.claude\\\\skills\\\\bmad-dev-story\" --key workflow)"
     ]
   }
 }
