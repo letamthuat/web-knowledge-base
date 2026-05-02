@@ -20,6 +20,7 @@ import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
 import { useAction, useMutation } from "convex/react";
 import { api } from "@/_generated/api";
+import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
 import { Download, Upload, ExternalLink, LibraryBig } from "lucide-react";
 import { toast } from "sonner";
@@ -95,11 +96,22 @@ interface NoteEditorProps {
   autoFocusTitle?: boolean;
   /** Compact mode for side panel — smaller padding, no export buttons */
   compact?: boolean;
+  /** Called whenever saved state changes */
+  onSaveStateChange?: (status: SaveStatus) => void;
+  /** Ref to trigger import/export from parent toolbar */
+  importRef?: React.RefObject<HTMLInputElement | null>;
+  onExport?: React.MutableRefObject<(() => void) | null>;
+  /** Ref to trigger immediate save from parent toolbar */
+  saveNowRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate, autoFocusTitle, compact }: NoteEditorProps) {
+export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate, autoFocusTitle, compact, onSaveStateChange, importRef, onExport, saveNowRef }: NoteEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saved, setSaved] = useState(true);
+  const setSavedWithNotify = useCallback((v: boolean) => {
+    setSaved(v);
+    onSaveStateChange?.(v ? "saved" : "pending");
+  }, [onSaveStateChange]);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestTitle = useRef(title);
   const isFirstChange = useRef(true);
@@ -110,6 +122,7 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     setTitle(initialTitle);
     latestTitle.current = initialTitle;
     setSaved(true);
+    onSaveStateChange?.("saved");
     isFirstChange.current = true;
   }, [noteId, initialTitle]);
 
@@ -193,11 +206,13 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
   const scheduleSave = useCallback((bodyJson: string) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setSaved(false);
+    onSaveStateChange?.("pending");
     saveTimer.current = setTimeout(async () => {
+      onSaveStateChange?.("saving");
       await onUpdate(noteId, bodyJson, latestTitle.current);
-      setSaved(true);
+      setSavedWithNotify(true);
     }, 1000);
-  }, [noteId, onUpdate]);
+  }, [noteId, onUpdate, onSaveStateChange]);
 
   // Lắng nghe thay đổi editor
   useEffect(() => {
@@ -297,73 +312,57 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     URL.revokeObjectURL(url);
   }, [editor]);
 
+  // Expose export handler to parent toolbar
+  useEffect(() => {
+    if (onExport) onExport.current = handleExportMarkdown;
+  }, [onExport, handleExportMarkdown]);
+
+  // Expose save-now handler to parent toolbar
+  useEffect(() => {
+    if (!saveNowRef) return;
+    saveNowRef.current = () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      const blocks = editor?.document;
+      if (blocks) {
+        onSaveStateChange?.("saving");
+        onUpdate(noteId, JSON.stringify(blocks), latestTitle.current)
+          .then(() => { setSaved(true); onSaveStateChange?.("saved"); })
+          .catch(() => { onSaveStateChange?.("error"); });
+      }
+    };
+  }, [saveNowRef, editor, noteId, onUpdate, onSaveStateChange]);
+
+  // Wire external importRef to internal input
+  useEffect(() => {
+    if (importRef && importRef.current === null) {
+      (importRef as React.MutableRefObject<HTMLInputElement | null>).current = importInputRef.current;
+    }
+  });
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Title bar */}
-      <div className={[
-        "flex shrink-0 items-center justify-between border-b bg-card",
-        compact ? "px-3 py-2" : "px-6 py-3",
-      ].join(" ")}>
+      {/* Hidden import input — always present */}
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".md,text/markdown,text/plain"
+        className="hidden"
+        onChange={handleImportMarkdown}
+      />
+
+      {/* BlockNote editor — title inline at top */}
+      <div className="flex-1 overflow-y-auto px-0 md:px-2 py-2">
         <input
           ref={titleRef}
           type="text"
           value={title}
           onChange={handleTitleChange}
-          placeholder="Tiêu đề ghi chú..."
-          className={[
-            "flex-1 bg-transparent font-semibold outline-none placeholder:text-muted-foreground/50",
-            compact ? "text-sm" : "text-lg",
-          ].join(" ")}
+          placeholder="Tiêu đề"
+          className="w-full bg-transparent px-3 md:px-[54px] pt-4 pb-2 text-2xl font-bold outline-none placeholder:text-muted-foreground/40"
         />
-        <div className="flex items-center gap-2">
-          {saved ? (
-            <span className="text-[11px] text-muted-foreground/60">✓ Đã lưu</span>
-          ) : (
-            <span className="text-[11px] text-amber-500">Đang lưu...</span>
-          )}
-          {!compact && (
-            <>
-              <button
-                onClick={() => importInputRef.current?.click()}
-                title="Nhập từ Markdown"
-                className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                .md
-              </button>
-              <input
-                ref={importInputRef}
-                type="file"
-                accept=".md,text/markdown,text/plain"
-                className="hidden"
-                onChange={handleImportMarkdown}
-              />
-              <button
-                onClick={handleExportMarkdown}
-                title="Xuất Markdown"
-                className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <Download className="h-3.5 w-3.5" />
-                .md
-              </button>
-            </>
-          )}
-          {docTitle && docId && (
-            <a
-              href={`/reader/${docId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] text-violet-600 hover:text-violet-700 hover:underline"
-            >
-              <ExternalLink className="h-3 w-3" />
-              {docTitle}
-            </a>
-          )}
-        </div>
-      </div>
-
-      {/* BlockNote editor */}
-      <div className="flex-1 overflow-y-auto px-2 py-2">
         <BlockNoteView
           editor={editor}
           theme="light"

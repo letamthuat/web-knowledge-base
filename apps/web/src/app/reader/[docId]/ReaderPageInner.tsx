@@ -12,8 +12,9 @@ import { ReaderProgressContext } from "@/components/viewers/ReaderProgressContex
 import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopover";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
-import { ArrowLeft, BookOpen, StickyNote, Settings, X } from "lucide-react";
+import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { signOut } from "@/lib/auth-client";
 import { TabBar } from "@/components/tabs/TabBar";
 import { TabDropdown } from "@/components/tabs/TabDropdown";
 import { useTabSync } from "@/hooks/useTabSync";
@@ -24,6 +25,7 @@ function ReaderShell({ doc, downloadUrl }: {
   downloadUrl: string;
 }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const { saveNow, saveStatus, savePosition, progress } = useReadingProgress(doc._id);
   const { tabs: allTabs, isLoading: tabsLoading, openTab, updateScrollState } = useTabSync();
   const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
@@ -178,9 +180,14 @@ function ReaderShell({ doc, downloadUrl }: {
             </Button>
           </nav>
 
-          <div className="flex items-center gap-1 shrink-0">
-            <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
+          <div className="flex items-center gap-2 shrink-0">
             <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
+            <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
+            <span className="hidden lg:inline text-sm text-muted-foreground">{session?.user?.email}</span>
+            <Button variant="ghost" size="sm" onClick={async () => { await signOut(); router.push("/login"); }} className="gap-1">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden md:inline">Đăng xuất</span>
+            </Button>
           </div>
         </header>
 

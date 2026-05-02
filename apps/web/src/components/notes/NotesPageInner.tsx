@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, LogOut, Settings, StickyNote, List } from "lucide-react";
+import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { TabBar } from "@/components/tabs/TabBar";
 import { NoteList } from "@/components/notes/NoteList";
 import { NoteEditor } from "@/components/notes/NoteEditor";
+import { ProgressSaveIndicator } from "@/components/viewers/ProgressSaveIndicator";
 import { useAllNotes } from "@/hooks/useNotes";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
+import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
 import { labels } from "@/lib/i18n/labels";
 
@@ -23,6 +25,10 @@ export function NotesPageInner() {
   const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
   const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [noteSaveStatus, setNoteSaveStatus] = useState<SaveStatus>("saved");
+  const noteSaveNowRef = useRef<(() => void) | null>(null);
+  const noteImportRef = useRef<HTMLInputElement | null>(null);
+  const noteExportRef = useRef<(() => void) | null>(null);
 
   const handleLogout = async () => {
     await signOut();
@@ -34,6 +40,7 @@ export function NotesPageInner() {
     const note = (notes as any[]).find((n) => n._id === id);
     openNoteTab(id, note?.title ?? "");
     setActiveNoteId(id);
+    setNoteSaveStatus("saved");
   }, [notes, openNoteTab, setActiveNoteId]);
 
   const handleNew = useCallback(async () => {
@@ -120,7 +127,19 @@ export function NotesPageInner() {
             {sidebarOpen ? "Ẩn danh sách" : "Danh sách"}
           </Button>
         </div>
-        <div className="flex items-center gap-2" />
+        {selectedNote && (
+          <div className="flex items-center gap-1">
+            <ProgressSaveIndicator status={noteSaveStatus} onSaveNow={() => noteSaveNowRef.current?.()} />
+            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => noteImportRef.current?.click()} title="Nhập từ .md">
+              <Upload className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">.md</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => noteExportRef.current?.()} title="Xuất .md">
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">.md</span>
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Main content */}
@@ -145,6 +164,10 @@ export function NotesPageInner() {
             docId={selectedNote.docId ?? null}
             onUpdate={handleUpdate}
             autoFocusTitle={newNoteId === selectedNote._id}
+            onSaveStateChange={setNoteSaveStatus}
+            importRef={noteImportRef}
+            onExport={noteExportRef}
+            saveNowRef={noteSaveNowRef}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground">
