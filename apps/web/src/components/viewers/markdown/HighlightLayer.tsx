@@ -18,6 +18,8 @@ interface HighlightLayerProps {
   highlights: Highlight[];
   onClickHighlight: (id: Id<"highlights">, color: HighlightColor, x: number, y: number) => void;
   onClickNoteHighlight?: (id: Id<"highlights">, x: number, y: number) => void;
+  /** Bump this when the DOM content changes (e.g. html state changes) to re-apply marks */
+  contentKey?: string | number;
 }
 
 const COLOR_CLASS: Record<HighlightColor, string> = {
@@ -44,16 +46,22 @@ function wrapRange(range: Range, id: string, colorClass: string, onClick: (e: Mo
     mark.className = colorClass;
     mark.dataset.highlightId = id;
     mark.style.cursor = "pointer";
-    range.surroundContents(mark);
     mark.addEventListener("click", onClick);
+    try {
+      range.surroundContents(mark);
+    } catch {
+      // surroundContents fails when range crosses element boundaries (e.g. bold/italic)
+      // Fall back: extract contents and wrap them
+      mark.appendChild(range.extractContents());
+      range.insertNode(mark);
+    }
     return mark;
   } catch {
-    // surroundContents fails when range crosses element boundaries — skip
     return null;
   }
 }
 
-export function HighlightLayer({ contentRef, highlights, onClickHighlight, onClickNoteHighlight }: HighlightLayerProps) {
+export function HighlightLayer({ contentRef, highlights, onClickHighlight, onClickNoteHighlight, contentKey }: HighlightLayerProps) {
   useEffect(() => {
     const el = contentRef.current;
     if (!el || highlights.length === 0) return;
@@ -138,7 +146,8 @@ export function HighlightLayer({ contentRef, highlights, onClickHighlight, onCli
         parent.removeChild(mark);
       }
     };
-  }, [contentRef, highlights, onClickHighlight]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentRef, highlights, onClickHighlight, contentKey]);
 
   return null;
 }

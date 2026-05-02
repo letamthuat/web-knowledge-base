@@ -9,6 +9,8 @@ const COLOR_BG: Record<HighlightColor, string> = {
   green:  "#bbf7d0",
   blue:   "#bfdbfe",
   pink:   "#fbcfe8",
+  purple: "#e9d5ff",
+  custom: "#f3f4f6",
 };
 
 interface NoteHoverCardProps {

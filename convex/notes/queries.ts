@@ -14,3 +14,21 @@ export const listByDoc = query({
       .collect();
   },
 });
+
+export const listAllByUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireAuth(ctx);
+    const notes = await ctx.db
+      .query("notes")
+      .withIndex("by_user_updated", (q) => q.eq("userId", userId as never))
+      .order("desc")
+      .collect();
+    return await Promise.all(
+      notes.map(async (n) => ({
+        ...n,
+        docTitle: n.docId ? (await ctx.db.get(n.docId))?.title ?? null : null,
+      }))
+    );
+  },
+});

@@ -31,3 +31,29 @@ export function useNotes(docId: Id<"documents">) {
 
   return { notes, addNote, updateNote, removeNote };
 }
+
+export function useAllNotes() {
+  const notes = useQuery(api.notes.queries.listAllByUser, {}) ?? [];
+  const createMutation = useMutation(api.notes.mutations.create);
+  const updateMutation = useMutation(api.notes.mutations.update);
+  const removeMutation = useMutation(api.notes.mutations.remove);
+
+  const addNote = useCallback(
+    (body: string, title?: string, docId?: Id<"documents">) =>
+      createMutation({ body, title, docId, clientMutationId: `${Date.now()}-${Math.random()}` }),
+    [createMutation]
+  );
+
+  const updateNote = useCallback(
+    (noteId: Id<"notes">, body: string, title?: string) =>
+      updateMutation({ noteId, body, title }),
+    [updateMutation]
+  );
+
+  const removeNote = useCallback(
+    (noteId: Id<"notes">) => removeMutation({ noteId }),
+    [removeMutation]
+  );
+
+  return { notes, addNote, updateNote, removeNote };
+}

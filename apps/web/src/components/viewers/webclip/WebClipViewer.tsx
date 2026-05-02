@@ -5,8 +5,10 @@ import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { Button } from "@/components/ui/button";
-import { FileText, Globe } from "lucide-react";
+import { FileText, Globe, Highlighter } from "lucide-react";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
+import { useHighlightActions } from "@/hooks/useHighlightActions";
+import { AnnotationOverlay, AnnotationSidebar } from "@/components/viewers/AnnotationOverlay";
 
 interface WebClipViewerProps {
   doc: { _id: Id<"documents">; title: string };
@@ -21,10 +23,12 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
   const [mode, setMode] = useState<ViewMode>("clean");
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { savePosition, registerJump } = useReaderProgress();
   const { progress } = useReadingProgress(doc._id);
   const { scale, zoomIn, zoomOut, reset: resetZoom } = useZoom(1, 0.1, 0.5, 2);
   const restored = useRef(false);
+  const actions = useHighlightActions(doc._id, contentRef);
 
   useEffect(() => {
     registerJump((pos) => {
@@ -101,6 +105,8 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
     );
   }
 
+  const hlCount = actions.highlights.length;
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Toolbar */}
@@ -117,27 +123,55 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
           )}
         </div>
         {mode === "clean" && (
-          <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
+          <div className="flex items-center gap-1">
+            {cleanHtml && (
+              <Button
+                variant="ghost" size="sm"
+                className="relative gap-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                onClick={() => actions.setNotePanelOpen((v) => !v)}
+              >
+                <Highlighter className="h-3.5 w-3.5" />
+                Highlight
+                {hlCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                    {hlCount}
+                  </span>
+                )}
+              </Button>
+            )}
+            <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
+          </div>
         )}
       </div>
 
       {/* Content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
-        {mode === "clean" && cleanHtml ? (
-          <div className="mx-auto max-w-3xl px-6 py-8" style={{ zoom: scale }}>
-            <article
-              className="prose prose-neutral dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: cleanHtml }}
+      <div className="flex flex-1 overflow-hidden">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
+          {mode === "clean" && cleanHtml ? (
+            <div
+              ref={contentRef}
+              className="mx-auto max-w-3xl px-6 py-8"
+              style={{ zoom: scale }}
+              onMouseUp={actions.handleMouseUp}
+            >
+              <article
+                className="prose prose-neutral dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: cleanHtml }}
+              />
+            </div>
+          ) : (
+            <iframe
+              srcDoc={rawHtml ?? ""}
+              sandbox="allow-same-origin"
+              className="h-full w-full border-none"
+              title={doc.title}
             />
-          </div>
-        ) : (
-          <iframe
-            srcDoc={rawHtml ?? ""}
-            sandbox="allow-same-origin"
-            className="h-full w-full border-none"
-            title={doc.title}
-          />
-        )}
+          )}
+          {mode === "clean" && cleanHtml && (
+            <AnnotationOverlay contentRef={contentRef} contentKey={cleanHtml.length} {...actions} />
+          )}
+        </div>
+        {mode === "clean" && cleanHtml && <AnnotationSidebar {...actions} />}
       </div>
     </div>
   );

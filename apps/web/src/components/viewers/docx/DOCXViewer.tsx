@@ -4,9 +4,11 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { List } from "lucide-react";
+import { Highlighter, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
+import { useHighlightActions } from "@/hooks/useHighlightActions";
+import { AnnotationOverlay, AnnotationSidebar } from "@/components/viewers/AnnotationOverlay";
 
 interface DOCXViewerProps {
   doc: { _id: Id<"documents">; title: string };
@@ -36,10 +38,12 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
   const [activeId, setActiveId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { savePosition, registerJump } = useReaderProgress();
   const { progress } = useReadingProgress(doc._id);
   const { scale, zoomIn, zoomOut, reset: resetZoom } = useZoom(1, 0.1, 0.5, 2);
   const restored = useRef(false);
+  const actions = useHighlightActions(doc._id, contentRef);
 
   useEffect(() => {
     registerJump((pos) => {
@@ -138,6 +142,8 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
     </div>
   );
 
+  const hlCount = actions.highlights.length;
+
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* TOC Sidebar */}
@@ -182,23 +188,47 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
               </Button>
             )}
           </div>
-          <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
-        </div>
-        <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
-          <div className="mx-auto max-w-3xl px-8 py-10" style={{ zoom: scale }}>
-            {/* Page-like wrapper */}
-            <div className="min-h-[29.7cm] rounded-lg border border-border/50 bg-white px-16 py-12 shadow-sm dark:bg-zinc-900">
-              <article
-                className="prose prose-neutral dark:prose-invert max-w-none
-                  prose-headings:font-semibold prose-headings:tracking-tight
-                  prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
-                  prose-table:border-collapse prose-td:border prose-td:border-border prose-td:px-3 prose-td:py-1.5
-                  prose-th:border prose-th:border-border prose-th:px-3 prose-th:py-1.5 prose-th:bg-muted/50
-                  prose-img:rounded-lg prose-img:shadow-sm"
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
-            </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost" size="sm"
+              className="relative gap-1.5 h-7 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+              onClick={() => actions.setNotePanelOpen((v) => !v)}
+            >
+              <Highlighter className="h-3.5 w-3.5" />
+              Highlight
+              {hlCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                  {hlCount}
+                </span>
+              )}
+            </Button>
+            <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
           </div>
+        </div>
+        <div className="flex flex-1 overflow-hidden">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
+            <div
+              ref={contentRef}
+              className="mx-auto max-w-3xl px-8 py-10"
+              style={{ zoom: scale }}
+              onMouseUp={actions.handleMouseUp}
+            >
+              {/* Page-like wrapper */}
+              <div className="min-h-[29.7cm] rounded-lg border border-border/50 bg-white px-16 py-12 shadow-sm dark:bg-zinc-900">
+                <article
+                  className="prose prose-neutral dark:prose-invert max-w-none
+                    prose-headings:font-semibold prose-headings:tracking-tight
+                    prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
+                    prose-table:border-collapse prose-td:border prose-td:border-border prose-td:px-3 prose-td:py-1.5
+                    prose-th:border prose-th:border-border prose-th:px-3 prose-th:py-1.5 prose-th:bg-muted/50
+                    prose-img:rounded-lg prose-img:shadow-sm"
+                  dangerouslySetInnerHTML={{ __html: html }}
+                />
+              </div>
+            </div>
+            <AnnotationOverlay contentRef={contentRef} contentKey={html.length} {...actions} />
+          </div>
+          <AnnotationSidebar {...actions} />
         </div>
       </div>
     </div>
