@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Id } from "@/_generated/dataModel";
 import { FilePlus, StickyNote, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,13 @@ function bodyPreview(body: string): string {
 }
 
 export function NoteList({ notes, selectedId, onSelect, onNew, onDelete }: NoteListProps) {
+  // Tick every 30s to refresh relative timestamps
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <aside className="flex w-72 shrink-0 flex-col border-r bg-card">
       {/* Header */}
