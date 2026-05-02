@@ -260,6 +260,17 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_order", ["userId", "order"]),
 
+  note_tabs: defineTable({
+    userId: v.id("users"),
+    noteId: v.id("notes"),
+    title: v.string(),
+    order: v.number(),
+    isActive: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_note", ["userId", "noteId"]),
+
   // ─── HIGHLIGHTS ───────────────────────────────────────────────────────────
   // FR29-FR33: Highlight + bookmark + timestamp marker
   highlights: defineTable({

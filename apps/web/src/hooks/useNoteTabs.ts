@@ -1,75 +1,64 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { useCallback, useMemo } from "react";
+import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 
 export interface NoteTab {
   noteId: Id<"notes">;
   title: string;
-}
-
-const STORAGE_KEY = "wkb_note_tabs";
-const ACTIVE_KEY = "wkb_note_tab_active";
-
-function load(): NoteTab[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-function save(tabs: NoteTab[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs));
+  noteTabId: Id<"note_tabs">;
 }
 
 export function useNoteTabs() {
-  const [tabs, setTabs] = useState<NoteTab[]>([]);
-  const [activeNoteId, setActiveNoteId] = useState<Id<"notes"> | null>(null);
+  const rawTabs = useQuery(api.note_tabs.queries.listByUser);
+  const openTabMutation = useMutation(api.note_tabs.mutations.openTab);
+  const closeTabMutation = useMutation(api.note_tabs.mutations.closeTab);
+  const setActiveMutation = useMutation(api.note_tabs.mutations.setActive);
+  const updateTitleMutation = useMutation(api.note_tabs.mutations.updateTitle);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    setTabs(load());
-    const active = localStorage.getItem(ACTIVE_KEY);
-    if (active) setActiveNoteId(active as Id<"notes">);
-  }, []);
+  const noteTabs: NoteTab[] = useMemo(() =>
+    (rawTabs ?? [])
+      .sort((a, b) => a.order - b.order)
+      .map((t) => ({ noteId: t.noteId, title: t.title, noteTabId: t._id })),
+    [rawTabs]
+  );
 
-  const openNoteTab = useCallback((noteId: Id<"notes">, title: string) => {
-    setTabs((prev) => {
-      const exists = prev.find((t) => t.noteId === noteId);
-      const next = exists
-        ? prev.map((t) => t.noteId === noteId ? { ...t, title } : t)
-        : [...prev, { noteId, title }];
-      save(next);
-      return next;
-    });
-    setActiveNoteId(noteId);
-    localStorage.setItem(ACTIVE_KEY, noteId);
-  }, []);
+  const activeNoteId = useMemo(() =>
+    rawTabs?.find((t) => t.isActive)?.noteId ?? null,
+    [rawTabs]
+  );
 
-  const closeNoteTab = useCallback((noteId: Id<"notes">, onEmpty?: () => void) => {
-    setTabs((prev) => {
-      const next = prev.filter((t) => t.noteId !== noteId);
-      save(next);
-      return next;
-    });
-    setActiveNoteId((prev) => {
-      if (prev !== noteId) return prev;
-      const remaining = load().filter((t) => t.noteId !== noteId);
-      const nextActive = remaining[remaining.length - 1]?.noteId ?? null;
-      if (nextActive) localStorage.setItem(ACTIVE_KEY, nextActive);
-      else { localStorage.removeItem(ACTIVE_KEY); onEmpty?.(); }
-      return nextActive;
-    });
-  }, []);
+  const openNoteTab = useCallback(
+    (noteId: Id<"notes">, title: string) => openTabMutation({ noteId, title }),
+    [openTabMutation]
+  );
 
-  const updateNoteTabTitle = useCallback((noteId: Id<"notes">, title: string) => {
-    setTabs((prev) => {
-      const next = prev.map((t) => t.noteId === noteId ? { ...t, title } : t);
-      save(next);
-      return next;
-    });
-  }, []);
+  const closeNoteTab = useCallback(
+    (noteId: Id<"notes">) => {
+      const tab = rawTabs?.find((t) => t.noteId === noteId);
+      if (tab) closeTabMutation({ noteTabId: tab._id });
+    },
+    [rawTabs, closeTabMutation]
+  );
 
-  return { noteTabs: tabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId };
+  const setActiveNoteId = useCallback(
+    (noteId: Id<"notes"> | null) => {
+      if (!noteId) return;
+      const tab = rawTabs?.find((t) => t.noteId === noteId);
+      if (tab) setActiveMutation({ noteTabId: tab._id });
+    },
+    [rawTabs, setActiveMutation]
+  );
+
+  const updateNoteTabTitle = useCallback(
+    (noteId: Id<"notes">, title: string) => {
+      const tab = rawTabs?.find((t) => t.noteId === noteId);
+      if (tab) updateTitleMutation({ noteTabId: tab._id, title });
+    },
+    [rawTabs, updateTitleMutation]
+  );
+
+  return { noteTabs, activeNoteId, openNoteTab, closeNoteTab, setActiveNoteId, updateNoteTabTitle };
 }

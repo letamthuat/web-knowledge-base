@@ -45,9 +45,8 @@ export function NotesPageInner() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const note = (notes as any[]).find((n) => n._id === id);
     openNoteTab(id, note?.title ?? "");
-    setActiveNoteId(id);
     setNoteSaveStatus("saved");
-  }, [notes, openNoteTab, setActiveNoteId]);
+  }, [notes, openNoteTab]);
 
   const handleNew = useCallback(async () => {
     try {
@@ -147,7 +146,8 @@ export function NotesPageInner() {
         noteTabs={noteTabs}
         activeNoteId={activeNoteId}
         onSelectNoteTab={(id) => {
-          setActiveNoteId(id as Id<"notes">);
+          const note = (notes as any[]).find((n) => n._id === id);
+          openNoteTab(id as Id<"notes">, note?.title ?? "");
         }}
         onCloseNoteTab={(id) => {
           closeNoteTab(id as Id<"notes">);
