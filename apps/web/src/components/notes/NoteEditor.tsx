@@ -30,9 +30,11 @@ interface NoteEditorProps {
   docId?: Id<"documents"> | null;
   onUpdate: (id: Id<"notes">, body: string, title: string) => Promise<void>;
   autoFocusTitle?: boolean;
+  /** Compact mode for side panel — smaller padding, no export buttons */
+  compact?: boolean;
 }
 
-export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate, autoFocusTitle }: NoteEditorProps) {
+export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate, autoFocusTitle, compact }: NoteEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saved, setSaved] = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,44 +155,54 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Title bar */}
-      <div className="flex shrink-0 items-center justify-between border-b bg-card px-6 py-3">
+      <div className={[
+        "flex shrink-0 items-center justify-between border-b bg-card",
+        compact ? "px-3 py-2" : "px-6 py-3",
+      ].join(" ")}>
         <input
           ref={titleRef}
           type="text"
           value={title}
           onChange={handleTitleChange}
           placeholder="Tiêu đề ghi chú..."
-          className="flex-1 bg-transparent text-lg font-semibold outline-none placeholder:text-muted-foreground/50"
+          className={[
+            "flex-1 bg-transparent font-semibold outline-none placeholder:text-muted-foreground/50",
+            compact ? "text-sm" : "text-lg",
+          ].join(" ")}
         />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {saved ? (
             <span className="text-[11px] text-muted-foreground/60">✓ Đã lưu</span>
           ) : (
             <span className="text-[11px] text-amber-500">Đang lưu...</span>
           )}
-          <button
-            onClick={() => importInputRef.current?.click()}
-            title="Nhập từ Markdown"
-            className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            .md
-          </button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".md,text/markdown,text/plain"
-            className="hidden"
-            onChange={handleImportMarkdown}
-          />
-          <button
-            onClick={handleExportMarkdown}
-            title="Xuất Markdown"
-            className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <Download className="h-3.5 w-3.5" />
-            .md
-          </button>
+          {!compact && (
+            <>
+              <button
+                onClick={() => importInputRef.current?.click()}
+                title="Nhập từ Markdown"
+                className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                .md
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".md,text/markdown,text/plain"
+                className="hidden"
+                onChange={handleImportMarkdown}
+              />
+              <button
+                onClick={handleExportMarkdown}
+                title="Xuất Markdown"
+                className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                .md
+              </button>
+            </>
+          )}
           {docTitle && docId && (
             <a
               href={`/reader/${docId}`}

@@ -13,7 +13,7 @@ import "katex/dist/katex.min.css";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { List, X, Highlighter } from "lucide-react";
+import { List, X, Highlighter, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MermaidBlock } from "./MermaidBlock";
 import { HighlightMenu } from "./HighlightMenu";
@@ -23,6 +23,7 @@ import { AnnotationPanel } from "./AnnotationPanel";
 import { NoteHoverCard } from "./NoteHoverCard";
 import { DocNotePopover } from "./DocNotePopover";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
+import { NotesSidePanel } from "@/components/notes/NotesSidePanel";
 import { useHighlights, type HighlightColor, type HighlightPosition } from "@/hooks/useHighlights";
 import { useNotes } from "@/hooks/useNotes";
 import type { Components } from "react-markdown";
@@ -91,6 +92,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     initialNote: string;
   } | null>(null);
   const [notePanelOpen, setNotePanelOpen] = useState(false);
+  const [notesPanelOpen, setNotesPanelOpen] = useState(false);
   const [noteCard, setNoteCard] = useState<{
     x: number; y: number;
     highlightId: Id<"highlights">;
@@ -417,7 +419,20 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
                 </span>
               )}
             </button>
-<ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
+            <button
+              onClick={() => setNotesPanelOpen((v) => !v)}
+              className={[
+                "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
+                notesPanelOpen
+                  ? "bg-violet-100 text-violet-700"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ].join(" ")}
+              title="Ghi chú cá nhân"
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Ghi chú</span>
+            </button>
+            <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
           </div>
         </div>
 
@@ -505,6 +520,11 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
           );
         })()}
       </div>
+
+      {/* Notes side panel — personal notes workspace */}
+      {notesPanelOpen && (
+        <NotesSidePanel onClose={() => setNotesPanelOpen(false)} />
+      )}
 
       {/* Annotation panel — right sidebar (highlights + notes tabs) */}
       {notePanelOpen && (

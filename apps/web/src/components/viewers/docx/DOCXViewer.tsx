@@ -4,11 +4,12 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { Highlighter, List } from "lucide-react";
+import { Highlighter, List, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
 import { useHighlightActions } from "@/hooks/useHighlightActions";
 import { AnnotationOverlay, AnnotationSidebar } from "@/components/viewers/AnnotationOverlay";
+import { NotesSidePanel } from "@/components/notes/NotesSidePanel";
 
 interface DOCXViewerProps {
   doc: { _id: Id<"documents">; title: string };
@@ -142,6 +143,7 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
     </div>
   );
 
+  const [notesPanelOpen, setNotesPanelOpen] = useState(false);
   const hlCount = actions.highlights.length;
 
   return (
@@ -202,6 +204,17 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
                 </span>
               )}
             </Button>
+            <button
+              onClick={() => setNotesPanelOpen((v) => !v)}
+              className={[
+                "flex items-center gap-1.5 rounded px-2 py-1 text-xs h-7 transition-colors",
+                notesPanelOpen ? "bg-violet-100 text-violet-700" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ].join(" ")}
+              title="Ghi chú cá nhân"
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Ghi chú</span>
+            </button>
             <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
           </div>
         </div>
@@ -229,6 +242,7 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
             <AnnotationOverlay contentRef={contentRef} contentKey={html.length} {...actions} />
           </div>
           <AnnotationSidebar {...actions} />
+          {notesPanelOpen && <NotesSidePanel onClose={() => setNotesPanelOpen(false)} />}
         </div>
       </div>
     </div>
