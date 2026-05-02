@@ -218,7 +218,7 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
             ref={fileInputRef}
             type="file"
             multiple
-            accept=".pdf,.epub,.docx,.pptx,.jpg,.jpeg,.png,.webp,.gif,.mp3,.m4a,.wav,.mp4,.webm,.md,.markdown"
+            accept=".pdf,.epub,.docx,.pptx,.jpg,.jpeg,.png,.webp,.gif,.mp3,.m4a,.wav,.mp4,.webm,.md,.markdown,.html,.htm,.xhtml"
             className="hidden"
             onChange={handleFileInput}
             aria-hidden

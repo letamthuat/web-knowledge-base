@@ -21,6 +21,8 @@ export const SUPPORTED_FORMATS: Record<string, string> = {
   "text/x-markdown": "markdown",
   // .md files thường được detect là text/plain
   "text/plain": "markdown",
+  "text/html": "web_clip",
+  "application/xhtml+xml": "web_clip",
 };
 
 export const SUPPORTED_EXTENSIONS: Record<string, string> = {
@@ -40,6 +42,9 @@ export const SUPPORTED_EXTENSIONS: Record<string, string> = {
   ".webm": "video",
   ".md": "markdown",
   ".markdown": "markdown",
+  ".html": "web_clip",
+  ".htm": "web_clip",
+  ".xhtml": "web_clip",
 };
 
 export function detectFormat(file: File): string | null {
