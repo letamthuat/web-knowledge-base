@@ -239,23 +239,6 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
                 <Download className="h-3.5 w-3.5" />
                 .md
               </button>
-              <div className="h-3 w-px bg-border/60" />
-              <button
-                onClick={() => addToLibInputRef.current?.click()}
-                disabled={addingToLib}
-                title="Thêm file vào thư viện"
-                className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
-              >
-                <LibraryBig className="h-3.5 w-3.5" />
-                {addingToLib ? "Đang thêm..." : "Thêm vào thư viện"}
-              </button>
-              <input
-                ref={addToLibInputRef}
-                type="file"
-                accept=".pdf,.epub,.docx,.pptx,.md,.mp3,.m4a,.wav,.mp4,.webm,.jpg,.jpeg,.png,.webp,.gif"
-                className="hidden"
-                onChange={handleAddToLibrary}
-              />
             </>
           )}
           {docTitle && docId && (
