@@ -5,10 +5,12 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
-import { Download, Upload, ExternalLink } from "lucide-react";
+import { Download, Upload, ExternalLink, LibraryBig } from "lucide-react";
+import { toast } from "sonner";
+import { detectFormat } from "@/lib/storage";
 
 function parseBlocks(body: string) {
   try {
@@ -59,6 +61,10 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
 
   const requestUpload = useAction(api.notes.actions.requestNoteMediaUploadUrl);
   const getMediaUrl = useAction(api.notes.actions.getNoteMediaUrl);
+  const requestDocUpload = useAction(api.documents.actions.requestUploadUrl);
+  const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
+  const [addingToLib, setAddingToLib] = useState(false);
+  const addToLibInputRef = useRef<HTMLInputElement>(null);
 
   const uploadFile = useCallback(async (file: File): Promise<string> => {
     const { uploadUrl, storageKey } = await requestUpload({
@@ -136,6 +142,41 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     scheduleSave(JSON.stringify(blocks));
   }, [editor, scheduleSave]);
 
+  const handleAddToLibrary = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const format = detectFormat(file);
+    if (!format) {
+      toast.error("Định dạng file không được hỗ trợ");
+      return;
+    }
+    setAddingToLib(true);
+    try {
+      const { uploadUrl, storageKey } = await requestDocUpload({
+        fileSizeBytes: file.size,
+        format,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+      });
+      await fetch(uploadUrl, { method: "PUT", body: file });
+      const docId = await finalizeUpload({
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        format: format as never,
+        fileSizeBytes: file.size,
+        storageBackend: "r2",
+        storageKey,
+      });
+      toast.success("Đã thêm vào thư viện", {
+        action: { label: "Mở", onClick: () => window.open(`/reader/${docId}`, "_blank") },
+      });
+    } catch {
+      toast.error("Không thể thêm vào thư viện");
+    } finally {
+      setAddingToLib(false);
+    }
+  }, [requestDocUpload, finalizeUpload]);
+
   const handleExportMarkdown = useCallback(async () => {
     if (!editor) return;
     const md = await editor.blocksToMarkdownLossy(editor.document);
@@ -198,6 +239,23 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
                 <Download className="h-3.5 w-3.5" />
                 .md
               </button>
+              <div className="h-3 w-px bg-border/60" />
+              <button
+                onClick={() => addToLibInputRef.current?.click()}
+                disabled={addingToLib}
+                title="Thêm file vào thư viện"
+                className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                <LibraryBig className="h-3.5 w-3.5" />
+                {addingToLib ? "Đang thêm..." : "Thêm vào thư viện"}
+              </button>
+              <input
+                ref={addToLibInputRef}
+                type="file"
+                accept=".pdf,.epub,.docx,.pptx,.md,.mp3,.m4a,.wav,.mp4,.webm,.jpg,.jpeg,.png,.webp,.gif"
+                className="hidden"
+                onChange={handleAddToLibrary}
+              />
             </>
           )}
           {docTitle && docId && (
