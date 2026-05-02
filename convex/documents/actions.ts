@@ -1,6 +1,6 @@
 "use node";
 import { action, internalAction } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { internal, api } from "../_generated/api";
 import { v } from "convex/values";
 import { S3Client, GetObjectCommand, DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -99,6 +99,47 @@ export const getDownloadUrl = action({
       });
       return await getSignedUrl(r2, command, { expiresIn: 900 });
     }
+  },
+});
+
+export const copyUrlToLibrary = action({
+  args: {
+    sourceUrl: v.string(),
+    fileName: v.string(),
+    format: v.string(),
+    mimeType: v.optional(v.string()),
+    title: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<string> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    // Fetch file server-side (bypasses CORS)
+    const res = await fetch(args.sourceUrl);
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const r2 = getR2Client();
+    const bucket = process.env.R2_BUCKET_NAME!;
+    const key = `${identity.subject}/${Date.now()}-${args.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+
+    await r2.send(new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: args.mimeType ?? "application/octet-stream",
+    }));
+
+    const docId = await ctx.runMutation(api.documents.mutations.finalizeUpload, {
+      title: args.title ?? args.fileName.replace(/\.[^/.]+$/, ""),
+      format: args.format as never,
+      fileSizeBytes: buffer.byteLength,
+      storageBackend: "r2",
+      storageKey: key,
+    });
+
+    return docId;
   },
 });
 

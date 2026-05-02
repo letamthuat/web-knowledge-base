@@ -25,7 +25,7 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { offset, shift } from "@floating-ui/react";
 import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
-import { useAction, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/_generated/api";
 import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
@@ -142,15 +142,13 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
 
   const requestUpload = useAction(api.notes.actions.requestNoteMediaUploadUrl);
   const getMediaUrl = useAction(api.notes.actions.getNoteMediaUrl);
-  const requestDocUpload = useAction(api.documents.actions.requestUploadUrl);
-  const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
+  const copyUrlToLibrary = useAction(api.documents.actions.copyUrlToLibrary);
   const [addingToLib, setAddingToLib] = useState(false);
 
   // Called from AddToLibraryButton with the file's R2 presigned URL + name
   const handleAddFileToLibrary = useCallback(async (fileUrl: string, fileName: string) => {
     if (addingToLib) return;
 
-    // Detect format from filename/URL extension
     const ext = "." + fileName.split(".").pop()?.toLowerCase();
     const format = SUPPORTED_EXTENSIONS[ext] ?? null;
     if (!format) {
@@ -162,25 +160,12 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
 
     setAddingToLib(true);
     try {
-      // Fetch the file from R2 presigned URL
-      const res = await fetch(fileUrl);
-      if (!res.ok) throw new Error("Không thể tải file");
-      const blob = await res.blob();
-      const file = new File([blob], fileName, { type: blob.type });
-
-      const { uploadUrl, storageKey } = await requestDocUpload({
-        fileSizeBytes: file.size,
-        format,
+      // Server-side copy to bypass CORS on R2 presigned URLs
+      const docId = await copyUrlToLibrary({
+        sourceUrl: fileUrl,
         fileName,
-        mimeType: file.type || "application/octet-stream",
-      });
-      await fetch(uploadUrl, { method: "PUT", body: file });
-      const docId = await finalizeUpload({
+        format,
         title: fileName.replace(/\.[^/.]+$/, ""),
-        format: format as never,
-        fileSizeBytes: file.size,
-        storageBackend: "r2",
-        storageKey,
       });
       toast.success("Đã thêm vào thư viện", {
         action: { label: "Mở", onClick: () => window.open(`/reader/${docId}`, "_blank") },
@@ -190,7 +175,7 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     } finally {
       setAddingToLib(false);
     }
-  }, [addingToLib, requestDocUpload, finalizeUpload]);
+  }, [addingToLib, copyUrlToLibrary]);
 
   const uploadFile = useCallback(async (file: File): Promise<string> => {
     const { uploadUrl, storageKey } = await requestUpload({
