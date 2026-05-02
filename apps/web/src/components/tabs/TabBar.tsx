@@ -94,12 +94,14 @@ interface TabBarProps {
   showAddButton?: boolean;
   /** Pass true when rendered on the /notes page so the Notes tab appears active */
   notesActive?: boolean;
+  /** Title of the currently open note — shown as a sub-tab next to the Notes tab */
+  activeNoteTitle?: string | null;
 }
 
 // Session-local stack of recently closed tab docIds for Ctrl+Shift+T
 const closedTabStack: string[] = [];
 
-export function TabBar({ currentDocId, showAddButton = false, notesActive = false }: TabBarProps) {
+export function TabBar({ currentDocId, showAddButton = false, notesActive = false, activeNoteTitle }: TabBarProps) {
   const router = useRouter();
   const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab } = useTabSync();
   const [optimisticTabs, setOptimisticTabs] = useState<TabDoc[] | null>(null);
@@ -192,7 +194,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
               onClick={() => router.push("/notes")}
               className={[
                 "group relative flex h-8 min-w-0 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-all duration-150",
-                notesActive
+                notesActive && !activeNoteTitle
                   ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
                   : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
               ].join(" ")}
@@ -200,6 +202,16 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
               <StickyNote className="h-3 w-3 shrink-0 opacity-70" />
               Ghi chú
             </button>
+            {/* Active note sub-tab */}
+            {notesActive && activeNoteTitle && (
+              <button
+                onClick={() => router.push("/notes")}
+                className="group relative flex h-8 min-w-0 max-w-[160px] shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-all duration-150 bg-background text-foreground shadow-sm ring-1 ring-border/60"
+              >
+                <StickyNote className="h-3 w-3 shrink-0 opacity-70" />
+                <span className="flex-1 truncate">{activeNoteTitle}</span>
+              </button>
+            )}
             {displayTabs.length > 0 && <div className="h-4 w-px shrink-0 bg-border/40" />}
             {displayTabs.map((tab) => (
               <SortableTabItem

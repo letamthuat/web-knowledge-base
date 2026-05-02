@@ -91,7 +91,7 @@ export function NotesPageInner() {
       </header>
 
       {/* Tab bar */}
-      <TabBar currentDocId={null} notesActive />
+      <TabBar currentDocId={null} notesActive showAddButton activeNoteTitle={selectedNote?.title || null} />
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
