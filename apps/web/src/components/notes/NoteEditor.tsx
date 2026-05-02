@@ -49,7 +49,7 @@ function mimeFromUrl(url: string): string {
 }
 
 interface AddToLibraryButtonProps {
-  onAdd: (url: string, name: string) => void;
+  onAdd: (storageKey: string, name: string) => void;
 }
 
 function AddToLibraryButton({ onAdd }: AddToLibraryButtonProps) {
@@ -67,11 +67,16 @@ function AddToLibraryButton({ onAdd }: AddToLibraryButtonProps) {
 
   const { url, name } = blockInfo ?? {};
 
-  if (!url) return null;
+  // url is a presigned R2 URL — extract storageKey from path before query string
+  const storageKey = url ? new URL(url).pathname.replace(/^\//, "") : null;
+  // Only show for note media files (stored under notes/ prefix)
+  if (!storageKey || !storageKey.startsWith("notes/")) return null;
+
+  const fileName = name || storageKey.split("/").pop() || "file";
 
   return (
     <button
-      onClick={() => onAdd(url, name || url.split("/").pop() || "file")}
+      onClick={() => onAdd(storageKey, fileName)}
       title="Thêm vào thư viện"
       className="flex h-7 items-center gap-1 rounded px-2 text-[11px] font-medium text-violet-600 hover:bg-violet-50 hover:text-violet-700 transition-colors border border-violet-200"
     >
@@ -142,13 +147,13 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
 
   const requestUpload = useAction(api.notes.actions.requestNoteMediaUploadUrl);
   const getMediaUrl = useAction(api.notes.actions.getNoteMediaUrl);
-  const copyUrlToLibrary = useAction(api.documents.actions.copyUrlToLibrary);
+  const copyNoteFileToLibrary = useAction(api.documents.actions.copyNoteFileToLibrary);
   const requestDocUpload = useAction(api.documents.actions.requestUploadUrl);
   const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
   const [addingToLib, setAddingToLib] = useState(false);
 
-  // Called from AddToLibraryButton with the file's R2 presigned URL + name
-  const handleAddFileToLibrary = useCallback(async (fileUrl: string, fileName: string) => {
+  // Called from AddToLibraryButton with storageKey + fileName
+  const handleAddFileToLibrary = useCallback(async (storageKey: string, fileName: string) => {
     if (addingToLib) return;
 
     const ext = "." + fileName.split(".").pop()?.toLowerCase();
@@ -162,9 +167,8 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
 
     setAddingToLib(true);
     try {
-      // Server-side copy to bypass CORS on R2 presigned URLs
-      const docId = await copyUrlToLibrary({
-        sourceUrl: fileUrl,
+      const docId = await copyNoteFileToLibrary({
+        sourceStorageKey: storageKey,
         fileName,
         format,
         title: fileName.replace(/\.[^/.]+$/, ""),
@@ -177,7 +181,7 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     } finally {
       setAddingToLib(false);
     }
-  }, [addingToLib, copyUrlToLibrary]);
+  }, [addingToLib, copyNoteFileToLibrary]);
 
   const uploadFile = useCallback(async (file: File): Promise<string> => {
     const { uploadUrl, storageKey } = await requestUpload({

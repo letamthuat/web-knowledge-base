@@ -102,9 +102,9 @@ export const getDownloadUrl = action({
   },
 });
 
-export const copyUrlToLibrary = action({
+export const copyNoteFileToLibrary = action({
   args: {
-    sourceUrl: v.string(),
+    sourceStorageKey: v.string(),
     fileName: v.string(),
     format: v.string(),
     mimeType: v.optional(v.string()),
@@ -114,16 +114,23 @@ export const copyUrlToLibrary = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    // Fetch file server-side (bypasses CORS)
-    const res = await fetch(args.sourceUrl);
-    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
     const r2 = getR2Client();
     const bucket = process.env.R2_BUCKET_NAME!;
-    const key = `${identity.subject}/${Date.now()}-${args.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
+    // Read from note media storage key using SDK (no CORS issue)
+    const getRes = await r2.send(new GetObjectCommand({
+      Bucket: bucket,
+      Key: args.sourceStorageKey,
+    }));
+
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of getRes.Body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+
+    // Write to new key in same bucket (under user's doc prefix)
+    const key = `${identity.subject}/${Date.now()}-${args.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     await r2.send(new PutObjectCommand({
       Bucket: bucket,
       Key: key,
