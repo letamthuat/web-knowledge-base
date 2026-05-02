@@ -32,10 +32,10 @@ export const requestNoteMediaUploadUrl = action({
     const sanitized = args.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
     const key = `notes/${identity.subject}/${Date.now()}-${sanitized}`;
 
+    // Do NOT include ContentType in presigned URL — R2 rejects if client doesn't send matching header
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
-      ContentType: args.mimeType,
     });
     const uploadUrl = await getSignedUrl(r2, command, { expiresIn: 3600 });
 

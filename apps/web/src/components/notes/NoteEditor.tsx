@@ -175,6 +175,7 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
       fileName: file.name,
       mimeType: file.type || "application/octet-stream",
     });
+    // No Content-Type header — presigned URL doesn't sign it, adding it causes R2 signature mismatch
     await fetch(uploadUrl, { method: "PUT", body: file });
     return await getMediaUrl({ storageKey });
   }, [requestUpload, getMediaUrl]);
