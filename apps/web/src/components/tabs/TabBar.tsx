@@ -157,7 +157,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openTab, router]);
 
-  if (isLoading || (tabs.length === 0 && !notesActive && noteTabs.length === 0 && !showAddButton)) return null;
+  if ((isLoading && noteTabs.length === 0) || (tabs.length === 0 && !notesActive && noteTabs.length === 0 && !showAddButton)) return null;
 
   async function handleClose(e: React.MouseEvent, tab: TabDoc) {
     e.stopPropagation();

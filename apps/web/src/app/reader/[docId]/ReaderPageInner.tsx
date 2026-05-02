@@ -97,7 +97,13 @@ function ReaderShell({ doc, downloadUrl }: {
 
         <div className="flex flex-1 flex-col overflow-hidden">
           {showDropdown
-            ? <TabDropdown currentDocId={doc._id} />
+            ? <TabDropdown
+                currentDocId={doc._id}
+                noteTabs={noteTabs}
+                activeNoteId={activeNoteId}
+                onSelectNoteTab={(id) => { setActiveNoteId(id as Id<"notes">); router.push("/notes"); }}
+                onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
+              />
             : <TabBar
                 currentDocId={doc._id}
                 showAddButton
