@@ -46,7 +46,7 @@ export function ImageViewer({ doc, downloadUrl }: ImageViewerProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-muted/60">
       {/* Toolbar */}
-      <div className="flex shrink-0 items-center gap-1 border-b bg-card px-4 py-2">
+      <div className="flex shrink-0 items-center gap-1 border-b bg-card px-4 py-1.5">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setScale((s) => Math.min(10, s * 1.2))}>
           <ZoomIn className="h-4 w-4" />
         </Button>

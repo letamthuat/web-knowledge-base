@@ -182,7 +182,7 @@ export function PPTXViewer({ doc, downloadUrl }: PPTXViewerProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-zinc-800">
       {/* Toolbar — always visible, outside fullscreen element */}
-      <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2">
+      <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goTo(slideIndex - 1)} disabled={slideIndex <= 0 || loading}>
             <ChevronLeft className="h-4 w-4" />

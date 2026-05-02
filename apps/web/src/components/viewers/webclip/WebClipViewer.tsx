@@ -112,7 +112,7 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Toolbar */}
-      <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2">
+      <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
         <div className="flex items-center gap-2">
           <Button variant={mode === "clean" ? "secondary" : "ghost"} size="sm" className="gap-1.5" onClick={() => setMode("clean")} disabled={!cleanHtml}>
             <FileText className="h-3.5 w-3.5" />Bản sạch

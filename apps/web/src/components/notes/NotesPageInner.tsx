@@ -112,12 +112,15 @@ export function NotesPageInner() {
         }}
       />
 
-      {/* Toolbar — giống viewer */}
-      <div className="flex shrink-0 items-center border-b bg-card px-4 py-1.5">
-        <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setSidebarOpen(v => !v)}>
-          <List className="h-3.5 w-3.5" />
-          {sidebarOpen ? "Ẩn danh sách" : "Danh sách"}
-        </Button>
+      {/* Toolbar */}
+      <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
+        <div>
+          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setSidebarOpen(v => !v)}>
+            <List className="h-3.5 w-3.5" />
+            {sidebarOpen ? "Ẩn danh sách" : "Danh sách"}
+          </Button>
+        </div>
+        <div className="flex items-center gap-2" />
       </div>
 
       {/* Main content */}
