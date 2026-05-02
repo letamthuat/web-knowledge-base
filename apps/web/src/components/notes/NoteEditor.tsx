@@ -6,7 +6,7 @@ import { BlockNoteView } from "@blocknote/mantine";
 import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
 import { Id } from "@/_generated/dataModel";
-import { ExternalLink } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 
 function parseBlocks(body: string) {
   try {
@@ -96,6 +96,19 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     scheduleSave(JSON.stringify(editor?.document ?? []));
   };
 
+  const handleExportMarkdown = useCallback(async () => {
+    if (!editor) return;
+    const md = await editor.blocksToMarkdownLossy(editor.document);
+    const titleLine = latestTitle.current ? `# ${latestTitle.current}\n\n` : "";
+    const blob = new Blob([titleLine + md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${latestTitle.current || "ghi-chu"}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [editor]);
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Title bar */}
@@ -114,6 +127,14 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
           ) : (
             <span className="text-[11px] text-amber-500">Đang lưu...</span>
           )}
+          <button
+            onClick={handleExportMarkdown}
+            title="Xuất Markdown"
+            className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            .md
+          </button>
           {docTitle && docId && (
             <a
               href={`/reader/${docId}`}

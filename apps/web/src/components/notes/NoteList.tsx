@@ -96,20 +96,22 @@ function NoteRow({ note, selected, onSelect, onDelete }: {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium leading-snug text-foreground">
-            {note.title || "(Không có tiêu đề)"}
-          </p>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="truncate text-[13px] font-medium leading-snug text-foreground">
+              {note.title || "(Không có tiêu đề)"}
+            </p>
+            <span className="shrink-0 text-[11px] text-muted-foreground/60">{timeAgo(note.updatedAt)}</span>
+          </div>
           <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
             {bodyPreview(note.body)}
           </p>
-          <div className="mt-1.5 flex items-center gap-2">
-            {note.docTitle && (
-              <span className="truncate text-[11px] text-violet-600 max-w-[120px]">
+          {note.docTitle && (
+            <div className="mt-1">
+              <span className="truncate text-[11px] text-violet-600 max-w-[140px]">
                 📎 {note.docTitle}
               </span>
-            )}
-            <span className="text-[11px] text-muted-foreground/60">{timeAgo(note.updatedAt)}</span>
-          </div>
+            </div>
+          )}
         </div>
         <button
           onClick={(e) => {
