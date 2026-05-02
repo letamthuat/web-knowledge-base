@@ -106,7 +106,7 @@ export const getBackupData = action({
   args: {},
   handler: async (ctx): Promise<{
     docs: { id: string; title: string; format: string; createdAt: number; downloadUrl: string }[];
-    notes: { id: string; title: string; body: string; docTitle: string | null; updatedAt: number }[];
+    notes: { id: string; title: string | undefined; body: string; docTitle: string | null; updatedAt: number }[];
     highlights: { docId: string; docTitle: string; text: string; note: string | null; createdAt: number }[];
   }> => {
     const identity = await ctx.auth.getUserIdentity();
