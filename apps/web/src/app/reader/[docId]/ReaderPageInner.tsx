@@ -12,7 +12,7 @@ import { ReaderProgressContext } from "@/components/viewers/ReaderProgressContex
 import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopover";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, BookOpen, StickyNote, Settings, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TabBar } from "@/components/tabs/TabBar";
 import { TabDropdown } from "@/components/tabs/TabDropdown";
@@ -52,6 +52,23 @@ function ReaderShell({ doc, downloadUrl }: {
   }, []);
   const showDropdown = isMobile;
 
+  // Mobile swipe drawer
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    // Swipe right from left edge (< 40px) at least 60px, mostly horizontal
+    if (touchStartX.current < 40 && dx > 60 && dy < 80) setDrawerOpen(true);
+    // Swipe left to close
+    if (drawerOpen && dx < -60 && dy < 80) setDrawerOpen(false);
+  }, [drawerOpen]);
+
   // Auto-register current doc as a tab when entering reader
   const tabOpened = useRef(false);
   useEffect(() => {
@@ -84,7 +101,37 @@ function ReaderShell({ doc, downloadUrl }: {
 
   return (
     <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition: savePositionWithTab, jumpTo, registerJump }}>
-      <div className="flex h-screen flex-col overflow-hidden bg-background">
+      <div
+        className="flex h-screen flex-col overflow-hidden bg-background"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Mobile swipe drawer */}
+        {isMobile && drawerOpen && (
+          <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
+            <aside className="absolute left-0 top-0 h-full w-64 bg-background border-r shadow-xl flex flex-col p-4 gap-1">
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-semibold text-sm">Menu</span>
+                <button onClick={() => setDrawerOpen(false)} className="rounded p-1.5 hover:bg-muted transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <button onClick={() => { setDrawerOpen(false); router.push("/library"); }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+                <BookOpen className="h-4 w-4" /> Thư viện
+              </button>
+              <button onClick={() => { setDrawerOpen(false); router.push("/notes"); }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+                <StickyNote className="h-4 w-4" /> Ghi chú
+              </button>
+              <button onClick={() => { setDrawerOpen(false); router.push("/settings"); }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+                <Settings className="h-4 w-4" /> Cài đặt
+              </button>
+            </aside>
+          </div>
+        )}
         <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4">
           <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden />
