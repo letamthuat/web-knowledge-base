@@ -132,14 +132,31 @@ function ReaderShell({ doc, downloadUrl }: {
             </aside>
           </div>
         )}
-        <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Thư viện
-          </Button>
-          <span className="flex-1 truncate text-sm font-medium">{doc.title}</span>
-          <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
-          <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
+        <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5 shrink-0 md:hidden">
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+            </Button>
+            <div className="hidden md:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+              <BookOpen className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="truncate text-sm font-medium">{doc.title}</span>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="sm" onClick={() => router.push("/library")}>Thư viện</Button>
+            <Button variant="ghost" size="sm" onClick={() => router.push("/notes")}>
+              <StickyNote className="mr-1.5 h-3.5 w-3.5" />Ghi chú
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => router.push("/settings")}>
+              <Settings className="mr-1 h-4 w-4" />Cài đặt
+            </Button>
+          </nav>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
+            <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
+          </div>
         </header>
 
         <div className="flex flex-1 flex-col overflow-hidden">
