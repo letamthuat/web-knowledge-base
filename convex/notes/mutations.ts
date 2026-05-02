@@ -45,6 +45,22 @@ export const update = mutation({
   },
 });
 
+export const generateImageUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAuth(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const getImageUrl = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    await requireAuth(ctx);
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
 export const remove = mutation({
   args: { noteId: v.id("notes") },
   handler: async (ctx, args) => {

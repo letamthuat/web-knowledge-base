@@ -5,6 +5,8 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
+import { useMutation } from "convex/react";
+import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { Download, ExternalLink } from "lucide-react";
 
@@ -53,8 +55,24 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     }
   }, [noteId, autoFocusTitle]);
 
+  const generateUploadUrl = useMutation(api.notes.mutations.generateImageUploadUrl);
+  const getImageUrl = useMutation(api.notes.mutations.getImageUrl);
+
+  const uploadFile = useCallback(async (file: File): Promise<string> => {
+    const uploadUrl = await generateUploadUrl();
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    const { storageId } = await res.json() as { storageId: Id<"_storage"> };
+    const url = await getImageUrl({ storageId });
+    return url ?? "";
+  }, [generateUploadUrl, getImageUrl]);
+
   const editor = useCreateBlockNote({
     initialContent: parseBlocks(initialBody) as never,
+    uploadFile,
   }, [noteId]);
 
   const scheduleSave = useCallback((bodyJson: string) => {
