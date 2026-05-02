@@ -20,6 +20,7 @@ export function NotesPageInner() {
   const { data: session } = useSession();
   const { notes, addNote, updateNote, removeNote } = useAllNotes();
   const [selectedId, setSelectedId] = useState<Id<"notes"> | null>(null);
+  const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
 
   const handleLogout = async () => {
     await signOut();
@@ -29,7 +30,10 @@ export function NotesPageInner() {
   const handleNew = useCallback(async () => {
     try {
       const id = await addNote("[]", "");
-      if (id) setSelectedId(id as Id<"notes">);
+      if (id) {
+        setSelectedId(id as Id<"notes">);
+        setNewNoteId(id as Id<"notes">);
+      }
     } catch {
       toast.error("Không thể tạo ghi chú");
     }
@@ -108,6 +112,7 @@ export function NotesPageInner() {
             docTitle={selectedNote.docTitle}
             docId={selectedNote.docId ?? null}
             onUpdate={handleUpdate}
+            autoFocusTitle={newNoteId === selectedNote._id}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground">

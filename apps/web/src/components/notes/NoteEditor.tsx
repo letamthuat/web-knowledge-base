@@ -8,15 +8,6 @@ import "@blocknote/mantine/style.css";
 import { Id } from "@/_generated/dataModel";
 import { ExternalLink } from "lucide-react";
 
-interface NoteEditorProps {
-  noteId: Id<"notes">;
-  initialTitle: string;
-  initialBody: string;
-  docTitle?: string | null;
-  docId?: Id<"documents"> | null;
-  onUpdate: (id: Id<"notes">, body: string, title: string) => Promise<void>;
-}
-
 function parseBlocks(body: string) {
   try {
     const parsed = JSON.parse(body);
@@ -29,12 +20,23 @@ function parseBlocks(body: string) {
   return [];
 }
 
-export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate }: NoteEditorProps) {
+interface NoteEditorProps {
+  noteId: Id<"notes">;
+  initialTitle: string;
+  initialBody: string;
+  docTitle?: string | null;
+  docId?: Id<"documents"> | null;
+  onUpdate: (id: Id<"notes">, body: string, title: string) => Promise<void>;
+  autoFocusTitle?: boolean;
+}
+
+export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate, autoFocusTitle }: NoteEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saved, setSaved] = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestTitle = useRef(title);
   const isFirstChange = useRef(true);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   // Reset khi đổi note
   useEffect(() => {
@@ -43,6 +45,13 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     setSaved(true);
     isFirstChange.current = true;
   }, [noteId, initialTitle]);
+
+  // Auto-focus title khi tạo note mới
+  useEffect(() => {
+    if (autoFocusTitle) {
+      setTimeout(() => titleRef.current?.focus(), 50);
+    }
+  }, [noteId, autoFocusTitle]);
 
   const editor = useCreateBlockNote({
     initialContent: parseBlocks(initialBody) as never,
@@ -92,6 +101,7 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
       {/* Title bar */}
       <div className="flex shrink-0 items-center justify-between border-b bg-card px-6 py-3">
         <input
+          ref={titleRef}
           type="text"
           value={title}
           onChange={handleTitleChange}
