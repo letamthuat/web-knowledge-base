@@ -10,6 +10,7 @@ import { TabBar } from "@/components/tabs/TabBar";
 import { NoteList } from "@/components/notes/NoteList";
 import { NoteEditor } from "@/components/notes/NoteEditor";
 import { useAllNotes } from "@/hooks/useNotes";
+import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { Id } from "@/_generated/dataModel";
 import { labels } from "@/lib/i18n/labels";
 
@@ -19,45 +20,50 @@ export function NotesPageInner() {
   const router = useRouter();
   const { data: session } = useSession();
   const { notes, addNote, updateNote, removeNote } = useAllNotes();
-  const [selectedId, setSelectedId] = useState<Id<"notes"> | null>(null);
   const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
+  const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
 
   const handleLogout = async () => {
     await signOut();
     router.push("/login");
   };
 
+  const handleSelect = useCallback((id: Id<"notes">) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const note = (notes as any[]).find((n) => n._id === id);
+    openNoteTab(id, note?.title ?? "");
+    setActiveNoteId(id);
+  }, [notes, openNoteTab, setActiveNoteId]);
+
   const handleNew = useCallback(async () => {
     try {
       const id = await addNote("[]", "");
       if (id) {
-        setSelectedId(id as Id<"notes">);
-        setNewNoteId(id as Id<"notes">);
+        const noteId = id as Id<"notes">;
+        openNoteTab(noteId, "");
+        setNewNoteId(noteId);
       }
     } catch {
       toast.error("Không thể tạo ghi chú");
     }
-  }, [addNote]);
+  }, [addNote, openNoteTab]);
 
   const handleDelete = useCallback(async (id: Id<"notes">) => {
     try {
       await removeNote(id);
-      if (selectedId === id) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const remaining = (notes as any[]).filter((n) => n._id !== id);
-        setSelectedId(remaining[0]?._id ?? null);
-      }
+      closeNoteTab(id);
     } catch {
       toast.error("Không thể xoá ghi chú");
     }
-  }, [removeNote, selectedId, notes]);
+  }, [removeNote, closeNoteTab]);
 
   const handleUpdate = useCallback(async (id: Id<"notes">, body: string, title: string) => {
     await updateNote(id, body, title);
-  }, [updateNote]);
+    updateNoteTabTitle(id, title);
+  }, [updateNote, updateNoteTabTitle]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const selectedNote = (notes as any[]).find((n) => n._id === selectedId) ?? null;
+  const selectedNote = (notes as any[]).find((n) => n._id === activeNoteId) ?? null;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -91,14 +97,26 @@ export function NotesPageInner() {
       </header>
 
       {/* Tab bar */}
-      <TabBar currentDocId={null} notesActive showAddButton activeNoteTitle={selectedNote?.title || null} />
+      <TabBar
+        currentDocId={null}
+        notesActive
+        showAddButton
+        noteTabs={noteTabs}
+        activeNoteId={activeNoteId}
+        onSelectNoteTab={(id) => {
+          setActiveNoteId(id as Id<"notes">);
+        }}
+        onCloseNoteTab={(id) => {
+          closeNoteTab(id as Id<"notes">);
+        }}
+      />
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         <NoteList
           notes={notes}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
+          selectedId={activeNoteId as Id<"notes"> | null}
+          onSelect={handleSelect}
           onNew={handleNew}
           onDelete={handleDelete}
         />

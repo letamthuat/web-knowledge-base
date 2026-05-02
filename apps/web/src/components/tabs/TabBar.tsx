@@ -22,6 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useEffect, useRef } from "react";
+import { NoteTab } from "@/hooks/useNoteTabs";
 
 const FORMAT_ICONS: Record<string, React.ElementType> = {
   pdf: FileText, epub: BookOpen, docx: FileType2, pptx: Presentation,
@@ -94,14 +95,20 @@ interface TabBarProps {
   showAddButton?: boolean;
   /** Pass true when rendered on the /notes page so the Notes tab appears active */
   notesActive?: boolean;
-  /** Title of the currently open note — shown as a sub-tab next to the Notes tab */
-  activeNoteTitle?: string | null;
+  /** Open note tabs to display in the tab bar */
+  noteTabs?: NoteTab[];
+  /** Currently active note id */
+  activeNoteId?: string | null;
+  /** Called when user clicks X on a note tab */
+  onCloseNoteTab?: (noteId: string) => void;
+  /** Called when user clicks a note tab to navigate to it */
+  onSelectNoteTab?: (noteId: string) => void;
 }
 
 // Session-local stack of recently closed tab docIds for Ctrl+Shift+T
 const closedTabStack: string[] = [];
 
-export function TabBar({ currentDocId, showAddButton = false, notesActive = false, activeNoteTitle }: TabBarProps) {
+export function TabBar({ currentDocId, showAddButton = false, notesActive = false, noteTabs = [], activeNoteId, onCloseNoteTab, onSelectNoteTab }: TabBarProps) {
   const router = useRouter();
   const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab } = useTabSync();
   const [optimisticTabs, setOptimisticTabs] = useState<TabDoc[] | null>(null);
@@ -130,7 +137,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openTab, router]);
 
-  if (isLoading || (tabs.length === 0 && !notesActive)) return null;
+  if (isLoading || (tabs.length === 0 && !notesActive && noteTabs.length === 0)) return null;
 
   async function handleClose(e: React.MouseEvent, tab: TabDoc) {
     e.stopPropagation();
@@ -189,30 +196,55 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={displayTabs.map((t) => t._id)} strategy={horizontalListSortingStrategy}>
           <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto scrollbar-none py-1">
-            {/* Notes tab — always shown, navigates to /notes */}
-            <button
-              onClick={() => router.push("/notes")}
-              className={[
-                "group relative flex h-8 min-w-0 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-all duration-150",
-                notesActive && !activeNoteTitle
-                  ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
-                  : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
-              ].join(" ")}
-            >
-              <StickyNote className="h-3 w-3 shrink-0 opacity-70" />
-              Ghi chú
-            </button>
-            {/* Active note sub-tab */}
-            {notesActive && activeNoteTitle && (
+            {/* Notes hub tab — navigates to /notes list */}
+            {(notesActive || noteTabs.length > 0) && (
               <button
                 onClick={() => router.push("/notes")}
-                className="group relative flex h-8 min-w-0 max-w-[160px] shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-all duration-150 bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                className={[
+                  "group relative flex h-8 min-w-0 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-all duration-150",
+                  notesActive && !activeNoteId
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                ].join(" ")}
               >
                 <StickyNote className="h-3 w-3 shrink-0 opacity-70" />
-                <span className="flex-1 truncate">{activeNoteTitle}</span>
+                Ghi chú
               </button>
             )}
-            {displayTabs.length > 0 && <div className="h-4 w-px shrink-0 bg-border/40" />}
+            {/* Individual note tabs */}
+            {noteTabs.map((nt) => {
+              const isNoteActive = notesActive && activeNoteId === nt.noteId;
+              return (
+                <div
+                  key={nt.noteId}
+                  onClick={() => onSelectNoteTab?.(nt.noteId)}
+                  className={[
+                    "group relative flex h-8 min-w-0 max-w-[160px] shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-left transition-all duration-150",
+                    isNoteActive
+                      ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                      : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                  ].join(" ")}
+                >
+                  <StickyNote className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                  <span className="flex-1 truncate text-xs font-medium">{nt.title || "(Không có tiêu đề)"}</span>
+                  <span
+                    role="button"
+                    aria-label="Đóng tab ghi chú"
+                    onClick={(e) => { e.stopPropagation(); onCloseNoteTab?.(nt.noteId); }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className={[
+                      "ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded transition-all",
+                      isNoteActive
+                        ? "opacity-60 hover:opacity-100 hover:bg-muted"
+                        : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-muted",
+                    ].join(" ")}
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </span>
+                </div>
+              );
+            })}
+            {(noteTabs.length > 0 || notesActive) && displayTabs.length > 0 && <div className="h-4 w-px shrink-0 bg-border/40" />}
             {displayTabs.map((tab) => (
               <SortableTabItem
                 key={tab._id}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { X, FilePlus, StickyNote } from "lucide-react";
 import { toast } from "sonner";
 import { useAllNotes } from "@/hooks/useNotes";
@@ -25,6 +25,10 @@ function bodyPreview(body: string): string {
   }
 }
 
+const MIN_WIDTH = 240;
+const MAX_WIDTH = 600;
+const DEFAULT_WIDTH = 320;
+
 interface NotesSidePanelProps {
   onClose: () => void;
 }
@@ -33,6 +37,10 @@ export function NotesSidePanel({ onClose }: NotesSidePanelProps) {
   const { notes, addNote, updateNote, removeNote } = useAllNotes();
   const [selectedId, setSelectedId] = useState<Id<"notes"> | null>(null);
   const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(DEFAULT_WIDTH);
 
   const handleNew = useCallback(async () => {
     try {
@@ -63,11 +71,45 @@ export function NotesSidePanel({ onClose }: NotesSidePanelProps) {
     await updateNote(id, body, title);
   }, [updateNote]);
 
+  // Resize drag handlers
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    startX.current = e.clientX;
+    startWidth.current = width;
+  }, [width]);
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!dragging.current) return;
+      // Panel is on right side — drag left increases width
+      const delta = startX.current - e.clientX;
+      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + delta));
+      setWidth(next);
+    }
+    function onMouseUp() {
+      dragging.current = false;
+    }
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const selectedNote = (notes as any[]).find((n) => n._id === selectedId) ?? null;
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l bg-card">
+    <aside className="relative flex shrink-0 flex-col border-l bg-card" style={{ width }}>
+      {/* Resize handle — left edge */}
+      <div
+        onMouseDown={onMouseDown}
+        className="absolute left-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors z-10"
+        title="Kéo để thay đổi kích thước"
+      />
+
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
         <div className="flex items-center gap-1.5">
@@ -95,7 +137,6 @@ export function NotesSidePanel({ onClose }: NotesSidePanelProps) {
       {selectedNote ? (
         // Editor mode — full panel
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Back to list */}
           <button
             onClick={() => setSelectedId(null)}
             className="flex shrink-0 items-center gap-1 border-b px-3 py-1.5 text-[11px] text-muted-foreground hover:bg-muted transition-colors text-left"
