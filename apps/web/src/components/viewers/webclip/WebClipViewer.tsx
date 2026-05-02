@@ -175,7 +175,7 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
           ) : (
             <iframe
               srcDoc={rawHtml ?? ""}
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
               className="h-full w-full border-none"
               title={doc.title}
             />
