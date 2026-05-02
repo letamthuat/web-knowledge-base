@@ -33,6 +33,35 @@ export const listTrashed = query({
   },
 });
 
+export const getStorageStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const userId = identity.subject;
+
+    const [ready, trashed, notes] = await Promise.all([
+      ctx.db.query("documents").withIndex("by_user_status", (q) => q.eq("userId", userId as never).eq("status", "ready")).collect(),
+      ctx.db.query("documents").withIndex("by_user_status", (q) => q.eq("userId", userId as never).eq("status", "trashed")).collect(),
+      ctx.db.query("notes").withIndex("by_user", (q) => q.eq("userId", userId as never)).collect(),
+    ]);
+
+    const allDocs = [...ready, ...trashed];
+    const r2Bytes = allDocs.filter((d) => d.storageBackend === "r2").reduce((s, d) => s + (d.fileSizeBytes ?? 0), 0);
+    const convexFileBytes = allDocs.filter((d) => d.storageBackend === "convex").reduce((s, d) => s + (d.fileSizeBytes ?? 0), 0);
+    const noteBodyBytes = notes.reduce((s, n) => s + (n.body?.length ?? 0) * 2, 0); // UTF-16 approx
+
+    return {
+      docCount: ready.length,
+      trashedCount: trashed.length,
+      noteCount: notes.length,
+      r2Bytes,
+      convexFileBytes,
+      convexDbBytes: noteBodyBytes, // approximate DB usage from notes
+    };
+  },
+});
+
 export const getById = query({
   args: { docId: v.id("documents") },
   handler: async (ctx, args) => {

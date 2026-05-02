@@ -56,7 +56,8 @@
       "Bash(npm run *)",
       "Bash(npx vercel *)",
       "Bash(cat .vercel/project.json)",
-      "Bash(ls .vercel/)"
+      "Bash(ls .vercel/)",
+      "Bash(Get-ChildItem -Path \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\" -Force)"
     ]
   }
 }

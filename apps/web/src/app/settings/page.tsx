@@ -2,16 +2,49 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/_generated/api";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2 } from "lucide-react";
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+function UsageBar({ used, total, label }: { used: number; total: number; label: string }) {
+  const pct = Math.min((used / total) * 100, 100);
+  const color = pct > 80 ? "bg-red-500" : pct > 50 ? "bg-amber-500" : "bg-primary";
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-medium tabular-nums">
+          {formatBytes(used)} <span className="text-muted-foreground font-normal">/ {formatBytes(total)}</span>
+        </span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-muted-foreground text-right">{pct.toFixed(1)}% đã sử dụng</p>
+    </div>
+  );
+}
+
+// Free tier limits
+const CONVEX_DB_LIMIT = 1 * 1024 * 1024 * 1024;       // 1 GB
+const CONVEX_FILE_LIMIT = 1 * 1024 * 1024 * 1024;     // 1 GB
+const R2_STORAGE_LIMIT = 10 * 1024 * 1024 * 1024;     // 10 GB
 
 export default function SettingsPage() {
   const router = useRouter();
   const deleteAccount = useAction(api.users.actions.deleteAccount);
+  const stats = useQuery(api.documents.queries.getStorageStats);
   const [confirm, setConfirm] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,6 +73,88 @@ export default function SettingsPage() {
         </Button>
 
         <h1 className="mb-8 text-2xl font-bold">Cài đặt tài khoản</h1>
+
+        {/* Storage stats */}
+        <div className="mb-6 rounded-xl border bg-card p-6 space-y-6">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Database className="h-4 w-4 text-muted-foreground" />
+            Dung lượng lưu trữ
+          </h2>
+
+          {stats === undefined ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Đang tải...
+            </div>
+          ) : stats === null ? (
+            <p className="text-sm text-muted-foreground">Không thể tải dữ liệu</p>
+          ) : (
+            <>
+              {/* Summary counts */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="rounded-lg bg-muted/50 p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Tài liệu</span>
+                  </div>
+                  <p className="text-xl font-bold">{stats.docCount}</p>
+                  {stats.trashedCount > 0 && (
+                    <p className="text-xs text-muted-foreground">{stats.trashedCount} trong thùng rác</p>
+                  )}
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Ghi chú</span>
+                  </div>
+                  <p className="text-xl font-bold">{stats.noteCount}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Tổng file</span>
+                  </div>
+                  <p className="text-xl font-bold">{formatBytes(stats.r2Bytes + stats.convexFileBytes)}</p>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                {/* R2 */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-orange-400" />
+                    Cloudflare R2 — File lớn (PDF, EPUB, video...)
+                  </p>
+                  <UsageBar used={stats.r2Bytes} total={R2_STORAGE_LIMIT} label="Dung lượng R2" />
+                  <p className="text-xs text-muted-foreground">Free tier: 10 GB lưu trữ · 1M lượt upload · 10M lượt đọc /tháng</p>
+                </div>
+
+                <div className="border-t" />
+
+                {/* Convex file storage */}
+                {stats.convexFileBytes > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
+                      Convex File Storage — File nhỏ (≤ 5 MB)
+                    </p>
+                    <UsageBar used={stats.convexFileBytes} total={CONVEX_FILE_LIMIT} label="File storage" />
+                    <p className="text-xs text-muted-foreground">Free tier: 1 GB</p>
+                  </div>
+                )}
+
+                {/* Convex DB */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-violet-400" />
+                    Convex Database — Ghi chú & metadata
+                  </p>
+                  <UsageBar used={stats.convexDbBytes} total={CONVEX_DB_LIMIT} label="Database" />
+                  <p className="text-xs text-muted-foreground">Free tier: 1 GB · Ước tính từ nội dung ghi chú</p>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Danger zone */}
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6">
