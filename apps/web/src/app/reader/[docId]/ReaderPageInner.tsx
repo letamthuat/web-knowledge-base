@@ -12,7 +12,7 @@ import { ReaderProgressContext } from "@/components/viewers/ReaderProgressContex
 import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopover";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
-import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut } from "lucide-react";
+import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
 import { TabBar } from "@/components/tabs/TabBar";
@@ -160,14 +160,13 @@ function ReaderShell({ doc, downloadUrl }: {
         )}
         <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4">
           <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5 shrink-0 md:hidden">
-              <ArrowLeft className="h-4 w-4" aria-hidden />
+            <Button variant="ghost" size="sm" className="p-1.5 shrink-0 md:hidden" onClick={() => setDrawerOpen(true)}>
+              <Menu className="h-4 w-4" />
             </Button>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
               <BookOpen className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
-            <span className="truncate text-sm font-medium md:hidden">{doc.title}</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1 shrink-0">
