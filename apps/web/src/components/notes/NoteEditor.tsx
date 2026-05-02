@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useCreateBlockNote } from "@blocknote/react";
+import {
+  useCreateBlockNote,
+  FormattingToolbar,
+  FileReplaceButton,
+  FileRenameButton,
+  FileCaptionButton,
+  FileDeleteButton,
+  FileDownloadButton,
+  FilePreviewButton,
+  useBlockNoteEditor,
+  useEditorState,
+} from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
@@ -10,7 +21,55 @@ import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { Download, Upload, ExternalLink, LibraryBig } from "lucide-react";
 import { toast } from "sonner";
-import { detectFormat } from "@/lib/storage";
+import { detectFormat, SUPPORTED_FORMATS, SUPPORTED_EXTENSIONS } from "@/lib/storage";
+
+const LIBRARY_MIME_SET = new Set(Object.keys(SUPPORTED_FORMATS));
+const LIBRARY_EXT_SET = new Set(Object.keys(SUPPORTED_EXTENSIONS));
+
+function isLibraryFormat(url: string): boolean {
+  // Check by extension from URL/filename
+  const ext = "." + url.split("?")[0].split(".").pop()?.toLowerCase();
+  return LIBRARY_EXT_SET.has(ext);
+}
+
+function mimeFromUrl(url: string): string {
+  const ext = "." + url.split("?")[0].split(".").pop()?.toLowerCase();
+  const entry = Object.entries(SUPPORTED_EXTENSIONS).find(([e]) => e === ext);
+  return entry ? entry[1] : "";
+}
+
+interface AddToLibraryButtonProps {
+  onAdd: (url: string, name: string) => void;
+}
+
+function AddToLibraryButton({ onAdd }: AddToLibraryButtonProps) {
+  const editor = useBlockNoteEditor();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const blockInfo = useEditorState({
+    editor,
+    selector: (state: any) => {
+      const sel = state.editor.getSelection();
+      const blocks = sel?.blocks ?? [state.editor.getTextCursorPosition().block];
+      const block = blocks.length === 1 ? blocks[0] : null;
+      return { url: block?.props?.url as string | undefined, name: block?.props?.name as string | undefined };
+    },
+  });
+
+  const { url, name } = blockInfo ?? {};
+
+  if (!url) return null;
+
+  return (
+    <button
+      onClick={() => onAdd(url, name || url.split("/").pop() || "file")}
+      title="Thêm vào thư viện"
+      className="flex h-7 items-center gap-1 rounded px-2 text-[11px] font-medium text-violet-600 hover:bg-violet-50 hover:text-violet-700 transition-colors border border-violet-200"
+    >
+      <LibraryBig className="h-3.5 w-3.5" />
+      Thêm vào thư viện
+    </button>
+  );
+}
 
 function parseBlocks(body: string) {
   try {
@@ -64,7 +123,52 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
   const requestDocUpload = useAction(api.documents.actions.requestUploadUrl);
   const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
   const [addingToLib, setAddingToLib] = useState(false);
-  const addToLibInputRef = useRef<HTMLInputElement>(null);
+
+  // Called from AddToLibraryButton with the file's R2 presigned URL + name
+  const handleAddFileToLibrary = useCallback(async (fileUrl: string, fileName: string) => {
+    if (addingToLib) return;
+
+    // Detect format from filename/URL extension
+    const ext = "." + fileName.split(".").pop()?.toLowerCase();
+    const format = SUPPORTED_EXTENSIONS[ext] ?? null;
+    if (!format) {
+      toast.warning(`Định dạng "${ext}" không được hỗ trợ trong thư viện`, {
+        description: "Thư viện hỗ trợ: PDF, EPUB, DOCX, PPTX, ảnh, audio, video, markdown",
+      });
+      return;
+    }
+
+    setAddingToLib(true);
+    try {
+      // Fetch the file from R2 presigned URL
+      const res = await fetch(fileUrl);
+      if (!res.ok) throw new Error("Không thể tải file");
+      const blob = await res.blob();
+      const file = new File([blob], fileName, { type: blob.type });
+
+      const { uploadUrl, storageKey } = await requestDocUpload({
+        fileSizeBytes: file.size,
+        format,
+        fileName,
+        mimeType: file.type || "application/octet-stream",
+      });
+      await fetch(uploadUrl, { method: "PUT", body: file });
+      const docId = await finalizeUpload({
+        title: fileName.replace(/\.[^/.]+$/, ""),
+        format: format as never,
+        fileSizeBytes: file.size,
+        storageBackend: "r2",
+        storageKey,
+      });
+      toast.success("Đã thêm vào thư viện", {
+        action: { label: "Mở", onClick: () => window.open(`/reader/${docId}`, "_blank") },
+      });
+    } catch {
+      toast.error("Không thể thêm vào thư viện");
+    } finally {
+      setAddingToLib(false);
+    }
+  }, [addingToLib, requestDocUpload, finalizeUpload]);
 
   const uploadFile = useCallback(async (file: File): Promise<string> => {
     const { uploadUrl, storageKey } = await requestUpload({
@@ -261,7 +365,18 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
           editor={editor}
           theme="light"
           className="min-h-full"
-        />
+          formattingToolbar={false}
+        >
+          <FormattingToolbar>
+            <FileReplaceButton key="fileReplace" />
+            <FileRenameButton key="fileRename" />
+            <FileCaptionButton key="fileCaption" />
+            <FilePreviewButton key="filePreview" />
+            <FileDownloadButton key="fileDownload" />
+            <AddToLibraryButton key="addToLibrary" onAdd={handleAddFileToLibrary} />
+            <FileDeleteButton key="fileDelete" />
+          </FormattingToolbar>
+        </BlockNoteView>
       </div>
     </div>
   );
