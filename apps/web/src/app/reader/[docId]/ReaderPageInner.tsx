@@ -161,10 +161,11 @@ function ReaderShell({ doc, downloadUrl }: {
             <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5 shrink-0 md:hidden">
               <ArrowLeft className="h-4 w-4" aria-hidden />
             </Button>
-            <div className="hidden md:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
               <BookOpen className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="truncate text-sm font-medium">{doc.title}</span>
+            <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
+            <span className="truncate text-sm font-medium md:hidden">{doc.title}</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1 shrink-0">
