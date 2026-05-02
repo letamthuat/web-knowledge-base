@@ -25,7 +25,7 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { offset, shift } from "@floating-ui/react";
 import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { api } from "@/_generated/api";
 import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
@@ -143,6 +143,8 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
   const requestUpload = useAction(api.notes.actions.requestNoteMediaUploadUrl);
   const getMediaUrl = useAction(api.notes.actions.getNoteMediaUrl);
   const copyUrlToLibrary = useAction(api.documents.actions.copyUrlToLibrary);
+  const requestDocUpload = useAction(api.documents.actions.requestUploadUrl);
+  const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
   const [addingToLib, setAddingToLib] = useState(false);
 
   // Called from AddToLibraryButton with the file's R2 presigned URL + name
