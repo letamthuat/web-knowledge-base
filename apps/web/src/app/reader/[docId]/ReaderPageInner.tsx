@@ -55,10 +55,16 @@ function ReaderShell({ doc, downloadUrl }: {
     try {
       const url = await getDownloadUrl({ docId: doc._id });
       const ext = FORMAT_EXT[doc.format] ?? "";
+      const fileName = doc.title.endsWith(ext) ? doc.title : doc.title + ext;
+      // Fetch về blob để bypass cross-origin download restriction
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = doc.title.endsWith(ext) ? doc.title : doc.title + ext;
+      a.href = objectUrl;
+      a.download = fileName;
       a.click();
+      URL.revokeObjectURL(objectUrl);
     } catch {
       toast.error("Không thể tải xuống tài liệu");
     }

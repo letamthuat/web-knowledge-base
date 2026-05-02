@@ -76,10 +76,15 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
     try {
       const url = await getDownloadUrl({ docId: doc._id });
       const ext = FORMAT_EXT[doc.format] ?? "";
+      const fileName = doc.title.endsWith(ext) ? doc.title : doc.title + ext;
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = doc.title.endsWith(ext) ? doc.title : doc.title + ext;
+      a.href = objectUrl;
+      a.download = fileName;
       a.click();
+      URL.revokeObjectURL(objectUrl);
     } catch {
       toast.error("Không thể tải xuống tài liệu");
     }

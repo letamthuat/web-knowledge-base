@@ -216,7 +216,8 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
 
   useEffect(() => {
     fetch(downloadUrl)
-      .then((r) => r.text())
+      .then((r) => r.arrayBuffer())
+      .then((buf) => new TextDecoder("utf-8").decode(buf))
       .then(setContent)
       .catch(() => setError("Không thể tải file Markdown"));
   }, [downloadUrl]);
