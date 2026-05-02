@@ -73,6 +73,9 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
   const editor = useCreateBlockNote({
     initialContent: parseBlocks(initialBody) as never,
     uploadFile,
+    domAttributes: {
+      editor: { spellcheck: "false" },
+    },
   }, [noteId]);
 
   const scheduleSave = useCallback((bodyJson: string) => {
