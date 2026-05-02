@@ -54,20 +54,48 @@ function ReaderShell({ doc, downloadUrl }: {
 
   // Mobile swipe drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerOpenRef = useRef(drawerOpen);
+  drawerOpenRef.current = drawerOpen;
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  }, []);
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
-    // Swipe right from left edge (< 40px) at least 60px, mostly horizontal
-    if (touchStartX.current < 40 && dx > 60 && dy < 80) setDrawerOpen(true);
-    // Swipe left to close
-    if (drawerOpen && dx < -60 && dy < 80) setDrawerOpen(false);
-  }, [drawerOpen]);
+  const isEdgeSwipe = useRef(false);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    function onTouchStart(e: TouchEvent) {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+      isEdgeSwipe.current = touchStartX.current < 40 || drawerOpenRef.current;
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!isEdgeSwipe.current) return;
+      const dx = e.touches[0].clientX - touchStartX.current;
+      const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
+      if (dy > 30) { isEdgeSwipe.current = false; return; }
+      // Prevent browser back/forward navigation when handling edge swipe
+      if (Math.abs(dx) > 10) e.preventDefault();
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      if (!isEdgeSwipe.current) return;
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+      if (dy > 80) return;
+      if (!drawerOpenRef.current && dx > 50) setDrawerOpen(true);
+      if (drawerOpenRef.current && dx < -50) setDrawerOpen(false);
+    }
+
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [isMobile]);
 
   // Auto-register current doc as a tab when entering reader
   const tabOpened = useRef(false);
@@ -101,11 +129,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
   return (
     <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition: savePositionWithTab, jumpTo, registerJump }}>
-      <div
-        className="flex h-screen flex-col overflow-hidden bg-background"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      <div className="flex h-screen flex-col overflow-hidden bg-background">
         {/* Mobile swipe drawer */}
         {isMobile && drawerOpen && (
           <div className="fixed inset-0 z-50">
