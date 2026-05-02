@@ -24,22 +24,40 @@ export const requestNoteMediaUploadUrl = action({
     mimeType: v.string(),
   },
   handler: async (ctx, args): Promise<{ uploadUrl: string; storageKey: string }> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    try {
+      const identity = await ctx.auth.getUserIdentity();
+      console.log("[requestNoteMediaUploadUrl] identity:", identity ? identity.subject : "NULL");
+      if (!identity) throw new Error("Unauthorized — identity is null");
 
-    const r2 = getR2Client();
-    const bucket = process.env.R2_BUCKET_NAME!;
-    const sanitized = args.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const key = `notes/${identity.subject}/${Date.now()}-${sanitized}`;
+      const accountId = process.env.R2_ACCOUNT_ID;
+      const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+      const secretKey = process.env.R2_SECRET_ACCESS_KEY;
+      const bucket = process.env.R2_BUCKET_NAME;
 
-    // Do NOT include ContentType in presigned URL — R2 rejects if client doesn't send matching header
-    const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-    });
-    const uploadUrl = await getSignedUrl(r2, command, { expiresIn: 3600 });
+      console.log("[requestNoteMediaUploadUrl] env:", {
+        hasAccountId: !!accountId,
+        hasAccessKey: !!accessKeyId,
+        hasSecret: !!secretKey,
+        hasBucket: !!bucket,
+      });
 
-    return { uploadUrl, storageKey: key };
+      if (!accountId || !accessKeyId || !secretKey || !bucket) {
+        throw new Error("Missing R2 environment variables");
+      }
+
+      const r2 = getR2Client();
+      const sanitized = args.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const key = `notes/${identity.subject}/${Date.now()}-${sanitized}`;
+
+      const command = new PutObjectCommand({ Bucket: bucket, Key: key });
+      const uploadUrl = await getSignedUrl(r2, command, { expiresIn: 3600 });
+
+      console.log("[requestNoteMediaUploadUrl] success, key:", key);
+      return { uploadUrl, storageKey: key };
+    } catch (err) {
+      console.error("[requestNoteMediaUploadUrl] CAUGHT ERROR:", String(err));
+      throw err;
+    }
   },
 });
 

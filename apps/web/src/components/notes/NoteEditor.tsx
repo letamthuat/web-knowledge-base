@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import {
   useCreateBlockNote,
   FormattingToolbar,
+  FormattingToolbarController,
   FileReplaceButton,
   FileRenameButton,
   FileCaptionButton,
@@ -14,6 +15,7 @@ import {
   useEditorState,
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
+import { offset, shift } from "@floating-ui/react";
 import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
 import { useAction, useMutation } from "convex/react";
@@ -368,15 +370,25 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
           className="min-h-full"
           formattingToolbar={false}
         >
-          <FormattingToolbar>
-            <FileReplaceButton key="fileReplace" />
-            <FileRenameButton key="fileRename" />
-            <FileCaptionButton key="fileCaption" />
-            <FilePreviewButton key="filePreview" />
-            <FileDownloadButton key="fileDownload" />
-            <AddToLibraryButton key="addToLibrary" onAdd={handleAddFileToLibrary} />
-            <FileDeleteButton key="fileDelete" />
-          </FormattingToolbar>
+          <FormattingToolbarController
+            floatingUIOptions={{
+              useFloatingOptions: {
+                placement: "top-start",
+                middleware: [offset(10), shift()],
+              },
+            }}
+            formattingToolbar={() => (
+              <FormattingToolbar>
+                <FileReplaceButton key="fileReplace" />
+                <FileRenameButton key="fileRename" />
+                <FileCaptionButton key="fileCaption" />
+                <FilePreviewButton key="filePreview" />
+                <FileDownloadButton key="fileDownload" />
+                <AddToLibraryButton key="addToLibrary" onAdd={handleAddFileToLibrary} />
+                <FileDeleteButton key="fileDelete" />
+              </FormattingToolbar>
+            )}
+          />
         </BlockNoteView>
       </div>
     </div>

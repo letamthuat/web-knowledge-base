@@ -143,7 +143,7 @@ export function NotesSidePanel({ onClose }: NotesSidePanelProps) {
           >
             ← Danh sách ghi chú
           </button>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex flex-1 flex-col overflow-hidden">
             <NoteEditor
               key={selectedNote._id}
               noteId={selectedNote._id}

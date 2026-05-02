@@ -19,6 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { DocumentGrid } from "@/components/library/DocumentGrid";
 import { RecentHistory } from "@/components/library/RecentHistory";
 import { TabBar } from "@/components/tabs/TabBar";
+import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { FilterBar, parseFilters, hasActiveFilters } from "@/components/library/FilterBar";
 import { UploadDropzone } from "@/components/library/UploadDropzone";
 import { labels } from "@/lib/i18n/labels";
@@ -32,6 +33,7 @@ interface Crumb { id: Id<"folders">; name: string }
 export function LibraryPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
   const { data: session, isPending } = useSession();
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -403,7 +405,13 @@ export function LibraryPageInner() {
       </header>
 
       {/* Tab bar — ngay dưới navbar */}
-      <TabBar currentDocId={null} />
+      <TabBar
+        currentDocId={null}
+        noteTabs={noteTabs}
+        activeNoteId={activeNoteId}
+        onSelectNoteTab={(id) => { setActiveNoteId(id as Id<"notes">); router.push("/notes"); }}
+        onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
+      />
 
       {/* Mobile sidebar drawer overlay */}
       {mobileSidebarOpen && (

@@ -23,6 +23,7 @@ import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_telemetry from "../lib/telemetry.js";
+import type * as notes_actions from "../notes/actions.js";
 import type * as notes_mutations from "../notes/mutations.js";
 import type * as notes_queries from "../notes/queries.js";
 import type * as reading_history_mutations from "../reading_history/mutations.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/errors": typeof lib_errors;
   "lib/telemetry": typeof lib_telemetry;
+  "notes/actions": typeof notes_actions;
   "notes/mutations": typeof notes_mutations;
   "notes/queries": typeof notes_queries;
   "reading_history/mutations": typeof reading_history_mutations;

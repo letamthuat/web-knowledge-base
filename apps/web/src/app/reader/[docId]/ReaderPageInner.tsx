@@ -116,6 +116,21 @@ function ReaderShell({ doc, downloadUrl }: {
   );
 }
 
+// Module-level URL cache — persists across tab navigations within the session
+const urlCache = new Map<string, { url: string; fetchedAt: number }>();
+const URL_TTL_MS = 10 * 60 * 1000; // 10 min (R2 presigned = 15 min)
+
+export function getCachedUrl(docId: string) {
+  const entry = urlCache.get(docId);
+  if (!entry) return null;
+  if (Date.now() - entry.fetchedAt > URL_TTL_MS) { urlCache.delete(docId); return null; }
+  return entry.url;
+}
+
+export function setCachedUrl(docId: string, url: string) {
+  urlCache.set(docId, { url, fetchedAt: Date.now() });
+}
+
 export default function ReaderPageInner() {
   const router = useRouter();
   const params = useParams();
@@ -125,7 +140,7 @@ export default function ReaderPageInner() {
   const doc = useQuery(api.documents.queries.getById, { docId });
   const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
 
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(() => getCachedUrl(docId));
   const [urlError, setUrlError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -134,8 +149,10 @@ export default function ReaderPageInner() {
 
   useEffect(() => {
     if (!doc) return;
+    // Already have a fresh cached URL — no fetch needed
+    if (getCachedUrl(docId)) return;
     getDownloadUrl({ docId })
-      .then(setDownloadUrl)
+      .then((url) => { setCachedUrl(docId, url); setDownloadUrl(url); })
       .catch((e) => setUrlError(e instanceof Error ? e.message : "Không thể tải file"));
   }, [doc, docId, getDownloadUrl]);
 
@@ -166,7 +183,23 @@ export default function ReaderPageInner() {
     );
   }
 
-  if (!downloadUrl) return <FullPageSpinner />;
+  // Show layout immediately with doc data; viewer shows its own loading if URL not yet ready
+  if (!downloadUrl) {
+    return (
+      <div className="flex h-screen flex-col overflow-hidden bg-background">
+        <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4">
+          <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Thư viện
+          </Button>
+          <span className="flex-1 truncate text-sm font-medium">{doc.title}</span>
+        </header>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
 
   return <ReaderShell doc={doc} downloadUrl={downloadUrl} />;
 }

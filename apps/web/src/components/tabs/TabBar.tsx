@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, PanelLeftClose, StickyNote } from "lucide-react";
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@/_generated/api";
+import { getCachedUrl, setCachedUrl } from "@/app/reader/[docId]/ReaderPageInner";
 import { useTabSync, TabDoc } from "@/hooks/useTabSync";
 import { Id } from "@/_generated/dataModel";
 import {
@@ -39,6 +40,7 @@ interface SortableTabItemProps {
 function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemProps) {
   const doc = useQuery(api.documents.queries.getById, { docId: tab.docId as Id<"documents"> });
   const Icon = FORMAT_ICONS[doc?.format ?? ""] ?? FileText;
+  const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
 
   const {
     attributes,
@@ -56,6 +58,14 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
     zIndex: isDragging ? 10 : undefined,
   };
 
+  const handleMouseEnter = () => {
+    if (!isActive && !getCachedUrl(tab.docId as string)) {
+      getDownloadUrl({ docId: tab.docId as Id<"documents"> })
+        .then((url) => setCachedUrl(tab.docId as string, url))
+        .catch(() => {});
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -63,6 +73,7 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
       {...attributes}
       {...listeners}
       onClick={onClick}
+      onMouseEnter={handleMouseEnter}
       className={[
         "group relative flex h-8 min-w-0 max-w-[160px] shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-left transition-all duration-150",
         isActive
@@ -239,11 +250,11 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                   className={[
                     "group relative flex h-8 min-w-0 max-w-[160px] shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-left transition-all duration-150",
                     isNoteActive
-                      ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
-                      : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                      ? "bg-violet-50 text-violet-700 shadow-sm ring-1 ring-violet-200"
+                      : "text-violet-500/70 hover:bg-violet-50/60 hover:text-violet-600",
                   ].join(" ")}
                 >
-                  <StickyNote className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                  <StickyNote className="h-3 w-3 shrink-0" aria-hidden />
                   <span className="flex-1 truncate text-xs font-medium">{nt.title || "(Không có tiêu đề)"}</span>
                   <span
                     role="button"
@@ -253,8 +264,8 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                     className={[
                       "ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded transition-all",
                       isNoteActive
-                        ? "opacity-60 hover:opacity-100 hover:bg-muted"
-                        : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-muted",
+                        ? "opacity-60 hover:opacity-100 hover:bg-violet-100"
+                        : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-violet-100",
                     ].join(" ")}
                   >
                     <X className="h-2.5 w-2.5" />
