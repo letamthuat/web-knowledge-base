@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, PanelLeftClose } from "lucide-react";
+import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, PanelLeftClose, StickyNote } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/_generated/api";
 import { useTabSync, TabDoc } from "@/hooks/useTabSync";
@@ -92,12 +92,14 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
 interface TabBarProps {
   currentDocId: Id<"documents"> | null;
   showAddButton?: boolean;
+  /** Pass true when rendered on the /notes page so the Notes tab appears active */
+  notesActive?: boolean;
 }
 
 // Session-local stack of recently closed tab docIds for Ctrl+Shift+T
 const closedTabStack: string[] = [];
 
-export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
+export function TabBar({ currentDocId, showAddButton = false, notesActive = false }: TabBarProps) {
   const router = useRouter();
   const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab } = useTabSync();
   const [optimisticTabs, setOptimisticTabs] = useState<TabDoc[] | null>(null);
@@ -126,7 +128,7 @@ export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openTab, router]);
 
-  if (isLoading || tabs.length === 0) return null;
+  if (isLoading || (tabs.length === 0 && !notesActive)) return null;
 
   async function handleClose(e: React.MouseEvent, tab: TabDoc) {
     e.stopPropagation();
@@ -185,6 +187,20 @@ export function TabBar({ currentDocId, showAddButton = false }: TabBarProps) {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={displayTabs.map((t) => t._id)} strategy={horizontalListSortingStrategy}>
           <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto scrollbar-none py-1">
+            {/* Notes tab — always shown, navigates to /notes */}
+            <button
+              onClick={() => router.push("/notes")}
+              className={[
+                "group relative flex h-8 min-w-0 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-all duration-150",
+                notesActive
+                  ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                  : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+              ].join(" ")}
+            >
+              <StickyNote className="h-3 w-3 shrink-0 opacity-70" />
+              Ghi chú
+            </button>
+            {displayTabs.length > 0 && <div className="h-4 w-px shrink-0 bg-border/40" />}
             {displayTabs.map((tab) => (
               <SortableTabItem
                 key={tab._id}
