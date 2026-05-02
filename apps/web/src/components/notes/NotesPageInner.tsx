@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, LogOut, Settings, StickyNote } from "lucide-react";
+import { BookOpen, LogOut, Settings, StickyNote, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export function NotesPageInner() {
   const { notes, addNote, updateNote, removeNote } = useAllNotes();
   const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
   const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleLogout = async () => {
     await signOut();
@@ -69,7 +70,14 @@ export function NotesPageInner() {
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Navbar */}
       <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            title={sidebarOpen ? "Ẩn danh sách ghi chú" : "Hiện danh sách ghi chú"}
+          >
+            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+          </button>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <BookOpen className="h-5 w-5 text-primary-foreground" />
           </div>
@@ -113,13 +121,15 @@ export function NotesPageInner() {
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        <NoteList
-          notes={notes}
-          selectedId={activeNoteId as Id<"notes"> | null}
-          onSelect={handleSelect}
-          onNew={handleNew}
-          onDelete={handleDelete}
-        />
+        {sidebarOpen && (
+          <NoteList
+            notes={notes}
+            selectedId={activeNoteId as Id<"notes"> | null}
+            onSelect={handleSelect}
+            onNew={handleNew}
+            onDelete={handleDelete}
+          />
+        )}
 
         {selectedNote ? (
           <NoteEditor
