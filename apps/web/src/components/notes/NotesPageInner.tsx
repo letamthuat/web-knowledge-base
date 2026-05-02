@@ -100,6 +100,7 @@ export function NotesPageInner() {
       <TabBar
         currentDocId={null}
         showAddButton
+        notesActive
         noteTabs={noteTabs}
         activeNoteId={activeNoteId}
         onSelectNoteTab={(id) => {
