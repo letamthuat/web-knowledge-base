@@ -343,7 +343,7 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
   });
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex flex-1 flex-col overflow-hidden min-w-0">
       {/* Hidden import input — always present */}
       <input
         ref={importInputRef}

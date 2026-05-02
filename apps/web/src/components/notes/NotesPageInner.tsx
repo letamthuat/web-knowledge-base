@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download } from "lucide-react";
+import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download, X, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,13 @@ export function NotesPageInner() {
   const { notes, addNote, updateNote, removeNote } = useAllNotes();
   const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
   const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+
+  // On desktop, default sidebar open
+  useEffect(() => {
+    if (window.innerWidth >= 768) setSidebarOpen(true);
+  }, []);
   const [noteSaveStatus, setNoteSaveStatus] = useState<SaveStatus>("saved");
   const noteSaveNowRef = useRef<(() => void) | null>(null);
   const noteImportRef = useRef<HTMLInputElement | null>(null);
@@ -75,13 +81,42 @@ export function NotesPageInner() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
+      {/* Mobile nav drawer */}
+      {navDrawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setNavDrawerOpen(false)} />
+          <aside className="absolute left-0 top-0 h-full w-64 bg-background border-r shadow-xl flex flex-col p-4 gap-1">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-semibold text-sm">Menu</span>
+              <button onClick={() => setNavDrawerOpen(false)} className="rounded p-1.5 hover:bg-muted transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <button onClick={() => { setNavDrawerOpen(false); router.push("/library"); }}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+              <BookOpen className="h-4 w-4" /> {N.library}
+            </button>
+            <button className="flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-muted font-medium transition-colors">
+              <StickyNote className="h-4 w-4" /> {N.notes}
+            </button>
+            <button onClick={() => { setNavDrawerOpen(false); router.push("/settings"); }}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+              <Settings className="h-4 w-4" /> {N.settings}
+            </button>
+          </aside>
+        </div>
+      )}
+
       {/* Navbar */}
       <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2">
         <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" className="md:hidden p-1.5" onClick={() => setNavDrawerOpen(true)}>
+            <Menu className="h-4 w-4" />
+          </Button>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <BookOpen className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-semibold">Web Knowledge Base</span>
+          <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
         </div>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -143,15 +178,21 @@ export function NotesPageInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 overflow-hidden">
+        {/* Sidebar — overlay on mobile, inline on desktop */}
         {sidebarOpen && (
-          <NoteList
-            notes={notes}
-            selectedId={activeNoteId as Id<"notes"> | null}
-            onSelect={handleSelect}
-            onNew={handleNew}
-            onDelete={handleDelete}
-          />
+          <>
+            <div className="absolute inset-0 z-20 bg-black/30 md:hidden" onClick={() => setSidebarOpen(false)} />
+            <div className="absolute left-0 top-0 z-30 h-full md:relative md:z-auto md:h-auto">
+              <NoteList
+                notes={notes}
+                selectedId={activeNoteId as Id<"notes"> | null}
+                onSelect={(id) => { handleSelect(id); if (window.innerWidth < 768) setSidebarOpen(false); }}
+                onNew={handleNew}
+                onDelete={handleDelete}
+              />
+            </div>
+          </>
         )}
 
         {selectedNote ? (
