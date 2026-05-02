@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, LogOut, Settings, StickyNote, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { BookOpen, LogOut, Settings, StickyNote, List } from "lucide-react";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -70,14 +70,7 @@ export function NotesPageInner() {
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Navbar */}
       <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSidebarOpen(v => !v)}
-            className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            title={sidebarOpen ? "Ẩn danh sách ghi chú" : "Hiện danh sách ghi chú"}
-          >
-            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-          </button>
+        <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <BookOpen className="h-5 w-5 text-primary-foreground" />
           </div>
@@ -118,6 +111,14 @@ export function NotesPageInner() {
           closeNoteTab(id as Id<"notes">);
         }}
       />
+
+      {/* Toolbar — giống viewer */}
+      <div className="flex shrink-0 items-center border-b bg-card px-4 py-1.5">
+        <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setSidebarOpen(v => !v)}>
+          <List className="h-3.5 w-3.5" />
+          {sidebarOpen ? "Ẩn danh sách" : "Danh sách"}
+        </Button>
+      </div>
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
