@@ -21,7 +21,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { NoteTab } from "@/hooks/useNoteTabs";
 
 const FORMAT_ICONS: Record<string, React.ElementType> = {
@@ -93,15 +93,10 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
 interface TabBarProps {
   currentDocId: Id<"documents"> | null;
   showAddButton?: boolean;
-  /** Pass true when rendered on the /notes page so the Notes tab appears active */
   notesActive?: boolean;
-  /** Open note tabs to display in the tab bar */
   noteTabs?: NoteTab[];
-  /** Currently active note id */
   activeNoteId?: string | null;
-  /** Called when user clicks X on a note tab */
   onCloseNoteTab?: (noteId: string) => void;
-  /** Called when user clicks a note tab to navigate to it */
   onSelectNoteTab?: (noteId: string) => void;
 }
 
@@ -112,8 +107,22 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
   const router = useRouter();
   const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab } = useTabSync();
   const [optimisticTabs, setOptimisticTabs] = useState<TabDoc[] | null>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [addMenuOpen]);
 
   const displayTabs = optimisticTabs ?? tabs;
 
@@ -137,7 +146,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openTab, router]);
 
-  if (isLoading || (tabs.length === 0 && !notesActive && noteTabs.length === 0)) return null;
+  if (isLoading || (tabs.length === 0 && !notesActive && noteTabs.length === 0 && !showAddButton)) return null;
 
   async function handleClose(e: React.MouseEvent, tab: TabDoc) {
     e.stopPropagation();
@@ -177,40 +186,49 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
 
   return (
     <div className="flex h-10 shrink-0 items-center gap-1 border-b bg-muted/40 px-2">
-      {/* Nút thêm tab — luôn ở đầu */}
+      {/* + dropdown — mở tài liệu hoặc ghi chú */}
       {showAddButton && (
-        <button
-          onClick={() => router.push("/library")}
-          aria-label="Mở tab mới từ thư viện"
-          title="Mở tài liệu mới"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
+        <div ref={addMenuRef} className="relative shrink-0">
+          <button
+            onClick={() => setAddMenuOpen((v) => !v)}
+            aria-label="Mở tab mới"
+            title="Mở tab mới"
+            className={[
+              "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+              addMenuOpen
+                ? "bg-background text-foreground ring-1 ring-border/60"
+                : "text-muted-foreground hover:bg-background hover:text-foreground",
+            ].join(" ")}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+          {addMenuOpen && (
+            <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border bg-popover shadow-md">
+              <button
+                onClick={() => { setAddMenuOpen(false); router.push("/library"); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                Mở tài liệu
+              </button>
+              <button
+                onClick={() => { setAddMenuOpen(false); router.push("/notes"); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+              >
+                <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
+                Ghi chú
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Divider nếu có nút thêm */}
       {showAddButton && <div className="h-4 w-px shrink-0 bg-border/60" />}
 
       {/* Tab list — scrollable */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={displayTabs.map((t) => t._id)} strategy={horizontalListSortingStrategy}>
           <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto scrollbar-none py-1">
-            {/* Notes hub tab — navigates to /notes list */}
-            {(notesActive || noteTabs.length > 0) && (
-              <button
-                onClick={() => router.push("/notes")}
-                className={[
-                  "group relative flex h-8 min-w-0 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-all duration-150",
-                  notesActive && !activeNoteId
-                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
-                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
-                ].join(" ")}
-              >
-                <StickyNote className="h-3 w-3 shrink-0 opacity-70" />
-                Ghi chú
-              </button>
-            )}
             {/* Individual note tabs */}
             {noteTabs.map((nt) => {
               const isNoteActive = notesActive && activeNoteId === nt.noteId;
@@ -244,7 +262,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                 </div>
               );
             })}
-            {(noteTabs.length > 0 || notesActive) && displayTabs.length > 0 && <div className="h-4 w-px shrink-0 bg-border/40" />}
+            {noteTabs.length > 0 && displayTabs.length > 0 && <div className="h-4 w-px shrink-0 bg-border/40" />}
             {displayTabs.map((tab) => (
               <SortableTabItem
                 key={tab._id}

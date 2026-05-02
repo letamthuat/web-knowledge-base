@@ -99,7 +99,6 @@ export function NotesPageInner() {
       {/* Tab bar */}
       <TabBar
         currentDocId={null}
-        notesActive
         showAddButton
         noteTabs={noteTabs}
         activeNoteId={activeNoteId}
