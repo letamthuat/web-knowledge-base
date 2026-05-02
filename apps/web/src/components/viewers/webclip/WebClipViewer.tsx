@@ -30,6 +30,7 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
   const { scale, zoomIn, zoomOut, reset: resetZoom } = useZoom(1, 0.1, 0.5, 2);
   const restored = useRef(false);
   const actions = useHighlightActions(doc._id, contentRef);
+  const [notesPanelOpen, setNotesPanelOpen] = useState(false);
 
   useEffect(() => {
     registerJump((pos) => {
@@ -98,6 +99,8 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
   if (error) {
     return <div className="flex flex-1 items-center justify-center text-destructive text-sm">{error}</div>;
   }
+  const hlCount = actions.highlights.length;
+
   if (cleanHtml === null && rawHtml === null) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -105,9 +108,6 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
       </div>
     );
   }
-
-  const [notesPanelOpen, setNotesPanelOpen] = useState(false);
-  const hlCount = actions.highlights.length;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">

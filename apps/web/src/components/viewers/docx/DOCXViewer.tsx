@@ -45,6 +45,7 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
   const { scale, zoomIn, zoomOut, reset: resetZoom } = useZoom(1, 0.1, 0.5, 2);
   const restored = useRef(false);
   const actions = useHighlightActions(doc._id, contentRef);
+  const [notesPanelOpen, setNotesPanelOpen] = useState(false);
 
   useEffect(() => {
     registerJump((pos) => {
@@ -136,15 +137,14 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
   const minLevel = useMemo(() =>
     toc.length ? Math.min(...toc.map((t) => t.level)) : 1, [toc]);
 
+  const hlCount = actions.highlights.length;
+
   if (error) return <div className="flex flex-1 items-center justify-center text-destructive text-sm">{error}</div>;
   if (!html) return (
     <div className="flex flex-1 items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
     </div>
   );
-
-  const [notesPanelOpen, setNotesPanelOpen] = useState(false);
-  const hlCount = actions.highlights.length;
 
   return (
     <div className="flex flex-1 overflow-hidden">
