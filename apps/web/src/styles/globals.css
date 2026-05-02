@@ -67,6 +67,18 @@ mark.hl-purple { background: #e9d5ff !important; color: inherit !important; bord
 /* hl-custom: background set inline via style attribute */
 mark.hl-custom { color: inherit !important; border-radius: 2px; }
 
+/* BlockNote editor — links styled with blue + underline */
+.bn-editor a,
+.bn-block-content a {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px;
+}
+.bn-editor a:hover,
+.bn-block-content a:hover {
+  color: #1d4ed8 !important;
+}
+
 /* Note indicator — dashed violet underline on any highlight that has a note */
 mark.hl-has-note {
   border-bottom: 2px dashed #7c3aed;
