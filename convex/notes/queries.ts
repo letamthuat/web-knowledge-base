@@ -1,11 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth } from "../lib/auth";
 
 export const listByDoc = query({
   args: { docId: v.id("documents") },
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
     return await ctx.db
       .query("notes")
       .withIndex("by_user", (q) => q.eq("userId", userId as never))
@@ -18,7 +19,9 @@ export const listByDoc = query({
 export const listAllByUser = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await requireAuth(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
     const notes = await ctx.db
       .query("notes")
       .withIndex("by_user", (q) => q.eq("userId", userId as never))
