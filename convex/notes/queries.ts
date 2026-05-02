@@ -21,9 +21,9 @@ export const listAllByUser = query({
     const userId = await requireAuth(ctx);
     const notes = await ctx.db
       .query("notes")
-      .withIndex("by_user_updated", (q) => q.eq("userId", userId as never))
-      .order("desc")
+      .withIndex("by_user", (q) => q.eq("userId", userId as never))
       .collect();
+    notes.sort((a, b) => b.updatedAt - a.updatedAt);
     return await Promise.all(
       notes.map(async (n) => ({
         ...n,
