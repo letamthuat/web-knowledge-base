@@ -127,6 +127,7 @@ export function TabDropdown({ currentDocId, noteTabs = [], activeNoteId, onSelec
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
           >
             <PanelLeftClose className="h-3.5 w-3.5" />
+            <span className="sr-only">Đóng tài liệu</span>
           </button>
         </>
       )}

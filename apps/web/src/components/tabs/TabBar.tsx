@@ -295,12 +295,12 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
           <div className="h-4 w-px shrink-0 bg-border/60" />
           <button
             onClick={handleCloseAll}
-            aria-label="Đóng tất cả tab"
-            title="Đóng tất cả (Ctrl+Shift+T để mở lại)"
+            aria-label="Đóng tất cả tab tài liệu"
+            title="Đóng tất cả tài liệu (Ctrl+Shift+T để mở lại)"
             className="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
           >
             <PanelLeftClose className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Đóng tất cả</span>
+            <span className="hidden sm:inline">Đóng tài liệu</span>
           </button>
         </>
       )}
