@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  BookOpen, LogOut, Settings, Trash2, Plus, Folder, FolderOpen,
+  BookOpen, LogOut, Settings, Trash2, Plus, Folder, FolderOpen, StickyNote,
   MoreVertical, Pencil, FolderPlus, ChevronRight, LayoutGrid,
   PanelLeftClose, PanelLeftOpen, ChevronDown, File as FileIcon, Menu, X,
   CheckSquare, FolderInput,
@@ -407,6 +407,7 @@ export function LibraryPageInner() {
       {/* Tab bar — ngay dưới navbar */}
       <TabBar
         currentDocId={null}
+        showAddButton={noteTabs.length > 0}
         noteTabs={noteTabs}
         activeNoteId={activeNoteId}
         onSelectNoteTab={(id) => { setActiveNoteId(id as Id<"notes">); router.push("/notes"); }}
@@ -430,6 +431,27 @@ export function LibraryPageInner() {
                 className="rounded p-1.5 hover:bg-muted transition-colors"
               >
                 <X className="h-4 w-4" />
+              </button>
+            </div>
+            {/* Mobile nav links */}
+            <div className="flex flex-col gap-1 mb-4 border-b pb-4">
+              <button
+                onClick={() => { setMobileSidebarOpen(false); }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium bg-muted text-foreground"
+              >
+                <BookOpen className="h-4 w-4" /> {N.library}
+              </button>
+              <button
+                onClick={() => { setMobileSidebarOpen(false); router.push("/notes"); }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <StickyNote className="h-4 w-4" /> {N.notes}
+              </button>
+              <button
+                onClick={() => { setMobileSidebarOpen(false); router.push("/settings"); }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <Settings className="h-4 w-4" /> {N.settings}
               </button>
             </div>
             <SidebarContent />
