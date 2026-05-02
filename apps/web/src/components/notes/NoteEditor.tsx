@@ -99,7 +99,7 @@ interface NoteEditorProps {
   /** Called whenever saved state changes */
   onSaveStateChange?: (status: SaveStatus) => void;
   /** Ref to trigger import/export from parent toolbar */
-  importRef?: React.RefObject<HTMLInputElement | null>;
+  importRef?: React.MutableRefObject<HTMLInputElement | null>;
   onExport?: React.MutableRefObject<(() => void) | null>;
   /** Ref to trigger immediate save from parent toolbar */
   saveNowRef?: React.MutableRefObject<(() => void) | null>;
@@ -337,9 +337,7 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
 
   // Wire external importRef to internal input
   useEffect(() => {
-    if (importRef && importRef.current === null) {
-      (importRef as React.MutableRefObject<HTMLInputElement | null>).current = importInputRef.current;
-    }
+    if (importRef) importRef.current = importInputRef.current;
   });
 
   return (
