@@ -57,7 +57,8 @@
       "Bash(npx vercel *)",
       "Bash(cat .vercel/project.json)",
       "Bash(ls .vercel/)",
-      "Bash(Get-ChildItem -Path \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\" -Force)"
+      "Bash(Get-ChildItem -Path \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\" -Force)",
+      "PowerShell(Stop-Process -Id 20080 -Force)"
     ]
   }
 }

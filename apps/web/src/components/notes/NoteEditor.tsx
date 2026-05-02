@@ -5,6 +5,13 @@ import {
   useCreateBlockNote,
   FormattingToolbar,
   FormattingToolbarController,
+  BlockTypeSelect,
+  BasicTextStyleButton,
+  TextAlignButton,
+  ColorStyleButton,
+  NestBlockButton,
+  UnnestBlockButton,
+  CreateLinkButton,
   FileReplaceButton,
   FileRenameButton,
   FileCaptionButton,
@@ -376,6 +383,19 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
             }}
             formattingToolbar={() => (
               <FormattingToolbar>
+                <BlockTypeSelect key="blockTypeSelect" />
+                <BasicTextStyleButton basicTextStyle="bold" key="bold" />
+                <BasicTextStyleButton basicTextStyle="italic" key="italic" />
+                <BasicTextStyleButton basicTextStyle="underline" key="underline" />
+                <BasicTextStyleButton basicTextStyle="strike" key="strike" />
+                <BasicTextStyleButton basicTextStyle="code" key="code" />
+                <TextAlignButton textAlignment="left" key="left" />
+                <TextAlignButton textAlignment="center" key="center" />
+                <TextAlignButton textAlignment="right" key="right" />
+                <ColorStyleButton key="color" />
+                <NestBlockButton key="nest" />
+                <UnnestBlockButton key="unnest" />
+                <CreateLinkButton key="link" />
                 <FileReplaceButton key="fileReplace" />
                 <FileRenameButton key="fileRename" />
                 <FileCaptionButton key="fileCaption" />
