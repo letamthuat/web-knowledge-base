@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { TabBar } from "@/components/tabs/TabBar";
 import { TabDropdown } from "@/components/tabs/TabDropdown";
 import { useTabSync } from "@/hooks/useTabSync";
+import { useNoteTabs } from "@/hooks/useNoteTabs";
 
 function ReaderShell({ doc, downloadUrl }: {
   doc: { _id: Id<"documents">; format: string; title: string };
@@ -25,6 +26,7 @@ function ReaderShell({ doc, downloadUrl }: {
   const router = useRouter();
   const { saveNow, saveStatus, savePosition, progress } = useReadingProgress(doc._id);
   const { tabs: allTabs, isLoading: tabsLoading, openTab, updateScrollState } = useTabSync();
+  const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
 
   // Find the tab for this doc so we can persist scroll state into it
   const currentTab = allTabs.find((t) => t.docId === doc._id) ?? null;
@@ -96,7 +98,17 @@ function ReaderShell({ doc, downloadUrl }: {
         <div className="flex flex-1 flex-col overflow-hidden">
           {showDropdown
             ? <TabDropdown currentDocId={doc._id} />
-            : <TabBar currentDocId={doc._id} showAddButton />}
+            : <TabBar
+                currentDocId={doc._id}
+                showAddButton
+                noteTabs={noteTabs}
+                activeNoteId={activeNoteId}
+                onSelectNoteTab={(id) => {
+                  setActiveNoteId(id as Id<"notes">);
+                  router.push("/notes");
+                }}
+                onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
+              />}
           <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} />
         </div>
       </div>
