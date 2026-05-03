@@ -81,7 +81,7 @@ export function NoteList({ notes, selectedId, onSelect, onNew, onDelete }: NoteL
             <ChevronDown className="h-3 w-3 opacity-60" />
           </Button>
           {newMenuOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border bg-popover shadow-md">
+            <div className="absolute right-0 bottom-full z-50 mb-1 w-48 rounded-md border bg-popover shadow-md">
               <button
                 onClick={() => { setNewMenuOpen(false); onNew(); }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"

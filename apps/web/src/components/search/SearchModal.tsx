@@ -104,7 +104,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col sm:items-start sm:justify-center bg-black/50 sm:pt-[15vh]"
+      className="fixed inset-0 z-50 flex flex-col pb-14 sm:pb-0 sm:items-start sm:justify-center bg-black/50 sm:pt-[15vh]"
       onClick={onClose}
     >
       <div

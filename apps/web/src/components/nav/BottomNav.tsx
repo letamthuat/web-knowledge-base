@@ -29,7 +29,7 @@ export function BottomNav() {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-[40] md:hidden border-t bg-card/90 backdrop-blur-sm"
+        className="fixed bottom-0 left-0 right-0 z-[55] md:hidden border-t bg-card/90 backdrop-blur-sm"
         style={{ paddingBottom: "var(--safe-bottom)" }}
         aria-label="Navigation chính"
       >
