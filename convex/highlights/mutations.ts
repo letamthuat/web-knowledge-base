@@ -79,9 +79,9 @@ export const createBookmark = mutation({
     const id = await ctx.db.insert("highlights", {
       userId: userId as never,
       docId: args.docId,
-      color: "yellow",
-      type: "bookmark",
-      positionType: "scroll_pct" as never,
+      color: "yellow" as "yellow",
+      type: "bookmark" as "bookmark",
+      positionType: "scroll_pct" as "scroll_pct",
       positionValue,
       note: args.label,
       updatedAt: now,
