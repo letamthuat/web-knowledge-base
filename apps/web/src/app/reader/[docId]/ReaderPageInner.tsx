@@ -36,18 +36,41 @@ function ReaderShell({ doc, downloadUrl }: {
   const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const [readingMode, setReadingMode] = useState(false);
 
-  // Cmd/Ctrl+K
+  const READING_MODE_FORMATS = new Set(["pdf", "epub", "docx", "markdown", "web_clip"]);
+
+  // Cmd/Ctrl+K + Reading Mode shortcuts
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
+        return;
+      }
+
+      // Cmd/Ctrl+Shift+R or F → toggle reading mode
+      if (((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "r") ||
+          (e.key === "f" && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey)) {
+        e.preventDefault();
+        if (!READING_MODE_FORMATS.has(doc.format)) {
+          toast("Reading Mode chỉ dành cho định dạng đọc");
+          return;
+        }
+        setReadingMode((v) => !v);
+        return;
+      }
+
+      // Esc → exit reading mode (only when search modal is closed)
+      if (e.key === "Escape" && !searchOpen) {
+        setReadingMode(false);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [doc.format, searchOpen]);
 
   // Find the tab for this doc so we can persist scroll state into it
   const currentTab = allTabs.find((t) => t.docId === doc._id) ?? null;
@@ -175,6 +198,17 @@ function ReaderShell({ doc, downloadUrl }: {
   return (
     <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition: savePositionWithTab, jumpTo, registerJump }}>
       <div className="flex h-screen flex-col overflow-hidden bg-background">
+        {/* Reading Mode exit button */}
+        {readingMode && (
+          <button
+            onClick={() => setReadingMode(false)}
+            className="fixed top-4 right-4 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50 transition-colors"
+            aria-label="Thoát Reading Mode"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+
         {/* Mobile swipe drawer */}
         {isMobile && drawerOpen && (
           <div className="fixed inset-0 z-50">
@@ -201,7 +235,7 @@ function ReaderShell({ doc, downloadUrl }: {
             </aside>
           </div>
         )}
-        <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4">
+        {!readingMode && <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4">
           <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" size="sm" className="p-1.5 shrink-0 md:hidden" onClick={() => setDrawerOpen(true)}>
               <Menu className="h-4 w-4" />
@@ -242,28 +276,33 @@ function ReaderShell({ doc, downloadUrl }: {
               <span className="hidden md:inline">Đăng xuất</span>
             </Button>
           </div>
-        </header>
+        </header>}
+
+        {!readingMode && (
+          <div className="flex flex-col shrink-0">
+            {showDropdown
+              ? <TabDropdown
+                  currentDocId={doc._id}
+                  noteTabs={noteTabs}
+                  activeNoteId={activeNoteId}
+                  onSelectNoteTab={(id) => { setActiveNoteId(id as Id<"notes">); router.push("/notes"); }}
+                  onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
+                />
+              : <TabBar
+                  currentDocId={doc._id}
+                  showAddButton
+                  noteTabs={noteTabs}
+                  activeNoteId={activeNoteId}
+                  onSelectNoteTab={(id) => {
+                    setActiveNoteId(id as Id<"notes">);
+                    router.push("/notes");
+                  }}
+                  onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
+                />}
+          </div>
+        )}
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          {showDropdown
-            ? <TabDropdown
-                currentDocId={doc._id}
-                noteTabs={noteTabs}
-                activeNoteId={activeNoteId}
-                onSelectNoteTab={(id) => { setActiveNoteId(id as Id<"notes">); router.push("/notes"); }}
-                onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
-              />
-            : <TabBar
-                currentDocId={doc._id}
-                showAddButton
-                noteTabs={noteTabs}
-                activeNoteId={activeNoteId}
-                onSelectNoteTab={(id) => {
-                  setActiveNoteId(id as Id<"notes">);
-                  router.push("/notes");
-                }}
-                onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
-              />}
           <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} />
         </div>
       </div>
