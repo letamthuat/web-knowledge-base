@@ -22,7 +22,7 @@ import { useTabSync } from "@/hooks/useTabSync";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { SearchModal } from "@/components/search/SearchModal";
 import { Search } from "lucide-react";
-import { useReadingModePrefs, useUpdateReadingModePrefs, type ReadingTheme } from "@/hooks/useReadingModePrefs";
+import { useReadingModePrefs, useUpdateReadingModePrefs, type ReadingTheme, type FontFamily, type ColumnWidth } from "@/hooks/useReadingModePrefs";
 
 function ReaderShell({ doc, downloadUrl }: {
   doc: { _id: Id<"documents">; format: string; title: string };
@@ -46,23 +46,26 @@ function ReaderShell({ doc, downloadUrl }: {
     }
     return "light";
   });
+  const [rmFont, setRmFont] = useState<FontFamily>("sans");
+  const [rmFontSize, setRmFontSize] = useState(16);
+  const [rmLineHeight, setRmLineHeight] = useState(1.6);
+  const [rmColWidth, setRmColWidth] = useState<ColumnWidth>("medium");
 
   const prefs = useReadingModePrefs(doc.format);
   const updatePrefs = useUpdateReadingModePrefs();
 
-  // Restore theme from DB prefs (overrides localStorage if DB has explicit value)
+  // Sync prefs from DB once loaded (theme uses localStorage, typography from DB)
   const prefsSynced = useRef(false);
   useEffect(() => {
     if (prefsSynced.current) return;
     const stored = typeof window !== "undefined" ? localStorage.getItem("rm-theme") : null;
-    // Only sync from DB if no local preference saved yet
-    if (!stored) {
-      setRmTheme(prefs.theme);
-      prefsSynced.current = true;
-    } else {
-      prefsSynced.current = true;
-    }
-  }, [prefs.theme]);
+    if (!stored) setRmTheme(prefs.theme);
+    setRmFont(prefs.fontFamily);
+    setRmFontSize(prefs.fontSize);
+    setRmLineHeight(prefs.lineHeight);
+    setRmColWidth(prefs.columnWidth);
+    prefsSynced.current = true;
+  }, [prefs]);
 
   // Close settings panel when reading mode exits
   useEffect(() => {
@@ -74,6 +77,36 @@ function ReaderShell({ doc, downloadUrl }: {
     localStorage.setItem("rm-theme", t);
     updatePrefs({ themeByFormat: { [doc.format]: t } }).catch(() => {});
   }
+
+  function applyFont(f: FontFamily) {
+    setRmFont(f);
+    updatePrefs({ fontFamily: f }).catch(() => {});
+  }
+
+  function applyFontSize(s: number) {
+    setRmFontSize(s);
+    updatePrefs({ fontSize: s }).catch(() => {});
+  }
+
+  function applyLineHeight(lh: number) {
+    setRmLineHeight(lh);
+    updatePrefs({ lineHeight: lh }).catch(() => {});
+  }
+
+  function applyColWidth(w: ColumnWidth) {
+    setRmColWidth(w);
+    updatePrefs({ columnWidth: w }).catch(() => {});
+  }
+
+  const fontFamilyCss = rmFont === "serif"
+    ? "ui-serif, Georgia, serif"
+    : rmFont === "mono"
+    ? "ui-monospace, monospace"
+    : "ui-sans-serif, system-ui, sans-serif";
+
+  const colWidthClass = rmColWidth === "narrow" ? "max-w-xl" : rmColWidth === "wide" ? "max-w-5xl" : "max-w-3xl";
+
+  const TEXT_FORMATS = new Set(["markdown", "epub", "docx", "web_clip"]);
 
   const READING_MODE_FORMATS = new Set(["pdf", "epub", "docx", "markdown", "web_clip"]);
 
@@ -266,7 +299,8 @@ function ReaderShell({ doc, downloadUrl }: {
             <Settings className="h-3.5 w-3.5" />
           </button>
           {settingsOpen && (
-            <div className="fixed bottom-16 right-4 z-50 rounded-2xl border bg-card shadow-2xl p-4 w-52">
+            <div className="fixed bottom-16 right-4 z-50 rounded-2xl border bg-card shadow-2xl p-4 w-56 max-h-[80vh] overflow-y-auto">
+              {/* Theme section */}
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">Màu nền</p>
               <div className="flex gap-2">
                 {([
@@ -294,6 +328,51 @@ function ReaderShell({ doc, downloadUrl }: {
                     </span>
                   </button>
                 ))}
+              </div>
+
+              {/* Typography section */}
+              <div className="border-t pt-3 mt-3 space-y-3">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Chữ</p>
+
+                {/* Font family */}
+                <div className="flex gap-1.5">
+                  {(["sans", "serif", "mono"] as const).map((f) => (
+                    <button key={f} onClick={() => applyFont(f)}
+                      className={`flex-1 rounded-lg border py-1 text-xs font-medium transition-all capitalize ${rmFont === f ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-foreground/40"}`}>
+                      {f === "sans" ? "Sans" : f === "serif" ? "Serif" : "Mono"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Font size slider */}
+                <div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5">
+                    <span>Cỡ chữ</span><span>{rmFontSize}px</span>
+                  </div>
+                  <input type="range" min="12" max="28" step="1" value={rmFontSize}
+                    onChange={(e) => applyFontSize(Number(e.target.value))}
+                    className="w-full accent-primary h-1.5 rounded-full cursor-pointer" />
+                </div>
+
+                {/* Line height slider */}
+                <div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5">
+                    <span>Dãn dòng</span><span>{rmLineHeight.toFixed(1)}</span>
+                  </div>
+                  <input type="range" min="1.4" max="2.0" step="0.1" value={rmLineHeight}
+                    onChange={(e) => applyLineHeight(Number(e.target.value))}
+                    className="w-full accent-primary h-1.5 rounded-full cursor-pointer" />
+                </div>
+
+                {/* Column width */}
+                <div className="flex gap-1.5">
+                  {([["narrow", "Hẹp"], ["medium", "Vừa"], ["wide", "Rộng"]] as const).map(([v, label]) => (
+                    <button key={v} onClick={() => applyColWidth(v)}
+                      className={`flex-1 rounded-lg border py-1 text-xs font-medium transition-all ${rmColWidth === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-foreground/40"}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -393,7 +472,14 @@ function ReaderShell({ doc, downloadUrl }: {
         )}
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} />
+          {TEXT_FORMATS.has(doc.format) ? (
+            <div className={`mx-auto w-full h-full overflow-auto ${colWidthClass} transition-all`}
+              style={{ fontFamily: fontFamilyCss, fontSize: rmFontSize, lineHeight: rmLineHeight }}>
+              <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} />
+            </div>
+          ) : (
+            <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} />
+          )}
         </div>
       </div>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
