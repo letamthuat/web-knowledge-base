@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -108,7 +108,7 @@ export function NotesPageInner() {
   const selectedNote = (notes as any[]).find((n) => n._id === activeNoteId) ?? null;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
       {/* Mobile nav drawer */}
       {navDrawerOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
@@ -136,7 +136,7 @@ export function NotesPageInner() {
       )}
 
       {/* Navbar */}
-      <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2">
+      <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2" style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" className="md:hidden p-1.5" onClick={() => setNavDrawerOpen(true)}>
             <Menu className="h-4 w-4" />

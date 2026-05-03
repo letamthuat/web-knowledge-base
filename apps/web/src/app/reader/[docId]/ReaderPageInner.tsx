@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -205,7 +205,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
   return (
     <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition: savePositionWithTab, jumpTo, registerJump }}>
-      <div className="flex h-screen flex-col overflow-hidden bg-background transition-colors">
+      <div className="flex h-dvh flex-col overflow-hidden bg-background transition-colors">
         {/* Reading Mode exit button */}
         {readingMode && (
           <button
@@ -244,7 +244,7 @@ function ReaderShell({ doc, downloadUrl }: {
             </aside>
           </div>
         )}
-        {!readingMode && <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4">
+        {!readingMode && <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4" style={{ paddingTop: 'var(--safe-top)' }}>
           <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" size="sm" className="p-1.5 shrink-0 md:hidden" onClick={() => setDrawerOpen(true)}>
               <Menu className="h-4 w-4" />
@@ -392,7 +392,7 @@ export default function ReaderPageInner() {
   if (doc === undefined) return <FullPageSpinner />;
   if (doc === null) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Không tìm thấy tài liệu.</p>
         <Button variant="outline" onClick={() => router.push("/library")}>Về thư viện</Button>
       </div>
@@ -401,8 +401,8 @@ export default function ReaderPageInner() {
 
   if (urlError) {
     return (
-      <div className="flex h-screen flex-col overflow-hidden bg-background">
-        <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4">
+      <div className="flex h-dvh flex-col overflow-hidden bg-background">
+        <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4" style={{ paddingTop: 'var(--safe-top)' }}>
           <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Thư viện
@@ -417,8 +417,8 @@ export default function ReaderPageInner() {
   // Show layout immediately with doc data; viewer shows its own loading if URL not yet ready
   if (!downloadUrl) {
     return (
-      <div className="flex h-screen flex-col overflow-hidden bg-background">
-        <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4">
+      <div className="flex h-dvh flex-col overflow-hidden bg-background">
+        <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4" style={{ paddingTop: 'var(--safe-top)' }}>
           <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Thư viện
@@ -437,7 +437,7 @@ export default function ReaderPageInner() {
 
 function FullPageSpinner() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div className="flex min-h-dvh items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
     </div>
   );

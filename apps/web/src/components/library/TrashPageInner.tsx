@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,7 @@ export function TrashPageInner() {
 
   if (isPending) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" aria-label="Đang tải" />
       </div>
     );
@@ -31,7 +31,7 @@ export function TrashPageInner() {
   if (!session) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
