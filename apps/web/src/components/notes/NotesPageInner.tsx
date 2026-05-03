@@ -134,6 +134,10 @@ export function NotesPageInner() {
             <button className="flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-muted font-medium transition-colors">
               <StickyNote className="h-4 w-4" /> {N.notes}
             </button>
+            <button onClick={() => { setNavDrawerOpen(false); setSearchOpen(true); }}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+              <Search className="h-4 w-4" /> Tìm kiếm
+            </button>
             <button onClick={() => { setNavDrawerOpen(false); router.push("/settings"); }}
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
               <Settings className="h-4 w-4" /> {N.settings}
