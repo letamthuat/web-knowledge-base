@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRecording } from "@/contexts/RecordingContext";
 import { useState, useEffect } from "react";
@@ -171,7 +171,7 @@ export function ScreenRecordingPillFloating() {
     <>
       {isActive && (
         <div
-          className={`md:hidden fixed bottom-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-full px-4 py-2.5 font-medium select-none shadow-lg transition-colors ${
+          className={`md:hidden fixed bottom-32 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-full px-4 py-2.5 font-medium select-none shadow-lg transition-colors ${
             state === "paused" ? "bg-gray-600 text-white" : "bg-violet-600 text-white"
           }`}
         >

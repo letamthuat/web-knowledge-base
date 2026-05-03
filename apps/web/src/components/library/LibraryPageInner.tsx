@@ -371,7 +371,7 @@ export function LibraryPageInner() {
   );
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="min-h-dvh bg-background pb-14 md:pb-0">
       {/* Navbar — full width */}
       <header className="border-b bg-card sticky top-0 z-20" style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="flex h-14 items-center justify-between px-4 md:px-6">

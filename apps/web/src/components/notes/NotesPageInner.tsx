@@ -222,7 +222,7 @@ export function NotesPageInner() {
       </div>
 
       {/* Main content */}
-      <div className="relative flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 overflow-hidden pb-14 md:pb-0">
         {/* Sidebar — overlay on mobile, inline on desktop */}
         {sidebarOpen && (
           <>

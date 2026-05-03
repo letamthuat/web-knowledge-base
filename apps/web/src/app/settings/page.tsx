@@ -83,7 +83,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="min-h-dvh bg-background pb-14 md:pb-0">
       <div className="mx-auto max-w-2xl px-4 py-12">
         <Button variant="ghost" size="sm" className="mb-8" onClick={() => router.push("/library")}>
           ← Quay lại thư viện

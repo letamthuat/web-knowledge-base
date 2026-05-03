@@ -6,6 +6,7 @@ import { RecordingProvider } from "@/contexts/RecordingContext";
 import { AudioRecordingPillFloating } from "@/components/recording/AudioRecordingPill";
 import { ScreenRecordingPillFloating } from "@/components/recording/ScreenRecordingPill";
 import { AppSettingsPanel } from "@/components/AppSettingsPanel";
+import { BottomNav } from "@/components/nav/BottomNav";
 import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             {children}
             <AudioRecordingPillFloating />
             <ScreenRecordingPillFloating />
+            <BottomNav />
             <AppSettingsPanel />
           </RecordingProvider>
           {/* Toast notifications dùng tiếng Việt (NFR37) */}
