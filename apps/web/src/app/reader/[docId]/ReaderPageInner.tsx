@@ -13,7 +13,7 @@ import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopove
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
 import { toProgressPct } from "@/lib/position";
-import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download } from "lucide-react";
+import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ import { TabDropdown } from "@/components/tabs/TabDropdown";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { SearchModal } from "@/components/search/SearchModal";
-import { Search } from "lucide-react";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useAppTypography } from "@/components/AppSettingsPanel";
 
 function ReaderShell({ doc, downloadUrl }: {
@@ -38,6 +38,7 @@ function ReaderShell({ doc, downloadUrl }: {
   const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [readingMode, setReadingMode] = useState(false);
   const [localPct, setLocalPct] = useState<number | null>(null);
   const [headerVisible, setHeaderVisible] = useState(true);
@@ -291,19 +292,26 @@ function ReaderShell({ doc, downloadUrl }: {
           <div className="flex items-center gap-2 shrink-0">
             <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
             <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
-            <Button variant="ghost" size="sm" onClick={handleDownload} title="Tải xuống tài liệu" className="gap-1">
+            <Button variant="ghost" size="sm" onClick={handleDownload} title="Tải xuống tài liệu" className="hidden sm:inline-flex gap-1">
               <Download className="h-4 w-4" />
               <span className="hidden md:inline">Tải xuống</span>
             </Button>
             <span className="hidden lg:inline text-sm text-muted-foreground">{session?.user?.email}</span>
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex md:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              className="hidden sm:flex md:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
               aria-label="Tìm kiếm"
             >
               <Search className="h-4 w-4" />
             </button>
-            <Button variant="ghost" size="sm" onClick={async () => { await signOut(); router.push("/login"); }} className="gap-1">
+            <button
+              onClick={() => setMoreMenuOpen(true)}
+              className="flex sm:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              aria-label="Thêm"
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+            <Button variant="ghost" size="sm" onClick={async () => { await signOut(); router.push("/login"); }} className="hidden md:inline-flex gap-1">
               <LogOut className="h-4 w-4" />
               <span className="hidden md:inline">Đăng xuất</span>
             </Button>
@@ -366,6 +374,31 @@ function ReaderShell({ doc, downloadUrl }: {
         })()}
       </div>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <BottomSheet open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} title="Thêm">
+        <div className="flex flex-col gap-2 py-2">
+          <button
+            onClick={() => { setMoreMenuOpen(false); handleDownload(); }}
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm hover:bg-muted transition-colors"
+          >
+            <Download className="h-5 w-5 text-muted-foreground" />
+            Tải xuống tài liệu
+          </button>
+          <button
+            onClick={() => { setMoreMenuOpen(false); setSearchOpen(true); }}
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm hover:bg-muted transition-colors"
+          >
+            <Search className="h-5 w-5 text-muted-foreground" />
+            Tìm kiếm
+          </button>
+          <button
+            onClick={async () => { setMoreMenuOpen(false); await signOut(); router.push("/login"); }}
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm hover:bg-muted transition-colors text-destructive"
+          >
+            <LogOut className="h-5 w-5" />
+            Đăng xuất
+          </button>
+        </div>
+      </BottomSheet>
     </ReaderProgressContext.Provider>
   );
 }

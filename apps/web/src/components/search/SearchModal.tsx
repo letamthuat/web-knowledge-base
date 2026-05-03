@@ -104,11 +104,11 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[15vh]"
+      className="fixed inset-0 z-50 flex flex-col sm:items-start sm:justify-center bg-black/50 sm:pt-[15vh]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg mx-4 rounded-xl border bg-card shadow-2xl overflow-hidden"
+        className="w-full flex-1 flex flex-col sm:flex-none sm:max-w-lg sm:mx-4 sm:rounded-xl border bg-card shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input */}
@@ -168,7 +168,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
         </div>
 
         {/* Results */}
-        <div className="max-h-[50vh] overflow-y-auto py-2">
+        <div className="flex-1 min-h-[200px] sm:max-h-[50vh] overflow-y-auto py-2">
           {/* Loading */}
           {isLoading && (
             <div className="flex items-center justify-center py-8 text-muted-foreground text-sm gap-2">
