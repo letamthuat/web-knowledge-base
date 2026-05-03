@@ -97,3 +97,12 @@ mark.hl-has-note {
   border-bottom: 2px dashed #7c3aed;
   padding-bottom: 1px;
 }
+
+/* Reading Mode themes */
+.rm-light { background: #ffffff !important; color: #1a1a1a !important; }
+.rm-sepia  { background: #f4ecd8 !important; color: #3b2f2f !important; }
+.rm-dark   { background: #1a1a1a !important; color: #e8e8e8 !important; }
+
+.rm-light .prose, .rm-sepia .prose, .rm-dark .prose { color: inherit !important; }
+.rm-sepia .prose { --tw-prose-body: #3b2f2f; --tw-prose-headings: #2a1f1f; --tw-prose-links: #6b4c2a; --tw-prose-code: #5a3e2b; }
+.rm-dark  .prose { --tw-prose-body: #e8e8e8; --tw-prose-headings: #ffffff; --tw-prose-links: #93c5fd; --tw-prose-code: #f9a8d4; }
