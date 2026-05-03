@@ -10,10 +10,18 @@ interface Doc {
   title: string;
 }
 
+export interface TypographyStyle {
+  fontFamily: string;
+  fontSize: number;
+  lineHeight: number;
+  colWidthClass: string;
+}
+
 interface ViewerDispatcherProps {
   doc: Doc;
   downloadUrl: string;
   highlightQuery?: string;
+  typography?: TypographyStyle;
 }
 
 function ViewerLoading() {
@@ -61,11 +69,11 @@ const PPTXViewer = dynamic(
   { ssr: false, loading: () => <ViewerLoading /> }
 );
 
-export function ViewerDispatcher({ doc, downloadUrl, highlightQuery }: ViewerDispatcherProps) {
+export function ViewerDispatcher({ doc, downloadUrl, highlightQuery, typography }: ViewerDispatcherProps) {
   switch (doc.format) {
     case "pdf":       return <PDFViewer doc={doc} downloadUrl={downloadUrl} />;
     case "epub":      return <EPUBViewer doc={doc} downloadUrl={downloadUrl} />;
-    case "markdown":  return <MarkdownViewer doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} />;
+    case "markdown":  return <MarkdownViewer doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} typography={typography} />;
     case "image":     return <ImageViewer doc={doc} downloadUrl={downloadUrl} />;
     case "audio":     return <AudioViewer doc={doc} downloadUrl={downloadUrl} />;
     case "video":     return <VideoViewer doc={doc} downloadUrl={downloadUrl} />;

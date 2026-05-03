@@ -33,6 +33,7 @@ interface MarkdownViewerProps {
   doc: { _id: Id<"documents">; title: string };
   downloadUrl: string;
   highlightQuery?: string;
+  typography?: { fontFamily: string; fontSize: number; lineHeight: number; colWidthClass: string };
 }
 
 interface TocEntry {
@@ -56,7 +57,7 @@ function extractToc(markdown: string): TocEntry[] {
   return entries;
 }
 
-export function MarkdownViewer({ doc, downloadUrl, highlightQuery }: MarkdownViewerProps) {
+export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }: MarkdownViewerProps) {
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
@@ -512,7 +513,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery }: MarkdownVie
 
         {/* Content area */}
         <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden" onScroll={handleScroll} onMouseUp={handleMouseUp}>
-          <div className="mx-auto max-w-3xl px-6 py-8" style={{ zoom: scale }}>
+          <div className={`mx-auto px-6 py-8 ${typography?.colWidthClass ?? "max-w-3xl"}`} style={{ zoom: scale, fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
             <article className="prose prose-neutral dark:prose-invert max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}

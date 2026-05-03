@@ -472,14 +472,12 @@ function ReaderShell({ doc, downloadUrl }: {
         )}
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          {TEXT_FORMATS.has(doc.format) ? (
-            <div className={`mx-auto w-full h-full overflow-auto ${colWidthClass} transition-all`}
-              style={{ fontFamily: fontFamilyCss, fontSize: rmFontSize, lineHeight: rmLineHeight }}>
-              <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} />
-            </div>
-          ) : (
-            <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} />
-          )}
+          <ViewerDispatcher
+            doc={doc}
+            downloadUrl={downloadUrl}
+            highlightQuery={highlightQuery}
+            typography={TEXT_FORMATS.has(doc.format) ? { fontFamily: fontFamilyCss, fontSize: rmFontSize, lineHeight: rmLineHeight, colWidthClass } : undefined}
+          />
         </div>
       </div>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
