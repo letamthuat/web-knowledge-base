@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, FileText, StickyNote, Highlighter, X, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe } from "lucide-react";
 import { useSearch } from "@/hooks/useSearch";
+import { snippet } from "@/lib/search/snippet";
 
 const FORMAT_ICONS: Record<string, React.ElementType> = {
   pdf: FileText, epub: BookOpen, docx: FileType2, pptx: Presentation,
@@ -131,9 +132,8 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-medium">{doc.title}</p>
                       {doc.extractedText && (
-                        <p className="truncate text-[11px] text-muted-foreground mt-0.5">
-                          {doc.extractedText.slice(0, 100)}
-                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2"
+                          dangerouslySetInnerHTML={{ __html: snippet(doc.extractedText, q) }} />
                       )}
                     </div>
                   </ResultItem>
@@ -152,9 +152,8 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                     <p className="truncate text-[13px] font-medium">
                       {note.title || "(Không có tiêu đề)"}
                     </p>
-                    <p className="truncate text-[11px] text-muted-foreground mt-0.5">
-                      {bodyPreview(note.body)}
-                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2"
+                      dangerouslySetInnerHTML={{ __html: snippet(bodyPreview(note.body), q) }} />
                   </div>
                 </ResultItem>
               ))}
@@ -168,10 +167,12 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                 <ResultItem key={hl._id} onClick={() => goToDoc(hl.docId)}>
                   <Highlighter className="h-4 w-4 shrink-0 text-amber-500" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] text-muted-foreground italic">
-                      &ldquo;{(hl.selectedText ?? "").slice(0, 80)}&rdquo;
-                    </p>
-                    <p className="truncate text-[12px] text-foreground mt-0.5">{hl.note}</p>
+                    <p className="text-[11px] text-muted-foreground italic line-clamp-2"
+                      dangerouslySetInnerHTML={{ __html: `&ldquo;${snippet(hl.selectedText ?? "", q)}&rdquo;` }} />
+                    {hl.note && (
+                      <p className="text-[12px] text-foreground mt-0.5 line-clamp-1"
+                        dangerouslySetInnerHTML={{ __html: snippet(hl.note, q) }} />
+                    )}
                   </div>
                 </ResultItem>
               ))}
