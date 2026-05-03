@@ -116,9 +116,10 @@ interface NoteEditorProps {
   /** Ref to trigger immediate save from parent toolbar */
   saveNowRef?: React.MutableRefObject<(() => void) | null>;
   typography?: { fontFamily: string; fontSize: number; lineHeight: number; colWidthClass: string };
+  colorScheme?: "light" | "dark";
 }
 
-export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate, autoFocusTitle, compact, onSaveStateChange, importRef, onExport, saveNowRef, typography }: NoteEditorProps) {
+export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate, autoFocusTitle, compact, onSaveStateChange, importRef, onExport, saveNowRef, typography, colorScheme = "light" }: NoteEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saved, setSaved] = useState(true);
   const setSavedWithNotify = useCallback((v: boolean) => {
@@ -364,7 +365,7 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
         />
         <BlockNoteView
           editor={editor}
-          theme="light"
+          theme={colorScheme}
           className="min-h-full"
           formattingToolbar={false}
         >

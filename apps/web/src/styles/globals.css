@@ -135,3 +135,10 @@ html.rm-light {
 
 html.rm-sepia .prose { --tw-prose-body: #3b2f2f; --tw-prose-headings: #2a1f1f; --tw-prose-links: #6b4c2a; --tw-prose-code: #5a3e2b; }
 html.rm-dark  .prose { --tw-prose-body: #e8e8e8; --tw-prose-headings: #ffffff; --tw-prose-links: #93c5fd; --tw-prose-code: #f9a8d4; }
+
+/* BlockNote editor — override inline background injected by Mantine/BlockNote */
+html.rm-sepia .bn-editor,
+html.rm-sepia [data-color-scheme],
+html.rm-sepia .bn-container { background-color: #f4ecd8 !important; color: #3b2f2f !important; }
+html.rm-sepia .bn-block-content,
+html.rm-sepia .ProseMirror { color: #3b2f2f !important; }

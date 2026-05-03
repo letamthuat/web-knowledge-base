@@ -68,7 +68,7 @@ export function NotesPageInner() {
   function applyColWidth(w: ColumnWidth) { setRmColWidth(w); updatePrefs({ columnWidth: w }).catch(() => {}); }
 
   const fontFamilyCss = rmFont === "serif" ? "ui-serif, Georgia, serif" : rmFont === "mono" ? "ui-monospace, monospace" : "ui-sans-serif, system-ui, sans-serif";
-  const colWidthClass = rmColWidth === "narrow" ? "max-w-xl" : rmColWidth === "wide" ? "max-w-5xl" : "max-w-3xl";
+  const colWidthClass = rmColWidth === "narrow" ? "max-w-xl" : rmColWidth === "wide" ? "max-w-full" : "max-w-3xl";
 
   // On desktop, default sidebar open
   useEffect(() => {
@@ -291,6 +291,7 @@ export function NotesPageInner() {
             onExport={noteExportRef}
             saveNowRef={noteSaveNowRef}
             typography={{ fontFamily: fontFamilyCss, fontSize: rmFontSize, lineHeight: rmLineHeight, colWidthClass }}
+            colorScheme={rmTheme === "dark" ? "dark" : "light"}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground">

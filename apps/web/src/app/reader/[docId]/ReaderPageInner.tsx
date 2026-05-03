@@ -104,7 +104,7 @@ function ReaderShell({ doc, downloadUrl }: {
     ? "ui-monospace, monospace"
     : "ui-sans-serif, system-ui, sans-serif";
 
-  const colWidthClass = rmColWidth === "narrow" ? "max-w-xl" : rmColWidth === "wide" ? "max-w-5xl" : "max-w-3xl";
+  const colWidthClass = rmColWidth === "narrow" ? "max-w-xl" : rmColWidth === "wide" ? "max-w-full" : "max-w-3xl";
 
   const TEXT_FORMATS = new Set(["markdown", "epub", "docx", "web_clip"]);
 
