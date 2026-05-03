@@ -278,6 +278,22 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={displayTabs.map((t) => t._id)} strategy={horizontalListSortingStrategy}>
           <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto scrollbar-none py-1">
+            {/* Persistent Notes tab */}
+            <div
+              onClick={() => router.push("/notes")}
+              className={[
+                "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 transition-all duration-150",
+                notesActive && noteTabs.length === 0
+                  ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                  : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+              ].join(" ")}
+              title="Ghi chú"
+            >
+              <StickyNote className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+              <span className="text-xs font-medium">Ghi chú</span>
+            </div>
+            {<div className="h-4 w-px shrink-0 bg-border/40" />}
+
             {/* Individual note tabs */}
             {noteTabs.map((nt) => {
               const isNoteActive = notesActive && activeNoteId === nt.noteId;
