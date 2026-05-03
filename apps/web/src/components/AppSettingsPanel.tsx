@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Settings } from "lucide-react";
 import { useReadingModePrefs, useUpdateReadingModePrefs, type ReadingTheme, type FontFamily, type ColumnWidth } from "@/hooks/useReadingModePrefs";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -37,18 +37,62 @@ export function useAppTypography() {
   return getAppTypography();
 }
 
+const POSITION_KEY = "settings-btn-pos";
+
 export function AppSettingsPanel() {
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [, rerender] = useState(0);
+  const [pos, setPos] = useState<{ right: number; bottom: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dragState = useRef<{ startX: number; startY: number; startRight: number; startBottom: number; moved: boolean } | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
     setIsMobile(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", handler);
+    // Restore saved position
+    try {
+      const saved = localStorage.getItem(POSITION_KEY);
+      if (saved) setPos(JSON.parse(saved));
+    } catch { /* ignore */ }
     return () => mq.removeEventListener("change", handler);
   }, []);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const right = window.innerWidth - rect.right;
+    const bottom = window.innerHeight - rect.bottom;
+    dragState.current = { startX: e.clientX, startY: e.clientY, startRight: right, startBottom: bottom, moved: false };
+    btn.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }, []);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragState.current) return;
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragState.current.moved = true;
+    if (!dragState.current.moved) return;
+    const newRight = Math.max(4, Math.min(window.innerWidth - 44, dragState.current.startRight - dx));
+    const newBottom = Math.max(4, Math.min(window.innerHeight - 44, dragState.current.startBottom - dy));
+    setPos({ right: newRight, bottom: newBottom });
+  }, []);
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragState.current) return;
+    const wasMoved = dragState.current.moved;
+    dragState.current = null;
+    if (wasMoved && pos) {
+      try { localStorage.setItem(POSITION_KEY, JSON.stringify(pos)); } catch { /* ignore */ }
+    } else if (!wasMoved) {
+      setOpen((v) => !v);
+    }
+    e.preventDefault();
+  }, [pos]);
 
   const prefs = useReadingModePrefs();
   const updatePrefs = useUpdateReadingModePrefs();
@@ -197,10 +241,17 @@ export function AppSettingsPanel() {
 
   return (
     <>
-      {/* Trigger button — trên mobile dịch lên trên BottomNav */}
+      {/* Trigger button — draggable, position saved to localStorage */}
       <button
-        onClick={() => setOpen((v) => !v)}
-        className={`fixed right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border shadow-md transition-all hover:scale-105 ${isMobile ? "bottom-[72px]" : "bottom-5"} ${open ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}
+        ref={btnRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        style={pos
+          ? { right: pos.right, bottom: pos.bottom }
+          : { right: 16, bottom: isMobile ? 72 : 20 }
+        }
+        className={`fixed z-50 flex h-10 w-10 cursor-grab active:cursor-grabbing touch-none items-center justify-center rounded-full border shadow-md transition-colors select-none ${open ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}
         aria-label="Cài đặt hiển thị"
       >
         <Settings className="h-3.5 w-3.5" />
