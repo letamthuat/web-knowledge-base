@@ -258,6 +258,10 @@ function ReaderShell({ doc, downloadUrl }: {
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
                 <StickyNote className="h-4 w-4" /> Ghi chú
               </button>
+              <button onClick={() => { setDrawerOpen(false); setSearchOpen(true); }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+                <Search className="h-4 w-4" /> Tìm kiếm
+              </button>
               <button onClick={() => { setDrawerOpen(false); router.push("/settings"); }}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
                 <Settings className="h-4 w-4" /> Cài đặt
