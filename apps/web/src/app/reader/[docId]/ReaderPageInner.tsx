@@ -314,6 +314,28 @@ function ReaderShell({ doc, downloadUrl }: {
             typography={TEXT_FORMATS.has(doc.format) ? { fontFamily: typography.fontFamily, fontSize: typography.fontSize, lineHeight: typography.lineHeight, colWidthClass: typography.colWidthClass } : undefined}
           />
         </div>
+
+        {/* Progress bar + time estimate */}
+        {(() => {
+          const pct = progress?.progressPct;
+          if (pct == null || pct <= 0) return null;
+          const extractedText = (doc as unknown as { extractedText?: string }).extractedText ?? "";
+          const wordCount = extractedText ? extractedText.trim().split(/\s+/).length : 0;
+          const WPM = 200;
+          const wordsLeft = wordCount > 0 ? Math.round(wordCount * (1 - pct / 100)) : 0;
+          const minsLeft = wordCount > 0 ? Math.round(wordsLeft / WPM) : 0;
+          const pctDisplay = Math.round(pct);
+          return (
+            <div className="shrink-0 border-t bg-card/80 backdrop-blur-sm px-4 py-1.5 flex items-center gap-3">
+              <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${pctDisplay}%` }} />
+              </div>
+              <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+                {pctDisplay}%{minsLeft > 0 ? ` · Còn ~${minsLeft} phút` : ""}
+              </span>
+            </div>
+          );
+        })()}
       </div>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </ReaderProgressContext.Provider>
