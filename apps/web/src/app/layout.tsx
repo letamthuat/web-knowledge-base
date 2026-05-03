@@ -37,6 +37,10 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="vi" suppressHydrationWarning>
+      {/* Restore reading theme before first paint to avoid flash */}
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('rm-theme');if(t==='sepia'||t==='dark'||t==='light'){document.documentElement.classList.add('rm-'+t);}}catch(e){}})();` }} />
+      </head>
       <body className={inter.className}>
         {/* ConvexClientProvider bọc ConvexReactClient + Better Auth session */}
         <ConvexClientProvider>

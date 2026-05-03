@@ -39,14 +39,29 @@ function ReaderShell({ doc, downloadUrl }: {
   const [searchOpen, setSearchOpen] = useState(false);
   const [readingMode, setReadingMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [rmTheme, setRmTheme] = useState<ReadingTheme>("light");
+  const [rmTheme, setRmTheme] = useState<ReadingTheme>(() => {
+    if (typeof window !== "undefined") {
+      const t = localStorage.getItem("rm-theme");
+      if (t === "sepia" || t === "dark" || t === "light") return t;
+    }
+    return "light";
+  });
 
   const prefs = useReadingModePrefs(doc.format);
   const updatePrefs = useUpdateReadingModePrefs();
 
-  // Restore theme from prefs on load
+  // Restore theme from DB prefs (overrides localStorage if DB has explicit value)
+  const prefsSynced = useRef(false);
   useEffect(() => {
-    setRmTheme(prefs.theme);
+    if (prefsSynced.current) return;
+    const stored = typeof window !== "undefined" ? localStorage.getItem("rm-theme") : null;
+    // Only sync from DB if no local preference saved yet
+    if (!stored) {
+      setRmTheme(prefs.theme);
+      prefsSynced.current = true;
+    } else {
+      prefsSynced.current = true;
+    }
   }, [prefs.theme]);
 
   // Close settings panel when reading mode exits
@@ -56,12 +71,21 @@ function ReaderShell({ doc, downloadUrl }: {
 
   function applyTheme(t: ReadingTheme) {
     setRmTheme(t);
+    localStorage.setItem("rm-theme", t);
     updatePrefs({ themeByFormat: { [doc.format]: t } }).catch(() => {});
   }
 
   const READING_MODE_FORMATS = new Set(["pdf", "epub", "docx", "markdown", "web_clip"]);
 
   const rmClass = rmTheme === "sepia" ? "rm-sepia" : rmTheme === "dark" ? "rm-dark" : "rm-light";
+
+  // Apply theme class on <html> for full-page coverage; clean up on unmount
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.remove("rm-light", "rm-sepia", "rm-dark");
+    html.classList.add(rmClass);
+    return () => { html.classList.remove("rm-light", "rm-sepia", "rm-dark"); };
+  }, [rmClass]);
 
   // Cmd/Ctrl+K + Reading Mode shortcuts
   useEffect(() => {
