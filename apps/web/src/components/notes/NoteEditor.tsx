@@ -115,9 +115,10 @@ interface NoteEditorProps {
   onExport?: React.MutableRefObject<(() => void) | null>;
   /** Ref to trigger immediate save from parent toolbar */
   saveNowRef?: React.MutableRefObject<(() => void) | null>;
+  typography?: { fontFamily: string; fontSize: number; lineHeight: number; colWidthClass: string };
 }
 
-export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate, autoFocusTitle, compact, onSaveStateChange, importRef, onExport, saveNowRef }: NoteEditorProps) {
+export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId, onUpdate, autoFocusTitle, compact, onSaveStateChange, importRef, onExport, saveNowRef, typography }: NoteEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saved, setSaved] = useState(true);
   const setSavedWithNotify = useCallback((v: boolean) => {
@@ -351,6 +352,8 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
 
       {/* BlockNote editor — title inline at top */}
       <div className="flex-1 overflow-y-auto px-0 md:px-2 py-2">
+        <div className={`mx-auto w-full ${typography?.colWidthClass ?? ""}`}
+          style={typography ? { fontFamily: typography.fontFamily, fontSize: typography.fontSize, lineHeight: typography.lineHeight } : undefined}>
         <input
           ref={titleRef}
           type="text"
@@ -398,6 +401,7 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
             )}
           />
         </BlockNoteView>
+        </div>
       </div>
     </div>
   );
