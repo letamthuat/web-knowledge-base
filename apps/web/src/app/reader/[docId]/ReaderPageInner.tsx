@@ -44,14 +44,15 @@ function ReaderShell({ doc, downloadUrl }: {
   const prefs = useReadingModePrefs(doc.format);
   const updatePrefs = useUpdateReadingModePrefs();
 
-  // Restore theme when reading mode turns on
+  // Restore theme from prefs on load
   useEffect(() => {
-    if (readingMode) {
-      setRmTheme(prefs.theme);
-    } else {
-      setSettingsOpen(false);
-    }
-  }, [readingMode, prefs.theme]);
+    setRmTheme(prefs.theme);
+  }, [prefs.theme]);
+
+  // Close settings panel when reading mode exits
+  useEffect(() => {
+    if (!readingMode) setSettingsOpen(false);
+  }, [readingMode]);
 
   function applyTheme(t: ReadingTheme) {
     setRmTheme(t);
@@ -60,7 +61,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
   const READING_MODE_FORMATS = new Set(["pdf", "epub", "docx", "markdown", "web_clip"]);
 
-  const rmClass = readingMode ? (rmTheme === "sepia" ? "rm-sepia" : rmTheme === "dark" ? "rm-dark" : "rm-light") : "";
+  const rmClass = rmTheme === "sepia" ? "rm-sepia" : rmTheme === "dark" ? "rm-dark" : "rm-light";
 
   // Cmd/Ctrl+K + Reading Mode shortcuts
   useEffect(() => {
@@ -231,35 +232,33 @@ function ReaderShell({ doc, downloadUrl }: {
           </button>
         )}
 
-        {/* Reading Mode settings button + panel */}
-        {readingMode && (
-          <>
-            <button
-              onClick={() => setSettingsOpen((v) => !v)}
-              className="fixed bottom-6 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50 transition-colors"
-              aria-label="Cài đặt Reading Mode"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-            {settingsOpen && (
-              <div className="fixed bottom-18 right-4 z-50 rounded-xl border bg-card shadow-xl p-4 space-y-3 w-44">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nền</p>
-                <div className="flex gap-3">
-                  {(["light", "sepia", "dark"] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => applyTheme(t)}
-                      className={`h-8 w-8 rounded-full border-2 transition-all ${rmTheme === t ? "border-primary scale-110" : "border-muted hover:border-primary/50"}`}
-                      style={{ background: t === "light" ? "#ffffff" : t === "sepia" ? "#f4ecd8" : "#1a1a1a" }}
-                      aria-label={t === "light" ? "Sáng" : t === "sepia" ? "Sepia" : "Tối"}
-                      title={t === "light" ? "Sáng" : t === "sepia" ? "Sepia" : "Tối"}
-                    />
-                  ))}
-                </div>
+        {/* Settings button + theme panel — always visible in reader */}
+        <>
+          <button
+            onClick={() => setSettingsOpen((v) => !v)}
+            className="fixed bottom-6 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50 transition-colors"
+            aria-label="Cài đặt Reading Mode"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+          {settingsOpen && (
+            <div className="fixed bottom-16 right-4 z-50 rounded-xl border bg-card shadow-xl p-4 space-y-3 w-44">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nền</p>
+              <div className="flex gap-3">
+                {(["light", "sepia", "dark"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => applyTheme(t)}
+                    className={`h-8 w-8 rounded-full border-2 transition-all ${rmTheme === t ? "border-primary scale-110" : "border-muted hover:border-primary/50"}`}
+                    style={{ background: t === "light" ? "#ffffff" : t === "sepia" ? "#f4ecd8" : "#1a1a1a" }}
+                    aria-label={t === "light" ? "Sáng" : t === "sepia" ? "Sepia" : "Tối"}
+                    title={t === "light" ? "Sáng" : t === "sepia" ? "Sepia" : "Tối"}
+                  />
+                ))}
               </div>
-            )}
-          </>
-        )}
+            </div>
+          )}
+        </>
 
         {/* Mobile swipe drawer */}
         {isMobile && drawerOpen && (
