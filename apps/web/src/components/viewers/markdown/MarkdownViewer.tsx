@@ -175,15 +175,32 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
   const scrollToHighlight = useCallback((highlightId: Id<"highlights">) => {
     const el = contentRef.current;
     if (!el) return;
+
+    // Check if it's a bookmark — scroll by saved position instead of mark element
+    const hl = (highlights as any[]).find((h) => h._id === highlightId);
+    if (hl?.type === "bookmark") {
+      try {
+        const pos = JSON.parse(hl.positionValue);
+        if (typeof pos.pct === "number") {
+          // Try heading first for precision
+          if (pos.headingId) {
+            const heading = el.querySelector(`#${CSS.escape(pos.headingId)}`) as HTMLElement | null;
+            if (heading) { heading.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+          }
+          el.scrollTo({ top: pos.pct * (el.scrollHeight - el.clientHeight), behavior: "smooth" });
+        }
+      } catch { /* ignore */ }
+      return;
+    }
+
     const mark = el.querySelector(`mark[data-highlight-id="${highlightId}"]`) as HTMLElement | null;
     if (mark) {
       mark.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Brief flash to draw attention
       mark.style.outline = "2px solid #7c3aed";
       mark.style.outlineOffset = "2px";
       setTimeout(() => { mark.style.outline = ""; mark.style.outlineOffset = ""; }, 1200);
     }
-  }, []);
+  }, [highlights]);
 
   const handleClickNoteHighlight = useCallback((id: Id<"highlights">, x: number, y: number) => {
     setNoteCard({ x, y, highlightId: id });
