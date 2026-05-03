@@ -21,7 +21,8 @@ export function BottomNav() {
   if (pathname.startsWith("/reader/")) return null;
 
   function isActive(href: string | null) {
-    if (!href) return false;
+    if (!href) return searchOpen; // Tìm kiếm tab: active when modal is open
+    if (searchOpen) return false; // other tabs: inactive when search is open
     if (href === "/library") return pathname === "/library" || pathname.startsWith("/library/");
     return pathname === href || pathname.startsWith(href + "/");
   }
