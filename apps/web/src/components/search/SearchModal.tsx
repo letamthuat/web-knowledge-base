@@ -77,6 +77,16 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Body scroll lock — prevent background scroll on iOS when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
   if (!open) return null;
 
   function goToDoc(docId: string) {

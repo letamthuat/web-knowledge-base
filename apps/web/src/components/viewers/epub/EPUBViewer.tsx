@@ -93,6 +93,7 @@ export function EPUBViewer({ doc, downloadUrl }: EPUBViewerProps) {
 
       const rendition = book.renderTo(viewerRef.current!, renditionOptions);
       renditionRef.current = rendition;
+      setRenditionKey((k) => k + 1);
 
       applyStyles(rendition, typography.theme, typography.fontSize, typography.lineHeight);
 
@@ -149,10 +150,11 @@ export function EPUBViewer({ doc, downloadUrl }: EPUBViewerProps) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [prev, next]);
 
-  // Touch swipe
+  // Touch swipe — refs shared between wrapper handlers and iframe native handlers
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
+  // Touch swipe helpers — shared logic for both wrapper div and iframe native handlers
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -165,6 +167,61 @@ export function EPUBViewer({ doc, downloadUrl }: EPUBViewerProps) {
     if (dx < -50) next();
     else if (dx > 50) prev();
   }, [prev, next]);
+
+  // Native iframe touch listeners — epubjs renders into an iframe; React synthetic
+  // events don't cross the iframe boundary, so we attach directly to its contentWindow.
+  // renditionKey changes whenever the rendition is destroyed/re-created (flow or url change).
+  const [renditionKey, setRenditionKey] = useState(0);
+
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition) return;
+
+    let startX = 0;
+    let startY = 0;
+    // Track which iframe contentWindow currently has listeners to avoid duplicates
+    let attachedWin: Window | null = null;
+
+    function onIframeTouchStart(e: TouchEvent) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }
+
+    function onIframeTouchEnd(e: TouchEvent) {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = Math.abs(e.changedTouches[0].clientY - startY);
+      if (dy > 30) return;
+      if (dx < -50) next();
+      else if (dx > 50) prev();
+    }
+
+    function attachToIframe() {
+      const iframe = viewerRef.current?.querySelector("iframe");
+      const win = iframe?.contentWindow;
+      if (!win || win === attachedWin) return; // already attached to this window
+      // Remove from previous window if it changed (e.g. iframe replaced)
+      if (attachedWin) {
+        attachedWin.removeEventListener("touchstart", onIframeTouchStart);
+        attachedWin.removeEventListener("touchend", onIframeTouchEnd);
+      }
+      win.addEventListener("touchstart", onIframeTouchStart, { passive: true });
+      win.addEventListener("touchend", onIframeTouchEnd, { passive: true });
+      attachedWin = win;
+    }
+
+    rendition.on("rendered", attachToIframe);
+    // Attempt immediate attach in case rendition already rendered before this effect ran
+    attachToIframe();
+
+    return () => {
+      rendition.off("rendered", attachToIframe);
+      if (attachedWin) {
+        attachedWin.removeEventListener("touchstart", onIframeTouchStart);
+        attachedWin.removeEventListener("touchend", onIframeTouchEnd);
+        attachedWin = null;
+      }
+    };
+  }, [renditionKey, prev, next]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleFlow() {
     const next: FlowMode = flow === "scrolled-doc" ? "paginated" : "scrolled-doc";
