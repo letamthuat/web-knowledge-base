@@ -2,7 +2,7 @@
 title: 'Story 5.2 — Sticky Note đính kèm Highlight'
 type: 'feature'
 created: '2026-05-01'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '0d3f36c'
 ---
 
@@ -55,12 +55,12 @@ baseline_commit: '0d3f36c'
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `convex/highlights/mutations.ts` -- Thêm `updateNote`: nhận `highlightId` + `note?: string`, verify userId, patch `{ note, updatedAt: now }`
-- [ ] `apps/web/src/hooks/useHighlights.ts` -- Thêm `updateNote` callback từ `useMutation(api.highlights.mutations.updateNote)`
-- [ ] `apps/web/src/components/viewers/markdown/NotePopover.tsx` -- Tạo: `<textarea>` maxLength=500, `useEffect` debounce 1s gọi `onSave(text)`, đóng khi Escape/blur ngoài; position fixed gần (x,y)
-- [ ] `apps/web/src/components/viewers/markdown/HighlightMenu.tsx` -- Thêm nút "✏️" (PenLine icon); khi click → gọi `onOpenNote()`
-- [ ] `apps/web/src/components/viewers/markdown/HighlightLayer.tsx` -- Sau khi wrap mark, nếu highlight có `note` thêm `title` attribute để hiện tooltip native; thêm visual indicator (chấm nhỏ góc mark)
-- [ ] `apps/web/src/components/viewers/markdown/MarkdownViewer.tsx` -- Thêm state `notePopover {x,y,highlightId,initialNote}`; truyền `onOpenNote` vào HighlightMenu; render `<NotePopover>`; Ctrl/Cmd+N handler mở note cho highlight gần nhất đang active
+- [x] `convex/highlights/mutations.ts` -- Thêm `updateNote`: nhận `highlightId` + `note?: string`, verify userId, patch `{ note, updatedAt: now }`
+- [x] `apps/web/src/hooks/useHighlights.ts` -- Thêm `updateNote` callback từ `useMutation(api.highlights.mutations.updateNote)`
+- [x] `apps/web/src/components/viewers/markdown/NotePopover.tsx` -- Tạo: `<textarea>` maxLength=500, `useEffect` debounce 1s gọi `onSave(text)`, đóng khi Escape/blur ngoài; position fixed gần (x,y)
+- [x] `apps/web/src/components/viewers/markdown/HighlightMenu.tsx` -- Thêm nút "✏️" (PenLine icon); khi click → gọi `onOpenNote()`
+- [x] `apps/web/src/components/viewers/markdown/HighlightLayer.tsx` -- Thêm class `hl-has-note`; CSS dashed violet underline trong globals.css
+- [x] `apps/web/src/components/viewers/markdown/MarkdownViewer.tsx` -- State `notePopover`, `openNotePopover`, render `<NotePopover>`, `updateNote` wired
 
 **Acceptance Criteria:**
 - Given highlight tồn tại, when click highlight → menu hiện → click ✏️, then NotePopover mở với text hiện tại (nếu có)

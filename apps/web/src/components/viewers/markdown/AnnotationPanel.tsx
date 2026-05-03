@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, PenLine, StickyNote, Highlighter, Trash2 } from "lucide-react";
+import { X, PenLine, StickyNote, Highlighter, Trash2, Bookmark } from "lucide-react";
 import { Id } from "@/_generated/dataModel";
 import type { HighlightColor } from "@/hooks/useHighlights";
 
@@ -29,6 +29,7 @@ interface HighlightItem {
   customColor?: string;
   selectedText?: string;
   note?: string;
+  type?: string;
   createdAt: number;
 }
 
@@ -62,6 +63,8 @@ export function AnnotationPanel({
 }: AnnotationPanelProps) {
   const [tab, setTab] = useState<Tab>("highlights");
 
+  const textHighlights = highlights.filter((h) => h.type !== "bookmark");
+  const bookmarks = highlights.filter((h) => h.type === "bookmark");
   const hlNotesCount = highlights.filter((h) => h.note).length;
   const totalNotesCount = hlNotesCount + docNotes.length;
 
@@ -73,7 +76,7 @@ export function AnnotationPanel({
           <TabButton active={tab === "highlights"} onClick={() => setTab("highlights")}>
             <Highlighter className="h-3.5 w-3.5" />
             Highlight
-            <Badge count={highlights.length} active={tab === "highlights"} color="amber" />
+            <Badge count={textHighlights.length + bookmarks.length} active={tab === "highlights"} color="amber" />
           </TabButton>
           <TabButton active={tab === "notes"} onClick={() => setTab("notes")}>
             <StickyNote className="h-3.5 w-3.5" />
@@ -93,18 +96,36 @@ export function AnnotationPanel({
       <div className="flex flex-1 flex-col overflow-hidden">
         {tab === "highlights" ? (
           <div className="flex-1 overflow-y-auto py-2">
-            {highlights.length === 0 ? (
+            {bookmarks.length > 0 && (
+              <div className="mb-1">
+                <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">Bookmarks</p>
+                {bookmarks.map((item) => (
+                  <BookmarkRow
+                    key={item._id}
+                    item={item}
+                    onScrollTo={() => onScrollTo(item._id)}
+                    onDelete={() => onDeleteHighlight(item._id)}
+                  />
+                ))}
+              </div>
+            )}
+            {textHighlights.length === 0 && bookmarks.length === 0 ? (
               <Empty icon={<Highlighter className="h-8 w-8 opacity-25" />} text="Chưa có highlight nào" />
-            ) : (
-              highlights.map((item) => (
-                <HighlightRow
-                  key={item._id}
-                  item={item}
-                  onScrollTo={() => onScrollTo(item._id)}
-                  onEditNote={() => onEditHighlightNote(item._id)}
-                  onDelete={() => onDeleteHighlight(item._id)}
-                />
-              ))
+            ) : textHighlights.length === 0 ? null : (
+              <>
+                {bookmarks.length > 0 && (
+                  <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">Highlights</p>
+                )}
+                {textHighlights.map((item) => (
+                  <HighlightRow
+                    key={item._id}
+                    item={item}
+                    onScrollTo={() => onScrollTo(item._id)}
+                    onEditNote={() => onEditHighlightNote(item._id)}
+                    onDelete={() => onDeleteHighlight(item._id)}
+                  />
+                ))}
+              </>
             )}
           </div>
         ) : (
@@ -269,6 +290,32 @@ function DocNoteRow({ note, onEdit, onDelete }: {
           className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-red-400 hover:bg-red-50"
         >
           <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BookmarkRow({ item, onScrollTo, onDelete }: {
+  item: HighlightItem;
+  onScrollTo: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      className="group mx-2 mb-1.5 cursor-pointer rounded-lg border border-transparent bg-amber-50/60 transition-all hover:border-amber-200 hover:bg-amber-50 hover:shadow-sm"
+      onClick={onScrollTo}
+    >
+      <div className="flex items-center gap-2 px-2.5 py-2">
+        <Bookmark className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+        <p className="flex-1 truncate text-[12px] text-gray-700">
+          {item.note || "Bookmark"}
+        </p>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="shrink-0 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 text-red-400"
+        >
+          <X className="h-3 w-3" />
         </button>
       </div>
     </div>

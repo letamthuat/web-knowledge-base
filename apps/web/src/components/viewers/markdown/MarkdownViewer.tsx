@@ -13,7 +13,7 @@ import "katex/dist/katex.min.css";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { List, X, Highlighter, StickyNote } from "lucide-react";
+import { List, X, Highlighter, StickyNote, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MermaidBlock } from "./MermaidBlock";
 import { HighlightMenu } from "./HighlightMenu";
@@ -80,7 +80,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
   const restored = useRef(false);
 
   // ── Highlight state ──
-  const { highlights, addHighlight, removeHighlight, updateNote } = useHighlights(doc._id);
+  const { highlights, addHighlight, removeHighlight, updateNote, addBookmark } = useHighlights(doc._id);
   const [hlMenu, setHlMenu] = useState<{
     x: number; y: number;
     existingId?: Id<"highlights">; existingColor?: HighlightColor;
@@ -433,6 +433,25 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
               <StickyNote className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Ghi chú</span>
             </button>
+            <button
+              onClick={() => {
+                const el = contentRef.current;
+                if (!el) return;
+                const pct = el.scrollTop / (el.scrollHeight - el.clientHeight || 1);
+                const headings = Array.from(el.querySelectorAll("h1,h2,h3,h4,h5,h6")) as HTMLElement[];
+                let headingId: string | undefined;
+                for (const h of headings) {
+                  if (h.offsetTop <= el.scrollTop + 8) headingId = h.id;
+                  else break;
+                }
+                addBookmark(Math.min(1, Math.max(0, pct)), headingId).catch(() => {});
+              }}
+              className="flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Thêm bookmark tại vị trí này"
+            >
+              <Bookmark className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Bookmark</span>
+            </button>
             <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={2} />
           </div>
         </div>
@@ -536,6 +555,7 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
             customColor: h.customColor,
             selectedText: h.selectedText,
             note: h.note,
+            type: h.type,
             createdAt: h.createdAt ?? 0,
           }))}
           docNotes={(docNotes as any[]).map((n) => ({

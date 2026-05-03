@@ -2,7 +2,7 @@
 title: 'Story 5.9 — Note Workspace /notes (BlockNote editor)'
 type: 'feature'
 created: '2026-05-02'
-status: 'in-review'
+status: 'done'
 baseline_commit: '31991a7491a0da3a43cfbc39e7d391d23d881f9c'
 ---
 

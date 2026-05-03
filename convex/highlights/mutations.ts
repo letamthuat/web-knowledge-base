@@ -60,3 +60,34 @@ export const remove = mutation({
     await ctx.db.delete(args.highlightId);
   },
 });
+
+export const createBookmark = mutation({
+  args: {
+    docId: v.id("documents"),
+    label: v.optional(v.string()),
+    scrollPct: v.number(),
+    headingId: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    const now = Date.now();
+    const positionValue = JSON.stringify({
+      pct: args.scrollPct,
+      headingId: args.headingId,
+    });
+    const id = await ctx.db.insert("highlights", {
+      userId: userId as never,
+      docId: args.docId,
+      color: "yellow",
+      type: "bookmark",
+      positionType: "scroll_pct" as never,
+      positionValue,
+      note: args.label,
+      updatedAt: now,
+      createdAt: now,
+      clientMutationId: args.clientMutationId,
+    });
+    return id;
+  },
+});

@@ -20,6 +20,7 @@ export function useHighlights(docId: Id<"documents">) {
   const createMutation = useMutation(api.highlights.mutations.create);
   const removeMutation = useMutation(api.highlights.mutations.remove);
   const updateNoteMutation = useMutation(api.highlights.mutations.updateNote);
+  const createBookmarkMutation = useMutation(api.highlights.mutations.createBookmark);
 
   const addHighlight = useCallback(
     (color: HighlightColor, position: HighlightPosition, customColor?: string) =>
@@ -46,5 +47,17 @@ export function useHighlights(docId: Id<"documents">) {
     [updateNoteMutation]
   );
 
-  return { highlights, addHighlight, removeHighlight, updateNote };
+  const addBookmark = useCallback(
+    (scrollPct: number, headingId?: string, label?: string) =>
+      createBookmarkMutation({
+        docId,
+        scrollPct,
+        headingId,
+        label,
+        clientMutationId: `${Date.now()}-${Math.random()}`,
+      }),
+    [docId, createBookmarkMutation]
+  );
+
+  return { highlights, addHighlight, removeHighlight, updateNote, addBookmark };
 }
