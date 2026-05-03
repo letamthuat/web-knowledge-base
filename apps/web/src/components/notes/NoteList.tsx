@@ -67,63 +67,66 @@ export function NoteList({ notes, selectedId, onSelect, onNew, onDelete }: NoteL
   return (
     <aside className="flex w-72 shrink-0 flex-col border-r bg-card">
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
-        <span className="text-sm font-semibold">Ghi chú</span>
-        <div ref={newMenuRef} className="relative">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 h-7 text-xs"
-            onClick={() => setNewMenuOpen((v) => !v)}
-          >
-            <FilePlus className="h-3.5 w-3.5" />
-            Mới
-            <ChevronDown className="h-3 w-3 opacity-60" />
-          </Button>
-          {newMenuOpen && (
-            <div className="absolute right-0 bottom-full z-50 mb-1 w-48 rounded-md border bg-popover shadow-md">
-              <button
-                onClick={() => { setNewMenuOpen(false); onNew(); }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
-              >
-                <span>📄</span>
-                Ghi chú mới
-              </button>
-              <div className="my-1 h-px bg-border/60" />
-              <button
-                onClick={async () => {
-                  setNewMenuOpen(false);
-                  if (audioRecorder.state !== "idle") return;
-                  try { await audioRecorder.start(); } catch { /* user denied */ }
-                }}
-                disabled={audioRecorder.state !== "idle"}
-                title={audioRecorder.state !== "idle" ? "Đang có phiên ghi âm" : undefined}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-rose-500 shrink-0">
-                  <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
-                  <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
-                </svg>
-                Ghi âm
-              </button>
-              <button
-                onClick={async () => {
-                  setNewMenuOpen(false);
-                  if (screenRecorder.state !== "idle") return;
-                  try { await screenRecorder.start(); } catch { /* user denied */ }
-                }}
-                disabled={screenRecorder.state !== "idle"}
-                title={screenRecorder.state !== "idle" ? "Đang có phiên quay màn hình" : undefined}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-violet-500 shrink-0">
-                  <path d="M4.5 4.5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h8.25a3 3 0 0 0 3-3v-9a3 3 0 0 0-3-3H4.5ZM19.94 18.75l-2.69-2.69V7.94l2.69-2.69c.944-.945 2.56-.276 2.56 1.06v11.38c0 1.336-1.616 2.005-2.56 1.06Z" />
-                </svg>
-                Quay màn hình
-              </button>
-            </div>
-          )}
+      <div className="shrink-0 border-b">
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-sm font-semibold">Ghi chú</span>
+          <div ref={newMenuRef}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 h-7 text-xs"
+              onClick={() => setNewMenuOpen((v) => !v)}
+            >
+              <FilePlus className="h-3.5 w-3.5" />
+              Mới
+              <ChevronDown className={`h-3 w-3 opacity-60 transition-transform ${newMenuOpen ? "rotate-180" : ""}`} />
+            </Button>
+          </div>
         </div>
+
+        {/* Inline new-item menu — no absolute positioning, never clipped */}
+        {newMenuOpen && (
+          <div className="border-t bg-muted/40 py-1">
+            <button
+              onClick={() => { setNewMenuOpen(false); onNew(); }}
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+            >
+              <span>📄</span>
+              Ghi chú mới
+            </button>
+            <button
+              onClick={async () => {
+                setNewMenuOpen(false);
+                if (audioRecorder.state !== "idle") return;
+                try { await audioRecorder.start(); } catch { /* user denied */ }
+              }}
+              disabled={audioRecorder.state !== "idle"}
+              title={audioRecorder.state !== "idle" ? "Đang có phiên ghi âm" : undefined}
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-rose-500 shrink-0">
+                <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
+                <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
+              </svg>
+              Ghi âm
+            </button>
+            <button
+              onClick={async () => {
+                setNewMenuOpen(false);
+                if (screenRecorder.state !== "idle") return;
+                try { await screenRecorder.start(); } catch { /* user denied */ }
+              }}
+              disabled={screenRecorder.state !== "idle"}
+              title={screenRecorder.state !== "idle" ? "Đang có phiên quay màn hình" : undefined}
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-violet-500 shrink-0">
+                <path d="M4.5 4.5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h8.25a3 3 0 0 0 3-3v-9a3 3 0 0 0-3-3H4.5ZM19.94 18.75l-2.69-2.69V7.94l2.69-2.69c.944-.945 2.56-.276 2.56 1.06v11.38c0 1.336-1.616 2.005-2.56 1.06Z" />
+              </svg>
+              Quay màn hình
+            </button>
+          </div>
+        )}
       </div>
 
       {/* List */}

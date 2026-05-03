@@ -7,9 +7,10 @@ interface BottomSheetProps {
   onClose: () => void;
   children: React.ReactNode;
   title?: string;
+  minHeight?: string;
 }
 
-export function BottomSheet({ open, onClose, children, title }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, children, title, minHeight = "60dvh" }: BottomSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef(0);
   const dragCurrentY = useRef(0);
@@ -96,6 +97,7 @@ export function BottomSheet({ open, onClose, children, title }: BottomSheetProps
           transform: "translateY(0)",
           transition: "transform 0.25s ease",
           maxHeight: "90dvh",
+          minHeight,
           display: "flex",
           flexDirection: "column",
         }}
