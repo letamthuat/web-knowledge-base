@@ -228,6 +228,13 @@ function ReaderShell({ doc, downloadUrl }: {
               <span className="hidden md:inline">Tải xuống</span>
             </Button>
             <span className="hidden lg:inline text-sm text-muted-foreground">{session?.user?.email}</span>
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex md:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              aria-label="Tìm kiếm"
+            >
+              <Search className="h-4 w-4" />
+            </button>
             <Button variant="ghost" size="sm" onClick={async () => { await signOut(); router.push("/login"); }} className="gap-1">
               <LogOut className="h-4 w-4" />
               <span className="hidden md:inline">Đăng xuất</span>

@@ -165,6 +165,13 @@ export function NotesPageInner() {
 
         <div className="flex items-center gap-2">
           <span className="hidden text-sm text-muted-foreground md:inline">{session?.user?.email}</span>
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex md:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+            aria-label="Tìm kiếm"
+          >
+            <Search className="h-4 w-4" />
+          </button>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
             <span className="ml-1 hidden md:inline">{N.logout}</span>
