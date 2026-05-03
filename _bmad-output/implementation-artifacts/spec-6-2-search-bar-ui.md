@@ -2,7 +2,7 @@
 title: 'Story 6.2 — Search Bar + Kết Quả Unified'
 type: 'feature'
 created: '2026-05-03'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '3ba3315'
 ---
 

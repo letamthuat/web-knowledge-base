@@ -46,11 +46,13 @@ const R2_STORAGE_LIMIT = 10 * 1024 * 1024 * 1024;     // 10 GB
 export default function SettingsPage() {
   const router = useRouter();
   const deleteAccount = useAction(api.users.actions.deleteAccount);
+  const backfillExtractText = useAction(api.documents.actions.backfillExtractText);
   const stats = useQuery(api.documents.queries.getStorageStats);
   const { downloadBackup, isDownloading } = useBackupDownload();
   const [confirm, setConfirm] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [reindexing, setReindexing] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
@@ -169,6 +171,39 @@ export default function SettingsPage() {
               </div>
             </>
           )}
+        </div>
+
+        {/* Search re-index */}
+        <div className="mb-6 rounded-xl border bg-card p-6 space-y-4">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            Tìm kiếm
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Tài liệu upload trước khi tính năng tìm kiếm được bật cần được index lại. Bấm nút bên dưới để index tất cả tài liệu chưa được index.
+          </p>
+          <Button
+            variant="outline"
+            disabled={reindexing}
+            className="gap-2"
+            onClick={async () => {
+              setReindexing(true);
+              try {
+                const { scheduled, total } = await backfillExtractText({});
+                if (scheduled === 0) {
+                  toast.success(`Tất cả ${total} tài liệu đã được index`);
+                } else {
+                  toast.success(`Đang index ${scheduled}/${total} tài liệu — kết quả sẽ xuất hiện sau vài giây`);
+                }
+              } catch {
+                toast.error("Không thể index tài liệu");
+              } finally {
+                setReindexing(false);
+              }
+            }}
+          >
+            {reindexing ? <><Loader2 className="h-4 w-4 animate-spin" /> Đang index...</> : <><Search className="h-4 w-4" /> Re-index tài liệu</>}
+          </Button>
         </div>
 
         {/* Backup */}

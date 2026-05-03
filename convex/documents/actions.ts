@@ -286,6 +286,23 @@ export const extractText = internalAction({
   },
 });
 
+export const backfillExtractText = action({
+  args: {},
+  handler: async (ctx): Promise<{ total: number; scheduled: number }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const docs = await ctx.runQuery(internal.documents.queries.listByUserInternal, { userId: identity.subject });
+    const missing = docs.filter((d: any) => !d.extractedText);
+
+    for (const doc of missing) {
+      await ctx.scheduler.runAfter(0, internal.documents.actions.extractText, { docId: doc._id });
+    }
+
+    return { total: docs.length, scheduled: missing.length };
+  },
+});
+
 export const deleteFromStorage = internalAction({
   args: {
     storageBackend: v.union(v.literal("convex"), v.literal("r2"), v.literal("b2")),
