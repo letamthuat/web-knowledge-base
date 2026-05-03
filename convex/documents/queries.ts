@@ -107,7 +107,7 @@ export const search = query({
         .take(10),
     ]);
 
-    // Dedup by _id, content results first
+    // Dedup by _id, content results first, then apply format filter
     const seen = new Set<string>();
     const results = [];
     for (const doc of [...byContent, ...byTitle]) {
@@ -116,7 +116,8 @@ export const search = query({
         results.push(doc);
       }
     }
-    return results.slice(0, 10);
+    const filtered = args.format ? results.filter((d) => d.format === args.format) : results;
+    return filtered.slice(0, 10);
   },
 });
 
