@@ -5,6 +5,7 @@ import { ConvexClientProvider } from "@/providers/ConvexClientProvider";
 import { RecordingProvider } from "@/contexts/RecordingContext";
 import { AudioRecordingPillFloating } from "@/components/recording/AudioRecordingPill";
 import { ScreenRecordingPillFloating } from "@/components/recording/ScreenRecordingPill";
+import { AppSettingsPanel } from "@/components/AppSettingsPanel";
 import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             {children}
             <AudioRecordingPillFloating />
             <ScreenRecordingPillFloating />
+            <AppSettingsPanel />
           </RecordingProvider>
           {/* Toast notifications dùng tiếng Việt (NFR37) */}
           <Toaster

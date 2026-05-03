@@ -16,7 +16,7 @@ import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
 import { SearchModal } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
-import { useReadingModePrefs, useUpdateReadingModePrefs, type ReadingTheme, type FontFamily, type ColumnWidth } from "@/hooks/useReadingModePrefs";
+import { useAppTypography } from "@/components/AppSettingsPanel";
 
 const N = labels.nav;
 
@@ -30,45 +30,8 @@ export function NotesPageInner() {
   const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const prefs = useReadingModePrefs();
-  const updatePrefs = useUpdateReadingModePrefs();
-  const [rmTheme, setRmTheme] = useState<ReadingTheme>(() => {
-    if (typeof window !== "undefined") {
-      const t = localStorage.getItem("rm-theme");
-      if (t === "sepia" || t === "dark" || t === "light") return t;
-    }
-    return "light";
-  });
-  const [rmFont, setRmFont] = useState<FontFamily>("sans");
-  const [rmFontSize, setRmFontSize] = useState(16);
-  const [rmLineHeight, setRmLineHeight] = useState(1.6);
-  const [rmColWidth, setRmColWidth] = useState<ColumnWidth>("medium");
-  const prefsSynced = useRef(false);
-  useEffect(() => {
-    if (prefsSynced.current) return;
-    const stored = localStorage.getItem("rm-theme");
-    if (!stored) setRmTheme(prefs.theme);
-    setRmFont(prefs.fontFamily);
-    setRmFontSize(prefs.fontSize);
-    setRmLineHeight(prefs.lineHeight);
-    setRmColWidth(prefs.columnWidth);
-    prefsSynced.current = true;
-  }, [prefs]);
-
-  function applyTheme(t: ReadingTheme) {
-    setRmTheme(t);
-    localStorage.setItem("rm-theme", t);
-    updatePrefs({ themeByFormat: { notes: t } }).catch(() => {});
-  }
-  function applyFont(f: FontFamily) { setRmFont(f); updatePrefs({ fontFamily: f }).catch(() => {}); }
-  function applyFontSize(s: number) { setRmFontSize(s); updatePrefs({ fontSize: s }).catch(() => {}); }
-  function applyLineHeight(lh: number) { setRmLineHeight(lh); updatePrefs({ lineHeight: lh }).catch(() => {}); }
-  function applyColWidth(w: ColumnWidth) { setRmColWidth(w); updatePrefs({ columnWidth: w }).catch(() => {}); }
-
-  const fontFamilyCss = rmFont === "serif" ? "ui-serif, Georgia, serif" : rmFont === "mono" ? "ui-monospace, monospace" : "ui-sans-serif, system-ui, sans-serif";
-  const colWidthClass = rmColWidth === "narrow" ? "max-w-xl" : rmColWidth === "wide" ? "max-w-full" : "max-w-3xl";
+  const typography = useAppTypography();
 
   // On desktop, default sidebar open
   useEffect(() => {
@@ -290,8 +253,8 @@ export function NotesPageInner() {
             importRef={noteImportRef}
             onExport={noteExportRef}
             saveNowRef={noteSaveNowRef}
-            typography={{ fontFamily: fontFamilyCss, fontSize: rmFontSize, lineHeight: rmLineHeight, colWidthClass }}
-            colorScheme={rmTheme === "dark" ? "dark" : "light"}
+            typography={{ fontFamily: typography.fontFamily, fontSize: typography.fontSize, lineHeight: typography.lineHeight, colWidthClass: typography.colWidthClass }}
+            colorScheme={typography.colorScheme}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground">
@@ -303,65 +266,6 @@ export function NotesPageInner() {
           </div>
         )}
       </div>
-      {/* Settings button + panel */}
-      <button
-        onClick={() => setSettingsOpen((v) => !v)}
-        className={`fixed bottom-5 right-4 z-50 flex h-8 w-8 items-center justify-center rounded-full border shadow-md transition-all hover:scale-105 ${settingsOpen ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}
-        aria-label="Cài đặt hiển thị"
-      >
-        <Settings className="h-3.5 w-3.5" />
-      </button>
-      {settingsOpen && (
-        <div className="fixed bottom-16 right-4 z-50 rounded-2xl border bg-card shadow-2xl p-4 w-56 max-h-[80vh] overflow-y-auto">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">Màu nền</p>
-          <div className="flex gap-2">
-            {([
-              { value: "light" as const, bg: "#ffffff", label: "Sáng" },
-              { value: "sepia" as const, bg: "#f4ecd8", label: "Sepia" },
-              { value: "dark"  as const, bg: "#1a1a1a", label: "Tối" },
-            ]).map(({ value, bg, label }) => (
-              <button key={value} onClick={() => applyTheme(value)} className="flex flex-col items-center gap-1.5 group">
-                <span className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all group-hover:scale-105 ${rmTheme === value ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"}`} style={{ background: bg }}>
-                  {rmTheme === value && (
-                    <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none">
-                      <path d="M3 8l3.5 3.5L13 5" stroke={value === "dark" ? "#fff" : "#000"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </span>
-                <span className={`text-[10px] font-medium ${rmTheme === value ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
-              </button>
-            ))}
-          </div>
-          <div className="border-t pt-3 mt-3 space-y-3">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Chữ</p>
-            <div className="flex gap-1.5">
-              {(["sans", "serif", "mono"] as const).map((f) => (
-                <button key={f} onClick={() => applyFont(f)}
-                  className={`flex-1 rounded-lg border py-1 text-xs font-medium transition-all ${rmFont === f ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-foreground/40"}`}>
-                  {f === "sans" ? "Sans" : f === "serif" ? "Serif" : "Mono"}
-                </button>
-              ))}
-            </div>
-            <div>
-              <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5"><span>Cỡ chữ</span><span>{rmFontSize}px</span></div>
-              <input type="range" min="12" max="28" step="1" value={rmFontSize} onChange={(e) => applyFontSize(Number(e.target.value))} className="w-full accent-primary h-1.5 rounded-full cursor-pointer" />
-            </div>
-            <div>
-              <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5"><span>Dãn dòng</span><span>{rmLineHeight.toFixed(1)}</span></div>
-              <input type="range" min="1.4" max="2.0" step="0.1" value={rmLineHeight} onChange={(e) => applyLineHeight(Number(e.target.value))} className="w-full accent-primary h-1.5 rounded-full cursor-pointer" />
-            </div>
-            <div className="flex gap-1.5">
-              {([["narrow", "Hẹp"], ["medium", "Vừa"], ["wide", "Rộng"]] as const).map(([v, label]) => (
-                <button key={v} onClick={() => applyColWidth(v)}
-                  className={`flex-1 rounded-lg border py-1 text-xs font-medium transition-all ${rmColWidth === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-foreground/40"}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
