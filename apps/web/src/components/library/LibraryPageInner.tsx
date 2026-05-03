@@ -8,6 +8,7 @@ import {
   PanelLeftClose, PanelLeftOpen, ChevronDown, File as FileIcon, Menu, X,
   CheckSquare, FolderInput, Search,
 } from "lucide-react";
+import { AppLogo } from "@/components/AppLogo";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/_generated/api";
@@ -395,9 +396,7 @@ export function LibraryPageInner() {
                 : <PanelLeftOpen className="h-4 w-4 text-muted-foreground" />
               }
             </button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <BookOpen className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <AppLogo size={32} />
             <span className="font-semibold">Web Knowledge Base</span>
           </div>
 

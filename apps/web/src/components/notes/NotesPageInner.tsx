@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download, X, Menu, Search } from "lucide-react";
+import { AppLogo } from "@/components/AppLogo";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -152,9 +153,7 @@ export function NotesPageInner() {
           <Button variant="ghost" size="sm" className="md:hidden p-1.5" onClick={() => setNavDrawerOpen(true)}>
             <Menu className="h-4 w-4" />
           </Button>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <BookOpen className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <AppLogo size={32} />
           <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
         </div>
 

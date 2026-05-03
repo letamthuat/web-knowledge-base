@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, StickyNote, Search, Settings } from "lucide-react";
 import { SearchModal } from "@/components/search/SearchModal";
@@ -16,8 +16,12 @@ export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Hide entirely on reader pages
+  if (!mounted) return null;
   if (pathname.startsWith("/reader/")) return null;
 
   function isActive(href: string | null) {
