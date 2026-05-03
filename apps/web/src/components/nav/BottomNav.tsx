@@ -39,7 +39,10 @@ export function BottomNav() {
             return (
               <button
                 key={label}
-                onClick={() => href ? router.push(href) : setSearchOpen(true)}
+                onClick={() => {
+                  if (href) { setSearchOpen(false); router.push(href); }
+                  else setSearchOpen(true);
+                }}
                 className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
                   active
                     ? "text-primary"
