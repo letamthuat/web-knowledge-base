@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Maximize2, ZoomIn, ZoomOut, X, RotateCcw } from "lucide-react";
@@ -213,7 +213,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
               <button
                 onClick={() => changeZoom(-0.25)}
                 title="Thu nhỏ"
-                className="flex h-8 w-8 items-center justify-center rounded-md border text-gray-600 hover:bg-gray-100"
+                className="flex h-10 w-10 items-center justify-center rounded-md border text-gray-600 hover:bg-gray-100"
               >
                 <ZoomOut className="h-4 w-4" />
               </button>
@@ -223,14 +223,14 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
               <button
                 onClick={() => changeZoom(0.25)}
                 title="Phóng to"
-                className="flex h-8 w-8 items-center justify-center rounded-md border text-gray-600 hover:bg-gray-100"
+                className="flex h-10 w-10 items-center justify-center rounded-md border text-gray-600 hover:bg-gray-100"
               >
                 <ZoomIn className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setZoom(1)}
                 title="Reset zoom"
-                className="flex h-8 w-8 items-center justify-center rounded-md border text-gray-600 hover:bg-gray-100"
+                className="flex h-10 w-10 items-center justify-center rounded-md border text-gray-600 hover:bg-gray-100"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -238,7 +238,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
               <button
                 onClick={() => setFullscreen(false)}
                 title="Đóng (Esc)"
-                className="flex h-8 w-8 items-center justify-center rounded-md border text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                className="flex h-10 w-10 items-center justify-center rounded-md border text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -267,3 +267,4 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
     </>
   );
 }
+

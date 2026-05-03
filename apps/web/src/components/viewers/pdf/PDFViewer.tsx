@@ -73,7 +73,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
       {/* Toolbar */}
       <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-1.5">
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm tabular-nums flex items-center gap-1">
@@ -99,7 +99,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
             />
             / {numPages || "—"}
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= numPages}>
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= numPages}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

@@ -17,6 +17,7 @@ import { Id } from "@/_generated/dataModel";
 import { SearchModal } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
 import { useAppTypography } from "@/components/AppSettingsPanel";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 
 const N = labels.nav;
 
@@ -30,12 +31,18 @@ export function NotesPageInner() {
   const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const typography = useAppTypography();
 
-  // On desktop, default sidebar open
+  // On desktop, default sidebar open; track mobile
   useEffect(() => {
-    if (window.innerWidth >= 768) setSidebarOpen(true);
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    if (!mq.matches) setSidebarOpen(true);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
   }, []);
 
   // Cmd/Ctrl+K
@@ -223,20 +230,27 @@ export function NotesPageInner() {
 
       {/* Main content */}
       <div className="relative flex flex-1 overflow-hidden pb-14 md:pb-0">
-        {/* Sidebar — overlay on mobile, inline on desktop */}
-        {sidebarOpen && (
-          <>
-            <div className="absolute inset-0 z-20 bg-black/30 md:hidden" onClick={() => setSidebarOpen(false)} />
-            <div className="absolute left-0 top-0 z-30 h-full md:relative md:z-auto md:h-auto">
-              <NoteList
-                notes={notes}
-                selectedId={activeNoteId as Id<"notes"> | null}
-                onSelect={(id) => { handleSelect(id); if (window.innerWidth < 768) setSidebarOpen(false); }}
-                onNew={handleNew}
-                onDelete={handleDelete}
-              />
-            </div>
-          </>
+        {/* Sidebar — BottomSheet on mobile, inline on desktop */}
+        {isMobile ? (
+          <BottomSheet open={sidebarOpen} onClose={() => setSidebarOpen(false)} title="Danh sách ghi chú">
+            <NoteList
+              notes={notes}
+              selectedId={activeNoteId as Id<"notes"> | null}
+              onSelect={(id) => { handleSelect(id); setSidebarOpen(false); }}
+              onNew={handleNew}
+              onDelete={handleDelete}
+            />
+          </BottomSheet>
+        ) : (
+          sidebarOpen && (
+            <NoteList
+              notes={notes}
+              selectedId={activeNoteId as Id<"notes"> | null}
+              onSelect={handleSelect}
+              onNew={handleNew}
+              onDelete={handleDelete}
+            />
+          )
         )}
 
         {selectedNote ? (

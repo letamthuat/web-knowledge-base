@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { format } from "date-fns";
@@ -208,7 +208,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
           <div className="flex items-center gap-1 shrink-0">
             <TagPopover docId={doc._id} />
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted transition-colors" aria-label="Tuỳ chọn">
+              <DropdownMenuTrigger className="inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-muted transition-colors" aria-label="Tuỳ chọn">
                 <MoreVertical className="h-4 w-4" aria-hidden />
               </DropdownMenuTrigger>
               {menu}
@@ -423,3 +423,4 @@ function RenameDialog({ open, onOpenChange, value, onChange, onSave }: {
     </Dialog>
   );
 }
+

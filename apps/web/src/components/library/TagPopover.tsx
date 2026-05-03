@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef } from "react";
 import { Tag, X, Plus } from "lucide-react";
@@ -53,7 +53,7 @@ export function TagPopover({ docId }: TagPopoverProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium hover:bg-muted transition-colors" aria-label="Gán tag">
+      <PopoverTrigger className="inline-flex h-10 w-10 items-center justify-center rounded-md text-sm font-medium hover:bg-muted transition-colors" aria-label="Gán tag">
         <Tag className="h-4 w-4" aria-hidden />
       </PopoverTrigger>
       <PopoverContent className="w-60 p-2" align="start">
@@ -104,3 +104,4 @@ export function TagPopover({ docId }: TagPopoverProps) {
     </Popover>
   );
 }
+

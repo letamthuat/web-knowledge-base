@@ -16,7 +16,7 @@ interface ZoomControlsProps {
 export function ZoomControls({ scale, onZoomIn, onZoomOut, onReset, minScale = 0.2, maxScale = 3 }: ZoomControlsProps) {
   return (
     <div className="flex items-center gap-1">
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomOut} disabled={scale <= minScale} title="Thu nhỏ">
+      <Button variant="ghost" size="icon" className="h-10 w-10" onClick={onZoomOut} disabled={scale <= minScale} title="Thu nhỏ">
         <ZoomOut className="h-4 w-4" />
       </Button>
       <button
@@ -26,10 +26,10 @@ export function ZoomControls({ scale, onZoomIn, onZoomOut, onReset, minScale = 0
       >
         {Math.round(scale * 100)}%
       </button>
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomIn} disabled={scale >= maxScale} title="Phóng to">
+      <Button variant="ghost" size="icon" className="h-10 w-10" onClick={onZoomIn} disabled={scale >= maxScale} title="Phóng to">
         <ZoomIn className="h-4 w-4" />
       </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReset} title="Về kích thước mặc định">
+      <Button variant="ghost" size="icon" className="h-10 w-10" onClick={onReset} title="Về kích thước mặc định">
         <RotateCcw className="h-3.5 w-3.5" />
       </Button>
     </div>

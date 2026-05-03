@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Id } from "@/_generated/dataModel";
@@ -170,7 +170,7 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
       {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={toggleMute}>
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </Button>
           <input
@@ -226,3 +226,4 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
     </div>
   );
 }
+

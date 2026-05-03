@@ -231,7 +231,7 @@ function ReaderShell({ doc, downloadUrl }: {
         {readingMode && (
           <button
             onClick={() => setReadingMode(false)}
-            className="fixed top-4 right-4 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50 transition-colors"
+            className="fixed top-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50 transition-colors"
             aria-label="Thoát Reading Mode"
           >
             <X className="h-4 w-4" />

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Id } from "@/_generated/dataModel";
@@ -184,7 +184,7 @@ export function PPTXViewer({ doc, downloadUrl }: PPTXViewerProps) {
       {/* Toolbar — always visible, outside fullscreen element */}
       <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goTo(slideIndex - 1)} disabled={slideIndex <= 0 || loading}>
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => goTo(slideIndex - 1)} disabled={slideIndex <= 0 || loading}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="flex items-center gap-1 text-sm tabular-nums">
@@ -211,30 +211,30 @@ export function PPTXViewer({ doc, downloadUrl }: PPTXViewerProps) {
             />
             / {totalSlides || "—"}
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goTo(slideIndex + 1)} disabled={slideIndex >= totalSlides - 1 || loading}>
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => goTo(slideIndex + 1)} disabled={slideIndex >= totalSlides - 1 || loading}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => {
             const next = Math.max(0.1, +((userScale ?? scale) - 0.1).toFixed(1));
             setUserScale(next); setScale(next);
           }}>
             <ZoomOut className="h-4 w-4" />
           </Button>
           <span className="w-14 text-center text-sm tabular-nums">{Math.round(scale * 100)}%</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => {
             const next = Math.min(3, +((userScale ?? scale) + 0.1).toFixed(1));
             setUserScale(next); setScale(next);
           }}>
             <ZoomIn className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetToFit} title="Khớp màn hình">
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={resetToFit} title="Khớp màn hình">
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
           <div className="mx-1 h-5 w-px bg-border" />
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleFullscreen}>
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={toggleFullscreen}>
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
         </div>
@@ -255,7 +255,7 @@ export function PPTXViewer({ doc, downloadUrl }: PPTXViewerProps) {
       >
         {loading && (
           <div className="absolute z-10 flex items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         )}
 
@@ -278,3 +278,4 @@ export function PPTXViewer({ doc, downloadUrl }: PPTXViewerProps) {
     </div>
   );
 }
+

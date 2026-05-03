@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Id } from "@/_generated/dataModel";
@@ -47,14 +47,14 @@ export function ImageViewer({ doc, downloadUrl }: ImageViewerProps) {
     <div className="flex flex-1 flex-col overflow-hidden bg-muted/60">
       {/* Toolbar */}
       <div className="flex shrink-0 items-center gap-1 border-b bg-card px-4 py-1.5">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setScale((s) => Math.min(10, s * 1.2))}>
+        <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setScale((s) => Math.min(10, s * 1.2))}>
           <ZoomIn className="h-4 w-4" />
         </Button>
         <span className="w-14 text-center text-sm">{Math.round(scale * 100)}%</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setScale((s) => Math.max(0.1, s / 1.2))}>
+        <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setScale((s) => Math.max(0.1, s / 1.2))}>
           <ZoomOut className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={reset}>
+        <Button variant="ghost" size="icon" className="h-10 w-10" onClick={reset}>
           <RotateCcw className="h-4 w-4" />
         </Button>
       </div>
@@ -85,3 +85,4 @@ export function ImageViewer({ doc, downloadUrl }: ImageViewerProps) {
     </div>
   );
 }
+
