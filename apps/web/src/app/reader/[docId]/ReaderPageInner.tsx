@@ -236,24 +236,39 @@ function ReaderShell({ doc, downloadUrl }: {
         <>
           <button
             onClick={() => setSettingsOpen((v) => !v)}
-            className="fixed bottom-6 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50 transition-colors"
-            aria-label="Cài đặt Reading Mode"
+            className={`fixed bottom-5 right-4 z-50 flex h-8 w-8 items-center justify-center rounded-full border shadow-md transition-all hover:scale-105 ${settingsOpen ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}
+            aria-label="Cài đặt hiển thị"
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-3.5 w-3.5" />
           </button>
           {settingsOpen && (
-            <div className="fixed bottom-16 right-4 z-50 rounded-xl border bg-card shadow-xl p-4 space-y-3 w-44">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nền</p>
-              <div className="flex gap-3">
-                {(["light", "sepia", "dark"] as const).map((t) => (
+            <div className="fixed bottom-16 right-4 z-50 rounded-2xl border bg-card shadow-2xl p-4 w-52">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">Màu nền</p>
+              <div className="flex gap-2">
+                {([
+                  { value: "light" as const, bg: "#ffffff", label: "Sáng" },
+                  { value: "sepia" as const, bg: "#f4ecd8", label: "Sepia" },
+                  { value: "dark"  as const, bg: "#1a1a1a", label: "Tối" },
+                ]).map(({ value, bg, label }) => (
                   <button
-                    key={t}
-                    onClick={() => applyTheme(t)}
-                    className={`h-8 w-8 rounded-full border-2 transition-all ${rmTheme === t ? "border-primary scale-110" : "border-muted hover:border-primary/50"}`}
-                    style={{ background: t === "light" ? "#ffffff" : t === "sepia" ? "#f4ecd8" : "#1a1a1a" }}
-                    aria-label={t === "light" ? "Sáng" : t === "sepia" ? "Sepia" : "Tối"}
-                    title={t === "light" ? "Sáng" : t === "sepia" ? "Sepia" : "Tối"}
-                  />
+                    key={value}
+                    onClick={() => applyTheme(value)}
+                    className="flex flex-col items-center gap-1.5 group"
+                  >
+                    <span
+                      className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all group-hover:scale-105 ${rmTheme === value ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"}`}
+                      style={{ background: bg }}
+                    >
+                      {rmTheme === value && (
+                        <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none">
+                          <path d="M3 8l3.5 3.5L13 5" stroke={value === "dark" ? "#fff" : "#000"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </span>
+                    <span className={`text-[10px] font-medium transition-colors ${rmTheme === value ? "text-primary" : "text-muted-foreground"}`}>
+                      {label}
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
