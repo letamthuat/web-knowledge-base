@@ -81,7 +81,8 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
 
   function goToDoc(docId: string) {
     onClose();
-    router.push(`/reader/${docId}`);
+    const url = q.trim() ? `/reader/${docId}?q=${encodeURIComponent(q.trim())}` : `/reader/${docId}`;
+    router.push(url);
   }
 
   function goToNote(noteId: string) {

@@ -13,6 +13,7 @@ interface Doc {
 interface ViewerDispatcherProps {
   doc: Doc;
   downloadUrl: string;
+  highlightQuery?: string;
 }
 
 function ViewerLoading() {
@@ -60,11 +61,11 @@ const PPTXViewer = dynamic(
   { ssr: false, loading: () => <ViewerLoading /> }
 );
 
-export function ViewerDispatcher({ doc, downloadUrl }: ViewerDispatcherProps) {
+export function ViewerDispatcher({ doc, downloadUrl, highlightQuery }: ViewerDispatcherProps) {
   switch (doc.format) {
     case "pdf":       return <PDFViewer doc={doc} downloadUrl={downloadUrl} />;
     case "epub":      return <EPUBViewer doc={doc} downloadUrl={downloadUrl} />;
-    case "markdown":  return <MarkdownViewer doc={doc} downloadUrl={downloadUrl} />;
+    case "markdown":  return <MarkdownViewer doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} />;
     case "image":     return <ImageViewer doc={doc} downloadUrl={downloadUrl} />;
     case "audio":     return <AudioViewer doc={doc} downloadUrl={downloadUrl} />;
     case "video":     return <VideoViewer doc={doc} downloadUrl={downloadUrl} />;

@@ -32,6 +32,7 @@ import GithubSlugger from "github-slugger";
 interface MarkdownViewerProps {
   doc: { _id: Id<"documents">; title: string };
   downloadUrl: string;
+  highlightQuery?: string;
 }
 
 interface TocEntry {
@@ -55,7 +56,7 @@ function extractToc(markdown: string): TocEntry[] {
   return entries;
 }
 
-export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
+export function MarkdownViewer({ doc, downloadUrl, highlightQuery }: MarkdownViewerProps) {
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
@@ -275,6 +276,42 @@ export function MarkdownViewer({ doc, downloadUrl }: MarkdownViewerProps) {
     };
     requestAnimationFrame(tryScroll);
   }, [content, progress]);
+
+  // Jump to first occurrence of highlightQuery after content renders
+  useEffect(() => {
+    if (!highlightQuery || !content || !contentRef.current) return;
+    const container = contentRef.current;
+    const lower = highlightQuery.toLowerCase();
+
+    // Small delay to let DOM settle after markdown render
+    const timer = setTimeout(() => {
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+      let node: Text | null;
+      while ((node = walker.nextNode() as Text | null)) {
+        const text = node.textContent ?? "";
+        const idx = text.toLowerCase().indexOf(lower);
+        if (idx === -1) continue;
+
+        // Split text node around the match and wrap in <mark>
+        const before = node.splitText(idx);
+        before.splitText(lower.length);
+        const mark = document.createElement("mark");
+        mark.className = "search-jump";
+        mark.style.cssText = "background:#fef08a;border-radius:2px;padding:0 1px;color:inherit";
+        before.parentNode?.insertBefore(mark, before);
+        mark.appendChild(before);
+        mark.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        // Remove highlight after 3s
+        setTimeout(() => {
+          mark.replaceWith(...Array.from(mark.childNodes));
+        }, 3000);
+        break;
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [highlightQuery, content]);
 
   // Track active heading via IntersectionObserver on the content scroll area
   useEffect(() => {

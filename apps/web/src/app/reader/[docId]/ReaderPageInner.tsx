@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
@@ -28,6 +28,8 @@ function ReaderShell({ doc, downloadUrl }: {
   downloadUrl: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightQuery = searchParams.get("q") ?? undefined;
   const { data: session } = useSession();
   const { saveNow, saveStatus, savePosition, progress } = useReadingProgress(doc._id);
   const { tabs: allTabs, isLoading: tabsLoading, openTab, updateScrollState } = useTabSync();
@@ -262,7 +264,7 @@ function ReaderShell({ doc, downloadUrl }: {
                 }}
                 onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
               />}
-          <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} />
+          <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} />
         </div>
       </div>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
