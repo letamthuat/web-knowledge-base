@@ -1,5 +1,6 @@
 import { internalMutation, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 
 const USER_TABLES = [
   "documents", "transcripts", "folders", "document_folders",
@@ -47,10 +48,11 @@ export const updateReadingModePreferences = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
+    // Try by subject (_id) first, fallback to email
+    let user = await ctx.db.get(identity.subject as Id<"users">).catch(() => null);
+    if (!user && identity.email) {
+      user = await ctx.db.query("users").withIndex("by_email", (q) => q.eq("email", identity.email as string)).first();
+    }
     if (!user) throw new Error("User not found");
 
     const existing = user.preferences?.readingMode ?? {};
