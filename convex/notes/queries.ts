@@ -36,6 +36,32 @@ export const listAllByUser = query({
   },
 });
 
+export const search = query({
+  args: {
+    q: v.string(),
+    docId: v.optional(v.id("documents")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
+    if (args.q.length < 2) return [];
+
+    const results = await ctx.db
+      .query("notes")
+      .withSearchIndex("search_body", (q) => {
+        const s = q.search("body", args.q).eq("userId", userId as never);
+        return s;
+      })
+      .take(10);
+
+    if (args.docId) {
+      return results.filter((n) => n.docId === args.docId);
+    }
+    return results;
+  },
+});
+
 export const listAllByUserInternal = internalQuery({
   args: { userId: v.string() },
   handler: async (ctx, args) => {

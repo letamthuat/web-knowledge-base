@@ -62,7 +62,9 @@
       "PowerShell(head -20)",
       "Bash(npm list *)",
       "Bash(python3 \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\\\\_bmad\\\\scripts\\\\resolve_customization.py\" --skill \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\\\\.claude\\\\skills\\\\bmad-dev-story\" --key workflow)",
-      "Bash(Get-ChildItem -Path \"C:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\" -Directory)"
+      "Bash(Get-ChildItem -Path \"C:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\" -Directory)",
+      "Bash(Get-ChildItem -Path \"C:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\" -Recurse -Directory -Name)",
+      "Bash(Select-Object -First 20)"
     ]
   }
 }

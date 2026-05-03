@@ -81,6 +81,45 @@ export const getByIdInternal = internalQuery({
   },
 });
 
+export const search = query({
+  args: {
+    q: v.string(),
+    format: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
+    if (args.q.length < 2) return [];
+
+    const [byContent, byTitle] = await Promise.all([
+      ctx.db
+        .query("documents")
+        .withSearchIndex("search_content", (q) =>
+          q.search("extractedText", args.q).eq("userId", userId as never).eq("status", "ready")
+        )
+        .take(10),
+      ctx.db
+        .query("documents")
+        .withSearchIndex("search_title", (q) =>
+          q.search("title", args.q).eq("userId", userId as never).eq("status", "ready")
+        )
+        .take(10),
+    ]);
+
+    // Dedup by _id, content results first
+    const seen = new Set<string>();
+    const results = [];
+    for (const doc of [...byContent, ...byTitle]) {
+      if (!seen.has(doc._id)) {
+        seen.add(doc._id);
+        results.push(doc);
+      }
+    }
+    return results.slice(0, 10);
+  },
+});
+
 export const listByUserInternal = internalQuery({
   args: { userId: v.string() },
   handler: async (ctx, args) => {

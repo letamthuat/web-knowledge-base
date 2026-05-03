@@ -16,6 +16,26 @@ export const listByDoc = query({
   },
 });
 
+export const search = query({
+  args: { q: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
+    if (args.q.length < 2) return [];
+
+    const q = args.q.toLowerCase();
+    const all = await ctx.db
+      .query("highlights")
+      .withIndex("by_user", (idx) => idx.eq("userId", userId as never))
+      .collect();
+
+    return all
+      .filter((h) => h.note && h.note.toLowerCase().includes(q))
+      .slice(0, 10);
+  },
+});
+
 export const listByDocInternal = internalQuery({
   args: { userId: v.string(), docId: v.id("documents") },
   handler: async (ctx, args) => {

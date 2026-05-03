@@ -198,6 +198,94 @@ export const copyNoteFileToLibrary = action({
   },
 });
 
+export const extractText = internalAction({
+  args: { docId: v.id("documents") },
+  handler: async (ctx, args): Promise<void> => {
+    const doc = await ctx.runQuery(internal.documents.queries.getByIdInternal, { docId: args.docId });
+    if (!doc) return;
+
+    // Skip if already extracted
+    if (doc.extractedText) return;
+
+    const format = doc.format;
+
+    // Audio/video/image — use title as text
+    if (format === "audio" || format === "video" || format === "image") {
+      await ctx.runMutation(internal.documents.mutations.patchExtractedText, {
+        docId: args.docId,
+        text: doc.title,
+      });
+      return;
+    }
+
+    // Fetch file bytes from R2
+    let buffer: Buffer;
+    try {
+      const r2 = getR2Client();
+      const res = await r2.send(new GetObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME!,
+        Key: doc.storageKey,
+      }));
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of res.Body as AsyncIterable<Uint8Array>) {
+        chunks.push(chunk);
+      }
+      buffer = Buffer.concat(chunks);
+    } catch {
+      // Can't fetch — use title fallback
+      await ctx.runMutation(internal.documents.mutations.patchExtractedText, {
+        docId: args.docId,
+        text: doc.title,
+      });
+      return;
+    }
+
+    let text = doc.title; // fallback
+    try {
+      if (format === "markdown") {
+        text = new TextDecoder("utf-8").decode(buffer);
+      } else if (format === "web_clip") {
+        // HTML → plain text via Readability-style strip
+        text = new TextDecoder("utf-8").decode(buffer).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      } else if (format === "pdf") {
+        const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs" as never) as any;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+        const parts: string[] = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          parts.push(content.items.map((item: any) => ("str" in item ? item.str : "")).join(" "));
+        }
+        text = parts.join("\n");
+      } else if (format === "docx") {
+        const mammoth = await import("mammoth" as never) as any;
+        const result = await mammoth.extractRawText({ buffer });
+        text = result.value ?? doc.title;
+      } else if (format === "epub") {
+        // Simple: unzip and extract text from HTML spine items
+        const JSZip = (await import("jszip" as never) as any).default ?? (await import("jszip" as never) as any);
+        const zip = await JSZip.loadAsync(buffer);
+        const parts: string[] = [];
+        zip.forEach((path: string, file: any) => {
+          if (path.endsWith(".html") || path.endsWith(".xhtml") || path.endsWith(".htm")) {
+            parts.push(file);
+          }
+        });
+        const htmlParts = await Promise.all(parts.map((f: any) => f.async("string")));
+        text = htmlParts.map((h: string) => h.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()).join("\n");
+      }
+    } catch {
+      text = doc.title;
+    }
+
+    await ctx.runMutation(internal.documents.mutations.patchExtractedText, {
+      docId: args.docId,
+      text,
+    });
+  },
+});
+
 export const deleteFromStorage = internalAction({
   args: {
     storageBackend: v.union(v.literal("convex"), v.literal("r2"), v.literal("b2")),

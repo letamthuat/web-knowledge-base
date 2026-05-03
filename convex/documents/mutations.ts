@@ -1,8 +1,21 @@
-import { mutation } from "../_generated/server";
+import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { convexError } from "../lib/errors";
 import { internal } from "../_generated/api";
+
+export const patchExtractedText = internalMutation({
+  args: {
+    docId: v.id("documents"),
+    text: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.docId, {
+      extractedText: args.text.slice(0, 500_000),
+      updatedAt: Date.now(),
+    });
+  },
+});
 
 export const finalizeUpload = mutation({
   args: {
@@ -38,6 +51,9 @@ export const finalizeUpload = mutation({
     if (args.uploadSessionId) {
       await ctx.db.delete(args.uploadSessionId);
     }
+
+    // Schedule text extraction for search indexing
+    await ctx.scheduler.runAfter(0, internal.documents.actions.extractText, { docId });
 
     return docId;
   },
