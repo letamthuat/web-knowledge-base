@@ -64,7 +64,9 @@
       "Bash(python3 \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\\\\_bmad\\\\scripts\\\\resolve_customization.py\" --skill \"c:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\\\\.claude\\\\skills\\\\bmad-dev-story\" --key workflow)",
       "Bash(Get-ChildItem -Path \"C:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\" -Directory)",
       "Bash(Get-ChildItem -Path \"C:\\\\1. FOR STUDY\\\\8. WEB KNOWLEDGE BASE\" -Recurse -Directory -Name)",
-      "Bash(Select-Object -First 20)"
+      "Bash(Select-Object -First 20)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k\\) for k in d.get\\('dependencies',{}\\) if 'cmd' in k.lower\\(\\) or 'search' in k.lower\\(\\) or 'dialog' in k.lower\\(\\)]\")",
+      "Bash(grep -n \"UploadDropzone\\\\|</div>\\\\s*$\\\\|^}\" \"c:/1. FOR STUDY/8. WEB KNOWLEDGE BASE/apps/web/src/components/library/LibraryPageInner.tsx\")"
     ]
   }
 }

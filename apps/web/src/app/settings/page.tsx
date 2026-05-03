@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/_generated/api";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2, ArchiveIcon } from "lucide-react";
+import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2, ArchiveIcon, Search } from "lucide-react";
 import { useBackupDownload } from "@/hooks/useBackupDownload";
+import { SearchModal } from "@/components/search/SearchModal";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -50,6 +51,18 @@ export default function SettingsPage() {
   const [confirm, setConfirm] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const CONFIRM_WORD = "XÓA TÀI KHOẢN";
 
@@ -226,6 +239,7 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

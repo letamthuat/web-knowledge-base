@@ -6,7 +6,7 @@ import {
   BookOpen, LogOut, Settings, Trash2, Plus, Folder, FolderOpen, StickyNote,
   MoreVertical, Pencil, FolderPlus, ChevronRight, LayoutGrid,
   PanelLeftClose, PanelLeftOpen, ChevronDown, File as FileIcon, Menu, X,
-  CheckSquare, FolderInput,
+  CheckSquare, FolderInput, Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
@@ -22,6 +22,7 @@ import { TabBar } from "@/components/tabs/TabBar";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { FilterBar, parseFilters, hasActiveFilters } from "@/components/library/FilterBar";
 import { UploadDropzone } from "@/components/library/UploadDropzone";
+import { SearchModal } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
 
 const L = labels.library;
@@ -55,6 +56,20 @@ export function LibraryPageInner() {
   const [renameFolderId, setRenameFolderId] = useState<Id<"folders"> | null>(null);
   const [renameFolderName, setRenameFolderName] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Cmd/Ctrl+K global shortcut
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Multi-select
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -392,6 +407,14 @@ export function LibraryPageInner() {
             <Button variant="ghost" size="sm" onClick={() => router.push("/settings")}>
               <Settings className="mr-1 h-4 w-4" />{N.settings}
             </Button>
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Search className="h-3.5 w-3.5" />
+              Tìm kiếm
+              <kbd className="ml-1 rounded border bg-background px-1 py-px text-[10px]">⌘K</kbd>
+            </button>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -676,6 +699,8 @@ export function LibraryPageInner() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

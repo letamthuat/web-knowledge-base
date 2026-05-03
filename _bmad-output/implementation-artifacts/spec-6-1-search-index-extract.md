@@ -2,7 +2,7 @@
 title: 'Story 6.1 — Search Index + Text Extraction Pipeline'
 type: 'feature'
 created: '2026-05-03'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '8bc4e8f53cb534d08bd47002722eb931ea6d47ba'
 ---
 

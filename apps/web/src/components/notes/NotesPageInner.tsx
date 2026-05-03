@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download, X, Menu } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download, X, Menu, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -14,13 +14,16 @@ import { useAllNotes } from "@/hooks/useNotes";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
 import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
+import { SearchModal } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
 
 const N = labels.nav;
 
 export function NotesPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const [searchOpen, setSearchOpen] = useState(false);
   const { notes, addNote, updateNote, removeNote } = useAllNotes();
   const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
   const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
@@ -31,6 +34,29 @@ export function NotesPageInner() {
   useEffect(() => {
     if (window.innerWidth >= 768) setSidebarOpen(true);
   }, []);
+
+  // Cmd/Ctrl+K
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Auto-select note from ?note=id URL param (navigated from search result)
+  useEffect(() => {
+    const noteId = searchParams.get("note");
+    if (!noteId || !(notes as any[]).length) return;
+    const note = (notes as any[]).find((n: any) => n._id === noteId);
+    if (note) {
+      openNoteTab(note._id as Id<"notes">, note.title ?? "");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, (notes as any[]).length]);
   const [noteSaveStatus, setNoteSaveStatus] = useState<SaveStatus>("saved");
   const noteSaveNowRef = useRef<(() => void) | null>(null);
   const noteImportRef = useRef<HTMLInputElement | null>(null);
@@ -127,6 +153,14 @@ export function NotesPageInner() {
           <Button variant="ghost" size="sm" onClick={() => router.push("/settings")}>
             <Settings className="mr-1 h-4 w-4" />{N.settings}
           </Button>
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Search className="h-3.5 w-3.5" />
+            Tìm kiếm
+            <kbd className="ml-1 rounded border bg-background px-1 py-px text-[10px]">⌘K</kbd>
+          </button>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -220,6 +254,7 @@ export function NotesPageInner() {
           </div>
         )}
       </div>
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

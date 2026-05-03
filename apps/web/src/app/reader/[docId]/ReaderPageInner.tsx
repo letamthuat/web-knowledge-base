@@ -20,6 +20,8 @@ import { TabBar } from "@/components/tabs/TabBar";
 import { TabDropdown } from "@/components/tabs/TabDropdown";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
+import { SearchModal } from "@/components/search/SearchModal";
+import { Search } from "lucide-react";
 
 function ReaderShell({ doc, downloadUrl }: {
   doc: { _id: Id<"documents">; format: string; title: string };
@@ -30,6 +32,20 @@ function ReaderShell({ doc, downloadUrl }: {
   const { saveNow, saveStatus, savePosition, progress } = useReadingProgress(doc._id);
   const { tabs: allTabs, isLoading: tabsLoading, openTab, updateScrollState } = useTabSync();
   const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
+
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Cmd/Ctrl+K
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Find the tab for this doc so we can persist scroll state into it
   const currentTab = allTabs.find((t) => t.docId === doc._id) ?? null;
@@ -242,6 +258,7 @@ function ReaderShell({ doc, downloadUrl }: {
           <ViewerDispatcher doc={doc} downloadUrl={downloadUrl} />
         </div>
       </div>
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </ReaderProgressContext.Provider>
   );
 }
