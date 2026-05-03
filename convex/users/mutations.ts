@@ -1,5 +1,5 @@
-import { internalMutation } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
+import { internalMutation, mutation } from "../_generated/server";
+import { v } from "convex/values";
 
 const USER_TABLES = [
   "documents", "transcripts", "folders", "document_folders",
@@ -32,5 +32,44 @@ export const deleteAllUserData = internalMutation({
 
     // Xóa user cuối cùng
     await ctx.db.delete(userId);
+  },
+});
+
+export const updateReadingModePreferences = mutation({
+  args: {
+    fontFamily: v.optional(v.union(v.literal("serif"), v.literal("sans"), v.literal("mono"))),
+    fontSize: v.optional(v.number()),
+    lineHeight: v.optional(v.number()),
+    columnWidth: v.optional(v.union(v.literal("narrow"), v.literal("medium"), v.literal("wide"))),
+    themeByFormat: v.optional(v.record(v.string(), v.union(v.literal("light"), v.literal("sepia"), v.literal("dark")))),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const existing = user.preferences?.readingMode ?? {};
+    const newThemeByFormat = args.themeByFormat
+      ? { ...(existing.themeByFormat ?? {}), ...args.themeByFormat }
+      : existing.themeByFormat;
+
+    await ctx.db.patch(user._id, {
+      preferences: {
+        ...user.preferences,
+        readingMode: {
+          ...existing,
+          ...(args.fontFamily !== undefined ? { fontFamily: args.fontFamily } : {}),
+          ...(args.fontSize !== undefined ? { fontSize: Math.min(28, Math.max(12, args.fontSize)) } : {}),
+          ...(args.lineHeight !== undefined ? { lineHeight: Math.min(2.0, Math.max(1.4, args.lineHeight)) } : {}),
+          ...(args.columnWidth !== undefined ? { columnWidth: args.columnWidth } : {}),
+          ...(newThemeByFormat !== undefined ? { themeByFormat: newThemeByFormat } : {}),
+        },
+      },
+    });
   },
 });
