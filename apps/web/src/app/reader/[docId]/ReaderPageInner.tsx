@@ -12,6 +12,7 @@ import { ReaderProgressContext } from "@/components/viewers/ReaderProgressContex
 import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopover";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
+import { toProgressPct } from "@/lib/position";
 import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
@@ -38,6 +39,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [readingMode, setReadingMode] = useState(false);
+  const [localPct, setLocalPct] = useState<number | null>(null);
 
   const typography = useAppTypography();
   const TEXT_FORMATS = new Set(["markdown", "epub", "docx", "web_clip"]);
@@ -79,10 +81,13 @@ function ReaderShell({ doc, downloadUrl }: {
   const currentTab = allTabs.find((t) => t.docId === doc._id) ?? null;
   const currentTabId = currentTab?._id ?? null;
 
-  // Wrap savePosition to also update scrollState in the tab (immediate, no throttle)
+  // Wrap savePosition to also update scrollState in the tab + update local progress pct
   const savePositionWithTab = useCallback(
     (pos: ReadingPosition, total?: number) => {
       savePosition(pos, total);
+      // Update localPct immediately for realtime progress bar
+      const pct = toProgressPct(pos, total);
+      if (pct !== null) setLocalPct(Math.round(pct * 100));
       if (currentTabId) {
         const scrollState = JSON.stringify(pos);
         updateScrollState(currentTabId, scrollState).catch(() => {});
@@ -317,7 +322,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
         {/* Progress bar + time estimate */}
         {(() => {
-          const pct = progress?.progressPct;
+          const pct = localPct ?? (progress?.progressPct != null ? Math.round(progress.progressPct * 100) : null);
           if (pct == null || pct <= 0) return null;
           const extractedText = (doc as unknown as { extractedText?: string }).extractedText ?? "";
           const wordCount = extractedText ? extractedText.trim().split(/\s+/).length : 0;
