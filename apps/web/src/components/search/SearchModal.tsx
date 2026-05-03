@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, FileText, StickyNote, Highlighter, X, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe } from "lucide-react";
-import { useSearch } from "@/hooks/useSearch";
+import { useSearch, type FilterType } from "@/hooks/useSearch";
 import { snippet } from "@/lib/search/snippet";
 
 const FORMAT_ICONS: Record<string, React.ElementType> = {
@@ -30,16 +30,39 @@ interface SearchModalProps {
   onClose: () => void;
 }
 
+const FORMAT_OPTIONS = [
+  { label: "Tất cả", value: "" },
+  { label: "PDF", value: "pdf" },
+  { label: "EPUB", value: "epub" },
+  { label: "DOCX", value: "docx" },
+  { label: "Markdown", value: "markdown" },
+  { label: "Web Clip", value: "web_clip" },
+];
+
+const TYPE_OPTIONS: { label: string; value: FilterType }[] = [
+  { label: "Tất cả", value: "all" },
+  { label: "Tài liệu", value: "docs" },
+  { label: "Ghi chú", value: "notes" },
+  { label: "Highlight", value: "highlights" },
+];
+
 export function SearchModal({ open, onClose }: SearchModalProps) {
   const router = useRouter();
   const [q, setQ] = useState("");
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [filterFormat, setFilterFormat] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const { docs, notes, highlights, isLoading, hasResults, searched } = useSearch(q);
+  const { docs, notes, highlights, isLoading, hasResults, searched } = useSearch(q, {
+    type: filterType,
+    format: filterFormat || undefined,
+  });
 
-  // Focus input on open
+  // Focus input on open, reset filters
   useEffect(() => {
     if (open) {
       setQ("");
+      setFilterType("all");
+      setFilterFormat("");
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
@@ -97,8 +120,44 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
           </kbd>
         </div>
 
+        {/* Filter bar */}
+        <div className="border-b px-3 py-2 space-y-1.5">
+          <div className="flex flex-wrap gap-1">
+            {TYPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => { setFilterType(opt.value); setFilterFormat(""); }}
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                  filterType === opt.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {(filterType === "all" || filterType === "docs") && (
+            <div className="flex flex-wrap gap-1">
+              {FORMAT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setFilterFormat(opt.value)}
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] transition-colors ${
+                    filterFormat === opt.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Results */}
-        <div className="max-h-[60vh] overflow-y-auto py-2">
+        <div className="max-h-[50vh] overflow-y-auto py-2">
           {/* Loading */}
           {isLoading && (
             <div className="flex items-center justify-center py-8 text-muted-foreground text-sm gap-2">
