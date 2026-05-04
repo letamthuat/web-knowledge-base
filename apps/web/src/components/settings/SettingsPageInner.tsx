@@ -203,14 +203,14 @@ export function SettingsPageInner() {
             Sao lưu dữ liệu
           </h2>
           <p className="text-sm text-muted-foreground">
-            Tải xuống toàn bộ tài liệu và ghi chú dưới dạng file ZIP. Bao gồm file gốc của tài liệu, tất cả ghi chú (.md) và highlights.
+            Export toàn bộ tài liệu, ghi chú và highlights dưới dạng ZIP tương thích Obsidian. Bao gồm file gốc, highlights.md per tài liệu, notes với frontmatter, và data.json.
           </p>
           <div className="flex items-center gap-3">
             <Button onClick={downloadBackup} disabled={isDownloading} className="gap-2">
               {isDownloading ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Đang chuẩn bị...</>
               ) : (
-                <><ArchiveIcon className="h-4 w-4" /> Tải xuống toàn bộ</>
+                <><ArchiveIcon className="h-4 w-4" /> Export ZIP (Obsidian)</>
               )}
             </Button>
             {stats && (

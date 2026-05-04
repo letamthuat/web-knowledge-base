@@ -105,48 +105,135 @@ export const getDownloadUrl = action({
 export const getBackupData = action({
   args: {},
   handler: async (ctx): Promise<{
-    docs: { id: string; title: string; format: string; createdAt: number; downloadUrl: string }[];
-    notes: { id: string; title: string | undefined; body: string; docTitle: string | null; updatedAt: number }[];
-    highlights: { docId: string; docTitle: string; text: string; note: string | null; createdAt: number }[];
+    docs: { id: string; title: string; format: string; createdAt: number; downloadUrl: string; clippedContent?: string }[];
+    notes: { id: string; title: string | undefined; body: string; docId: string | null; docTitle: string | null; tagIds: string[]; updatedAt: number }[];
+    highlights: { docId: string; docTitle: string; text: string; note: string | null; color: string; createdAt: number }[];
+    tags: { id: string; name: string; color: string | null }[];
+    readingProgress: { docId: string; progressPct: number | null; updatedAt: number }[];
+    preferences: Record<string, unknown> | null;
   }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
     const userId = identity.subject;
 
-    // Fetch all docs
     const allDocs = await ctx.runQuery(internal.documents.queries.listByUserInternal, { userId });
     const r2 = getR2Client();
 
-    // Generate presigned download URLs for each doc
     const docs = await Promise.all(allDocs.map(async (doc) => {
       let downloadUrl = "";
       try {
-        const cmd = new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME!, Key: doc.storageKey });
-        downloadUrl = await getSignedUrl(r2, cmd, { expiresIn: 3600 });
+        if (doc.format !== "web_clip" || !doc.clippedContent) {
+          const cmd = new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME!, Key: doc.storageKey });
+          downloadUrl = await getSignedUrl(r2, cmd, { expiresIn: 3600 });
+        }
       } catch {}
-      return { id: doc._id, title: doc.title, format: doc.format, createdAt: doc.createdAt, downloadUrl };
+      return { id: doc._id, title: doc.title, format: doc.format, createdAt: doc.createdAt, downloadUrl, clippedContent: doc.clippedContent };
     }));
 
-    // Fetch all notes
     const allNotes = await ctx.runQuery(internal.notes.queries.listAllByUserInternal, { userId });
     const notes = allNotes.map((n) => ({
       id: n._id,
       title: n.title,
       body: n.body,
+      docId: (n.docId as string | null) ?? null,
       docTitle: n.docTitle ?? null,
+      tagIds: ((n as any).tagIds ?? []) as string[],
       updatedAt: n.updatedAt,
     }));
 
-    // Fetch highlights for all docs
-    const highlightRows: { docId: string; docTitle: string; text: string; note: string | null; createdAt: number }[] = [];
+    const highlightRows: { docId: string; docTitle: string; text: string; note: string | null; color: string; createdAt: number }[] = [];
     for (const doc of allDocs) {
       const hl = await ctx.runQuery(internal.highlights.queries.listByDocInternal, { userId, docId: doc._id });
       for (const h of hl) {
-        highlightRows.push({ docId: doc._id, docTitle: doc.title, text: h.selectedText ?? "", note: h.note ?? null, createdAt: h.createdAt });
+        highlightRows.push({ docId: doc._id, docTitle: doc.title, text: (h as any).selectedText ?? "", note: (h as any).note ?? null, color: (h as any).color ?? "yellow", createdAt: h.createdAt });
       }
     }
 
-    return { docs, notes, highlights: highlightRows };
+    const rawTags = await ctx.runQuery(internal.tags.queries.listByUserInternal, { userId });
+    const tags = rawTags.map((t: any) => ({ id: t._id as string, name: t.name, color: t.color ?? null }));
+
+    const rawProgress = await ctx.runQuery(internal.reading_progress.queries.listByUserInternal, { userId });
+    const readingProgress = rawProgress.map((p: any) => ({
+      docId: p.docId as string,
+      progressPct: p.progressPct ?? null,
+      updatedAt: p.updatedAt,
+    }));
+
+    const preferences = await ctx.runQuery(internal.users.queries.getPreferencesBySubject, { userId });
+
+    return { docs, notes, highlights: highlightRows, tags, readingProgress, preferences: preferences as Record<string, unknown> | null };
+  },
+});
+
+export const getSingleDocExportData = action({
+  args: { docId: v.id("documents") },
+  handler: async (ctx, args): Promise<{
+    doc: { id: string; title: string; format: string; clippedContent?: string };
+    downloadUrl: string | null;
+    highlights: { id: string; selectedText: string; note: string | null; color: string; voiceNoteStorageId: string | null }[];
+    notes: { id: string; title: string | undefined; body: string; tagIds: string[] }[];
+    voiceUrls: Record<string, string>;
+  }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const doc = await ctx.runQuery(internal.documents.queries.getByIdInternal, { docId: args.docId });
+    if (!doc) throw new Error("Document not found");
+    if (doc.userId !== identity.subject) throw new Error("Unauthorized");
+
+    // Presigned URL for original file (null for web_clip with clippedContent)
+    let downloadUrl: string | null = null;
+    if (doc.format !== "web_clip" || !doc.clippedContent) {
+      try {
+        const r2 = getR2Client();
+        const cmd = new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME!, Key: doc.storageKey });
+        downloadUrl = await getSignedUrl(r2, cmd, { expiresIn: 3600 });
+      } catch {}
+    }
+
+    // Highlights for this doc
+    const rawHighlights = await ctx.runQuery(internal.highlights.queries.listByDocInternal, {
+      userId: identity.subject,
+      docId: args.docId,
+    });
+    const highlights = rawHighlights.map((h: any) => ({
+      id: h._id as string,
+      selectedText: h.selectedText ?? "",
+      note: h.note ?? null,
+      color: h.color ?? "yellow",
+      voiceNoteStorageId: h.voiceNoteStorageId ?? null,
+    }));
+
+    // Presigned URLs for voice notes
+    const voiceUrls: Record<string, string> = {};
+    const r2 = getR2Client();
+    for (const h of highlights) {
+      if (h.voiceNoteStorageId) {
+        try {
+          const url = await ctx.storage.getUrl(h.voiceNoteStorageId as never);
+          if (url) voiceUrls[h.id] = url;
+        } catch {}
+      }
+    }
+
+    // Notes linked to this doc
+    const allNotes = await ctx.runQuery(internal.notes.queries.listAllByUserInternal, { userId: identity.subject });
+    const docNotes = (allNotes as any[])
+      .filter((n: any) => n.docId === args.docId)
+      .map((n: any) => ({
+        id: n._id as string,
+        title: n.title,
+        body: n.body,
+        tagIds: (n.tagIds ?? []) as string[],
+      }));
+
+    return {
+      doc: { id: doc._id, title: doc.title, format: doc.format, clippedContent: doc.clippedContent },
+      downloadUrl,
+      highlights,
+      notes: docNotes,
+      voiceUrls,
+    };
   },
 });
 

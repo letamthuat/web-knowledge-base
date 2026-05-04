@@ -20,6 +20,7 @@ import { TagPopover } from "./TagPopover";
 import { labels } from "@/lib/i18n/labels";
 import { formatBytes } from "@/lib/storage";
 import { toast } from "sonner";
+import { useDocExport } from "@/hooks/useDocExport";
 
 const L = labels.document;
 const Lf = labels.formats;
@@ -70,6 +71,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   const renameMutation = useMutation(api.documents.mutations.rename);
   const openTabMutation = useMutation(api.tabs.mutations.openTab);
   const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
+  const { exportDoc, isExporting } = useDocExport();
 
   async function handleDownload(e: React.MouseEvent) {
     e.stopPropagation();
@@ -130,6 +132,12 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
       </DropdownMenuItem>
       <DropdownMenuItem onClick={handleDownload}>
         <Download className="mr-2 h-4 w-4" aria-hidden /> Tải xuống
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={(e) => { e.stopPropagation(); exportDoc(doc._id); }}
+        disabled={isExporting}
+      >
+        <Download className="mr-2 h-4 w-4" aria-hidden /> Export ZIP
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}>

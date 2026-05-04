@@ -1,4 +1,4 @@
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
 export const recentHistory = query({
@@ -22,6 +22,16 @@ export const recentHistory = query({
       })
     );
     return results.filter((r): r is NonNullable<typeof r> => r !== null);
+  },
+});
+
+export const listByUserInternal = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("reading_progress")
+      .withIndex("by_user_updated", (q) => q.eq("userId", args.userId as never))
+      .collect();
   },
 });
 

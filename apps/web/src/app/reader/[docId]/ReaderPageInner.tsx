@@ -25,6 +25,7 @@ import { SearchModal } from "@/components/search/SearchModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useAppTypography } from "@/components/AppSettingsPanel";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
+import { useDocExport } from "@/hooks/useDocExport";
 
 function ReaderShell({ doc, downloadUrl }: {
   doc: { _id: Id<"documents">; format: string; title: string };
@@ -47,6 +48,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
   const typography = useAppTypography();
   const { setActivePanel } = useActiveTab();
+  const { exportDoc, isExporting } = useDocExport();
   const TEXT_FORMATS = new Set(["markdown", "epub", "docx", "web_clip"]);
   const READING_MODE_FORMATS = new Set(["pdf", "epub", "docx", "markdown", "web_clip"]);
 
@@ -298,6 +300,10 @@ function ReaderShell({ doc, downloadUrl }: {
           <div className="flex items-center gap-2 shrink-0">
             <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
             <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
+            <Button variant="ghost" size="sm" onClick={() => exportDoc(doc._id)} disabled={isExporting} title="Export ZIP (file + highlights + ghi chú)" className="hidden sm:inline-flex gap-1">
+              <Download className="h-4 w-4" />
+              <span className="hidden md:inline">Export ZIP</span>
+            </Button>
             <Button variant="ghost" size="sm" onClick={handleDownload} title="Tải xuống tài liệu" className="hidden sm:inline-flex gap-1">
               <Download className="h-4 w-4" />
               <span className="hidden md:inline">Tải xuống</span>
@@ -387,6 +393,14 @@ function ReaderShell({ doc, downloadUrl }: {
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <BottomSheet open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} title="Thêm">
         <div className="flex flex-col gap-2 py-2">
+          <button
+            onClick={() => { setMoreMenuOpen(false); exportDoc(doc._id); }}
+            disabled={isExporting}
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            <Download className="h-5 w-5 text-muted-foreground" />
+            Export ZIP (file + highlights + ghi chú)
+          </button>
           <button
             onClick={() => { setMoreMenuOpen(false); handleDownload(); }}
             className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm hover:bg-muted transition-colors"

@@ -1,4 +1,4 @@
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
 export const listByUser = query({
@@ -10,6 +10,16 @@ export const listByUser = query({
     return await ctx.db
       .query("tags")
       .withIndex("by_user", (q) => q.eq("userId", userId as never))
+      .collect();
+  },
+});
+
+export const listByUserInternal = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("tags")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId as never))
       .collect();
   },
 });
