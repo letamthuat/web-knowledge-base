@@ -8,6 +8,7 @@ import { ScreenRecordingPillFloating } from "@/components/recording/ScreenRecord
 import { AppSettingsPanel } from "@/components/AppSettingsPanel";
 import { BottomNavDynamic as BottomNav } from "@/components/nav/BottomNavDynamic";
 import { DataPrefetcherDynamic as DataPrefetcher } from "@/components/DataPrefetcherDynamic";
+import { AppShellDynamic as AppShell } from "@/components/AppShellDynamic";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
 import "@/styles/globals.css";
 
@@ -59,7 +60,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         {/* ConvexClientProvider bọc ConvexReactClient + Better Auth session */}
         <ConvexClientProvider>
           <RecordingProvider>
-            {children}
+            <AppShell>{children}</AppShell>
             <DataPrefetcher />
             <AudioRecordingPillFloating />
             <ScreenRecordingPillFloating />
