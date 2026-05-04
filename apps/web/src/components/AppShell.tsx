@@ -75,9 +75,12 @@ function AppShellContent({ children }: { children: ReactNode }) {
   // Determine which panel to show: context-driven (instant) with router as fallback
   const current = activePanel ?? routerPanel;
 
-  // Track which reader tabs to mount (lazy: only once activated)
+  // Track which reader tabs to mount (lazy: only once activated AND tab exists in Convex)
   if (current?.startsWith("reader:")) {
-    mountedReaderIds.current.add(current.slice("reader:".length));
+    const docId = current.slice("reader:".length);
+    if (tabs.some((t) => t.docId === docId)) {
+      mountedReaderIds.current.add(docId);
+    }
   }
 
   // Non-shell route (login, offline, etc.)
@@ -87,6 +90,16 @@ function AppShellContent({ children }: { children: ReactNode }) {
 
   // Only render reader tabs that have been activated at least once
   const mountedTabs = tabs.filter((t) => mountedReaderIds.current.has(t.docId as string));
+
+  // If current panel is a reader tab but not yet in mountedTabs (tab not in Convex yet,
+  // or first navigation), fall through to {children} which is the page.tsx ReaderPageInner.
+  const activeDocId = current?.startsWith("reader:") ? current.slice("reader:".length) : null;
+  const activeTabMounted = activeDocId ? mountedTabs.some((t) => t.docId === activeDocId) : true;
+
+  if (!activeTabMounted) {
+    // Tab not yet mounted — let Next.js page render normally (children = ReaderPageInner)
+    return <>{children}</>;
+  }
 
   return (
     <>
