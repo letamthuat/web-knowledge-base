@@ -14,6 +14,8 @@ import { type ReactNode, useEffect, useRef } from "react";
 import { ActiveTabProvider, useActiveTab } from "@/contexts/ActiveTabContext";
 import { useTabSync } from "@/hooks/useTabSync";
 import { Id } from "@/_generated/dataModel";
+// Direct import so the chunk is always bundled with AppShell — no lazy load delay on first switch
+import { ReaderDocLoader } from "@/app/reader/[docId]/ReaderPageInner";
 
 const LibraryPageInner = dynamic(
   () => import("@/components/library/LibraryPageInner").then((m) => m.LibraryPageInner),
@@ -25,10 +27,6 @@ const NotesPageInner = dynamic(
 );
 const SettingsPageInner = dynamic(
   () => import("@/components/settings/SettingsPageInner").then((m) => m.SettingsPageInner),
-  { ssr: false }
-);
-const ReaderDocLoader = dynamic(
-  () => import("@/app/reader/[docId]/ReaderPageInner").then((m) => m.ReaderDocLoader),
   { ssr: false }
 );
 

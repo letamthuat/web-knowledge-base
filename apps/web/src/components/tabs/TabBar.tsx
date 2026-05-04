@@ -63,15 +63,18 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
     zIndex: isDragging ? 10 : undefined,
   };
 
-  const handleMouseEnter = () => {
-    // Prefetch the reader route bundle
-    router.prefetch(`/reader/${tab.docId}`);
-    // Also warm the download URL cache
-    if (!isActive && !getCachedUrl(tab.docId as string)) {
+  // Warm download URL as soon as tab appears in the bar (not waiting for hover)
+  useEffect(() => {
+    if (!getCachedUrl(tab.docId as string)) {
       getDownloadUrl({ docId: tab.docId as Id<"documents"> })
         .then((url) => setCachedUrl(tab.docId as string, url))
         .catch(() => {});
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab.docId]);
+
+  const handleMouseEnter = () => {
+    router.prefetch(`/reader/${tab.docId}`);
   };
 
   return (
