@@ -6,7 +6,7 @@ import { RecordingProvider } from "@/contexts/RecordingContext";
 import { AudioRecordingPillFloating } from "@/components/recording/AudioRecordingPill";
 import { ScreenRecordingPillFloating } from "@/components/recording/ScreenRecordingPill";
 import { AppSettingsPanel } from "@/components/AppSettingsPanel";
-import { BottomNav } from "@/components/nav/BottomNav";
+import { BottomNavDynamic as BottomNav } from "@/components/nav/BottomNavDynamic";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
 import "@/styles/globals.css";
 
