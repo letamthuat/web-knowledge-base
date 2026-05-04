@@ -25,6 +25,7 @@ import { FilterBar, parseFilters, hasActiveFilters } from "@/components/library/
 import { UploadDropzone } from "@/components/library/UploadDropzone";
 import { SearchModal } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 
 const L = labels.library;
 const N = labels.nav;
@@ -36,6 +37,7 @@ export function LibraryPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
+  const { setActivePanel } = useActiveTab();
   const { data: session, isPending } = useSession();
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -402,8 +404,8 @@ export function LibraryPageInner() {
 
           <nav className="hidden items-center gap-1 md:flex">
             <Button variant="secondary" size="sm" aria-current={true}>{N.library}</Button>
-            <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/notes")} onClick={() => router.push("/notes")}>{N.notes}</Button>
-            <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => router.push("/settings")}>
+            <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/notes")} onClick={() => { setActivePanel("notes"); window.history.pushState(null, "", "/notes"); }}>{N.notes}</Button>
+            <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => { setActivePanel("settings"); window.history.pushState(null, "", "/settings"); }}>
               <Settings className="mr-1 h-4 w-4" />{N.settings}
             </Button>
             <button
@@ -439,7 +441,11 @@ export function LibraryPageInner() {
         showAddButton={noteTabs.length > 0}
         noteTabs={noteTabs}
         activeNoteId={activeNoteId}
-        onSelectNoteTab={(id) => { setActiveNoteId(id as Id<"notes">); router.push("/notes"); }}
+        onSelectNoteTab={(id) => {
+          setActiveNoteId(id as Id<"notes">);
+          setActivePanel("notes");
+          window.history.pushState(null, "", "/notes");
+        }}
         onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
       />
 
@@ -471,7 +477,7 @@ export function LibraryPageInner() {
                 <BookOpen className="h-4 w-4" /> {N.library}
               </button>
               <button
-                onClick={() => { setMobileSidebarOpen(false); router.push("/notes"); }}
+                onClick={() => { setMobileSidebarOpen(false); setActivePanel("notes"); window.history.pushState(null, "", "/notes"); }}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
               >
                 <StickyNote className="h-4 w-4" /> {N.notes}

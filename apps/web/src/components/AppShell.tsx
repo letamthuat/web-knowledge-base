@@ -1,15 +1,18 @@
 "use client";
 
 /**
- * AppShell — keeps Library, Notes, Settings mounted permanently.
+ * AppShell — keeps Library, Notes, Settings AND open reader tabs mounted permanently.
  * Switching tabs uses CSS visibility instead of navigation:
  * no unmount/remount, no re-fetch, zero perceived latency.
  *
- * Non-tab routes (reader, login, offline) fall through via {children}.
+ * Non-tab routes (login, offline) fall through via {children}.
  */
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
+import { useTabSync } from "@/hooks/useTabSync";
+import { Id } from "@/_generated/dataModel";
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 
 const LibraryPageInner = dynamic(
   () => import("@/components/library/LibraryPageInner").then((m) => m.LibraryPageInner),
@@ -23,17 +26,21 @@ const SettingsPageInner = dynamic(
   () => import("@/components/settings/SettingsPageInner").then((m) => m.SettingsPageInner),
   { ssr: false }
 );
+const ReaderDocLoader = dynamic(
+  () => import("@/app/reader/[docId]/ReaderPageInner").then((m) => m.ReaderDocLoader),
+  { ssr: false }
+);
 
-function getActiveTab(pathname: string) {
+function pathnameToPanel(pathname: string): string | null {
   if (pathname === "/library" || pathname.startsWith("/library/")) return "library";
   if (pathname === "/notes"   || pathname.startsWith("/notes/"))   return "notes";
   if (pathname === "/settings"|| pathname.startsWith("/settings/"))return "settings";
+  const m = pathname.match(/^\/reader\/([^/]+)/);
+  if (m) return `reader:${m[1]}`;
   return null;
 }
 
 // Each tab panel: always in the DOM, visible only when active.
-// Use visibility+position instead of display:none so React doesn't
-// lose internal state (scroll position, editor content, etc.).
 function TabPanel({ active, children }: { active: boolean; children: ReactNode }) {
   return (
     <div
@@ -50,26 +57,49 @@ function TabPanel({ active, children }: { active: boolean; children: ReactNode }
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+function AppShellContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const activeTab = getActiveTab(pathname);
+  const { activePanel, setActivePanel } = useActiveTab();
+  const { tabs } = useTabSync();
 
-  // Non-tab route — render normally (reader, login, offline, etc.)
-  if (!activeTab) {
+  // Sync active panel from Next.js router (handles initial load + browser back/forward)
+  const routerPanel = pathnameToPanel(pathname);
+  useEffect(() => {
+    if (routerPanel) setActivePanel(routerPanel);
+  }, [routerPanel, setActivePanel]);
+
+  // Determine which panel to show: context-driven (instant) with router as fallback
+  const current = activePanel ?? routerPanel;
+
+  // Non-shell route (login, offline, etc.)
+  if (!current) {
     return <>{children}</>;
   }
 
   return (
     <>
-      <TabPanel active={activeTab === "library"}>
+      <TabPanel active={current === "library"}>
         <LibraryPageInner />
       </TabPanel>
-      <TabPanel active={activeTab === "notes"}>
+      <TabPanel active={current === "notes"}>
         <NotesPageInner />
       </TabPanel>
-      <TabPanel active={activeTab === "settings"}>
+      <TabPanel active={current === "settings"}>
         <SettingsPageInner />
       </TabPanel>
+      {/* Mount a persistent ReaderDocLoader for each open doc tab */}
+      {tabs.map((tab) => (
+        <TabPanel
+          key={tab._id}
+          active={current === `reader:${tab.docId}`}
+        >
+          <ReaderDocLoader docId={tab.docId as Id<"documents">} />
+        </TabPanel>
+      ))}
     </>
   );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  return <AppShellContent>{children}</AppShellContent>;
 }

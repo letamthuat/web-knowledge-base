@@ -24,6 +24,7 @@ import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { SearchModal } from "@/components/search/SearchModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useAppTypography } from "@/components/AppSettingsPanel";
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 
 function ReaderShell({ doc, downloadUrl }: {
   doc: { _id: Id<"documents">; format: string; title: string };
@@ -45,6 +46,7 @@ function ReaderShell({ doc, downloadUrl }: {
   const headerTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const typography = useAppTypography();
+  const { setActivePanel } = useActiveTab();
   const TEXT_FORMATS = new Set(["markdown", "epub", "docx", "web_clip"]);
   const READING_MODE_FORMATS = new Set(["pdf", "epub", "docx", "markdown", "web_clip"]);
 
@@ -329,7 +331,11 @@ function ReaderShell({ doc, downloadUrl }: {
                   currentDocId={doc._id}
                   noteTabs={noteTabs}
                   activeNoteId={activeNoteId}
-                  onSelectNoteTab={(id) => { setActiveNoteId(id as Id<"notes">); router.push("/notes"); }}
+                  onSelectNoteTab={(id) => {
+                    setActiveNoteId(id as Id<"notes">);
+                    setActivePanel("notes");
+                    window.history.pushState(null, "", "/notes");
+                  }}
                   onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
                 />
               : <TabBar
@@ -339,7 +345,8 @@ function ReaderShell({ doc, downloadUrl }: {
                   activeNoteId={activeNoteId}
                   onSelectNoteTab={(id) => {
                     setActiveNoteId(id as Id<"notes">);
-                    router.push("/notes");
+                    setActivePanel("notes");
+                    window.history.pushState(null, "", "/notes");
                   }}
                   onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
                 />}
@@ -422,12 +429,9 @@ export function setCachedUrl(docId: string, url: string) {
   urlCache.set(docId, { url, fetchedAt: Date.now() });
 }
 
-export default function ReaderPageInner() {
+// ReaderDocLoader — used by AppShell keep-alive: receives docId as prop instead of useParams
+export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
   const router = useRouter();
-  const params = useParams();
-  const docId = params.docId as Id<"documents">;
-
-  const { data: session, isPending } = useSession();
   const doc = useQuery(api.documents.queries.getById, { docId });
   const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
 
@@ -435,20 +439,13 @@ export default function ReaderPageInner() {
   const [urlError, setUrlError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isPending && !session) router.replace("/login");
-  }, [session, isPending, router]);
-
-  useEffect(() => {
     if (!doc) return;
-    // Already have a fresh cached URL — no fetch needed
     if (getCachedUrl(docId)) return;
     getDownloadUrl({ docId })
       .then((url) => { setCachedUrl(docId, url); setDownloadUrl(url); })
       .catch((e) => setUrlError(e instanceof Error ? e.message : "Không thể tải file"));
   }, [doc, docId, getDownloadUrl]);
 
-  if (isPending) return <FullPageSpinner />;
-  if (!session) return null;
   if (doc === undefined) return <FullPageSpinner />;
   if (doc === null) {
     return (
@@ -474,7 +471,6 @@ export default function ReaderPageInner() {
     );
   }
 
-  // Show layout immediately with doc data; viewer shows its own loading if URL not yet ready
   if (!downloadUrl) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden bg-background">
@@ -493,6 +489,23 @@ export default function ReaderPageInner() {
   }
 
   return <ReaderShell doc={doc} downloadUrl={downloadUrl} />;
+}
+
+export default function ReaderPageInner() {
+  const router = useRouter();
+  const params = useParams();
+  const docId = params.docId as Id<"documents">;
+
+  const { data: session, isPending } = useSession();
+
+  useEffect(() => {
+    if (!isPending && !session) router.replace("/login");
+  }, [session, isPending, router]);
+
+  if (isPending) return <FullPageSpinner />;
+  if (!session) return null;
+
+  return <ReaderDocLoader docId={docId} />;
 }
 
 function FullPageSpinner() {

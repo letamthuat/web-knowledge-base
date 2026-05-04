@@ -25,6 +25,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { NoteTab } from "@/hooks/useNoteTabs";
 import { useRecording } from "@/contexts/RecordingContext";
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { AudioRecordingPill } from "@/components/recording/AudioRecordingPill";
 import { ScreenRecordingPill } from "@/components/recording/ScreenRecordingPill";
 
@@ -124,7 +125,8 @@ const closedTabStack: string[] = [];
 export function TabBar({ currentDocId, showAddButton = false, notesActive = false, noteTabs = [], activeNoteId, onCloseNoteTab, onSelectNoteTab }: TabBarProps) {
   const router = useRouter();
   const { audioRecorder, screenRecorder } = useRecording();
-  const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab } = useTabSync();
+  const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab, setActive } = useTabSync();
+  const { setActivePanel } = useActiveTab();
   const [optimisticTabs, setOptimisticTabs] = useState<TabDoc[] | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
@@ -284,7 +286,10 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
           <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto scrollbar-none py-1">
             {/* Persistent Notes tab */}
             <div
-              onClick={() => router.push("/notes")}
+              onClick={() => {
+                setActivePanel("notes");
+                window.history.pushState(null, "", "/notes");
+              }}
               className={[
                 "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 transition-all duration-150",
                 notesActive && noteTabs.length === 0
@@ -338,7 +343,12 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                 tab={tab}
                 isActive={currentDocId !== null && tab.docId === currentDocId}
                 onClick={() => {
-                  if (tab.docId !== currentDocId) router.push(`/reader/${tab.docId}`);
+                  if (tab.docId !== currentDocId) {
+                    // Instant visibility switch — no navigation, no unmount/remount
+                    setActivePanel(`reader:${tab.docId}`);
+                    setActive(tab._id).catch(() => {});
+                    window.history.pushState(null, "", `/reader/${tab.docId}`);
+                  }
                 }}
                 onClose={(e) => handleClose(e, tab)}
               />

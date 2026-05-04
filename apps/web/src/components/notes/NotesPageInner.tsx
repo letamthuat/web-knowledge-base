@@ -17,6 +17,7 @@ import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
 import { SearchModal } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useAppTypography } from "@/components/AppSettingsPanel";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
@@ -30,6 +31,7 @@ export function NotesPageInner() {
   const { notes, addNote, updateNote, removeNote } = useAllNotes();
   const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
   const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
+  const { setActivePanel } = useActiveTab();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -128,7 +130,7 @@ export function NotesPageInner() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <button onClick={() => { setNavDrawerOpen(false); router.push("/library"); }}
+            <button onClick={() => { setNavDrawerOpen(false); setActivePanel("library"); window.history.pushState(null, "", "/library"); }}
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
               <BookOpen className="h-4 w-4" /> {N.library}
             </button>
@@ -139,7 +141,7 @@ export function NotesPageInner() {
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
               <Search className="h-4 w-4" /> Tìm kiếm
             </button>
-            <button onClick={() => { setNavDrawerOpen(false); router.push("/settings"); }}
+            <button onClick={() => { setNavDrawerOpen(false); setActivePanel("settings"); window.history.pushState(null, "", "/settings"); }}
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
               <Settings className="h-4 w-4" /> {N.settings}
             </button>
@@ -158,12 +160,12 @@ export function NotesPageInner() {
         </div>
 
         <nav className="hidden items-center gap-1 md:flex">
-          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/library")} onClick={() => router.push("/library")}>{N.library}</Button>
+          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/library")} onClick={() => { setActivePanel("library"); window.history.pushState(null, "", "/library"); }}>{N.library}</Button>
           <Button variant="secondary" size="sm" aria-current={true}>
             <StickyNote className="mr-1.5 h-3.5 w-3.5" />
             {N.notes}
           </Button>
-          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => router.push("/settings")}>
+          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => { setActivePanel("settings"); window.history.pushState(null, "", "/settings"); }}>
             <Settings className="mr-1 h-4 w-4" />{N.settings}
           </Button>
           <button
