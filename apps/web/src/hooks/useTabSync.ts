@@ -6,7 +6,7 @@ import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { Doc } from "@/_generated/dataModel";
 
-export type TabDoc = Doc<"tabs"> & { docTitle: string | null; docFormat: string | null };
+export type TabDoc = Doc<"tabs">;
 
 export function useTabSync() {
   const tabsResult = useQuery(api.tabs.queries.listByUser);

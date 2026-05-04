@@ -219,7 +219,7 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
           </div>
         </div>
         <div className="flex flex-1 overflow-hidden">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch", transform: "translateZ(0)" }} onScroll={handleScroll}>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
             <div
               ref={contentRef}
               className="mx-auto max-w-3xl px-3 py-6 sm:px-8 sm:py-10"

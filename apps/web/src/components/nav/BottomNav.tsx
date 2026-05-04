@@ -1,38 +1,34 @@
 "use client";
 
-import { useState, memo } from "react";
-import { usePathname } from "next/navigation";
+import { useState, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, StickyNote, Search, Settings } from "lucide-react";
 import { SearchModal } from "@/components/search/SearchModal";
-import { useActiveTab } from "@/contexts/ActiveTabContext";
 
-const NAV_TABS = [
-  { label: "Thư viện", icon: BookOpen,   href: "/library",  panel: "library" },
-  { label: "Ghi chú",  icon: StickyNote, href: "/notes",    panel: "notes" },
-  { label: "Tìm kiếm", icon: Search,     href: null,        panel: null },
-  { label: "Cài đặt",  icon: Settings,   href: "/settings", panel: "settings" },
+const tabs = [
+  { label: "Thư viện", icon: BookOpen, href: "/library" },
+  { label: "Ghi chú",  icon: StickyNote, href: "/notes" },
+  { label: "Tìm kiếm", icon: Search,    href: null },
+  { label: "Cài đặt",  icon: Settings,  href: "/settings" },
 ] as const;
 
-export const BottomNav = memo(function BottomNav() {
+export function BottomNav() {
   const pathname = usePathname();
-  const { activePanel, setActivePanel } = useActiveTab();
+  const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Prefetch all navigable routes on first render so they're warm on tap
+  const prefetch = useCallback((href: string) => {
+    router.prefetch(href);
+  }, [router]);
 
   if (pathname.startsWith("/reader/")) return null;
 
-  const currentPanel = activePanel ?? pathname.replace(/^\//, "").split("/")[0];
-
-  function isActive(panel: string | null, href: string | null) {
-    if (!panel) return searchOpen;
+  function isActive(href: string | null) {
+    if (!href) return searchOpen;
     if (searchOpen) return false;
-    return currentPanel === panel || (href !== null && (pathname === href || pathname.startsWith(href + "/")));
-  }
-
-  function handleNav(href: string | null, panel: string | null) {
-    if (!href || !panel) { setSearchOpen(true); return; }
-    setSearchOpen(false);
-    setActivePanel(panel);
-    window.history.pushState(null, "", href);
+    if (href === "/library") return pathname === "/library" || pathname.startsWith("/library/");
+    return pathname === href || pathname.startsWith(href + "/");
   }
 
   return (
@@ -43,14 +39,21 @@ export const BottomNav = memo(function BottomNav() {
         aria-label="Navigation chính"
       >
         <div className="flex h-14 items-stretch">
-          {NAV_TABS.map(({ label, icon: Icon, href, panel }) => {
-            const active = isActive(panel, href);
+          {tabs.map(({ label, icon: Icon, href }) => {
+            const active = isActive(href);
             return (
               <button
                 key={label}
-                onClick={() => handleNav(href, panel)}
+                onMouseEnter={() => href && prefetch(href)}
+                onTouchStart={() => href && prefetch(href)}
+                onClick={() => {
+                  if (href) { setSearchOpen(false); router.push(href); }
+                  else setSearchOpen(true);
+                }}
                 className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  active
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
                 aria-label={label}
                 aria-current={active ? "page" : undefined}
@@ -66,4 +69,4 @@ export const BottomNav = memo(function BottomNav() {
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
-});
+}

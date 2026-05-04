@@ -67,27 +67,25 @@ export function DocumentGrid({
       {viewMode === "grid" ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {docs.map((doc) => (
-            <div key={doc._id} style={{ contentVisibility: "auto", containIntrinsicSize: "0 240px" }}>
-              <DocumentCard
-                doc={doc}
-                viewMode="grid"
-                isSelected={selectedIds.has(doc._id)}
-                onToggleSelect={() => onToggleSelect(doc._id)}
-              />
-            </div>
+            <DocumentCard
+              key={doc._id}
+              doc={doc}
+              viewMode="grid"
+              isSelected={selectedIds.has(doc._id)}
+              onToggleSelect={() => onToggleSelect(doc._id)}
+            />
           ))}
         </div>
       ) : (
         <div className="space-y-2">
           {docs.map((doc) => (
-            <div key={doc._id} style={{ contentVisibility: "auto", containIntrinsicSize: "0 72px" }}>
-              <DocumentCard
-                doc={doc}
-                viewMode="list"
-                isSelected={selectedIds.has(doc._id)}
-                onToggleSelect={() => onToggleSelect(doc._id)}
-              />
-            </div>
+            <DocumentCard
+              key={doc._id}
+              doc={doc}
+              viewMode="list"
+              isSelected={selectedIds.has(doc._id)}
+              onToggleSelect={() => onToggleSelect(doc._id)}
+            />
           ))}
         </div>
       )}

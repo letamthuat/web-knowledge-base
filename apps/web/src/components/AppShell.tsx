@@ -9,15 +9,26 @@
  * Non-tab routes (login, offline) fall through via {children}.
  */
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useRef, memo } from "react";
+import dynamic from "next/dynamic";
+import { type ReactNode, useEffect, useRef } from "react";
 import { ActiveTabProvider, useActiveTab } from "@/contexts/ActiveTabContext";
 import { useTabSync } from "@/hooks/useTabSync";
 import { Id } from "@/_generated/dataModel";
-// Direct imports — no dynamic() so chunks are always bundled, zero load delay on first switch
+// Direct import so the chunk is always bundled with AppShell — no lazy load delay on first switch
 import { ReaderDocLoader } from "@/app/reader/[docId]/ReaderPageInner";
-import { LibraryPageInner } from "@/components/library/LibraryPageInner";
-import { NotesPageInner } from "@/components/notes/NotesPageInner";
-import { SettingsPageInner } from "@/components/settings/SettingsPageInner";
+
+const LibraryPageInner = dynamic(
+  () => import("@/components/library/LibraryPageInner").then((m) => m.LibraryPageInner),
+  { ssr: false }
+);
+const NotesPageInner = dynamic(
+  () => import("@/components/notes/NotesPageInner").then((m) => m.NotesPageInner),
+  { ssr: false }
+);
+const SettingsPageInner = dynamic(
+  () => import("@/components/settings/SettingsPageInner").then((m) => m.SettingsPageInner),
+  { ssr: false }
+);
 
 function pathnameToPanel(pathname: string): string | null {
   if (pathname === "/library" || pathname.startsWith("/library/")) return "library";
@@ -28,26 +39,21 @@ function pathnameToPanel(pathname: string): string | null {
   return null;
 }
 
-// memo: prevent re-render when parent (AppShellContent) re-renders due to tabs update
-// CSS: position:absolute + opacity toggle — compositing-only, no layout recalc
-// contain: isolate paint/layout scope so hidden panels don't affect visible panel
-const TabPanel = memo(function TabPanel({ active, children }: { active: boolean; children: ReactNode }) {
+function TabPanel({ active, children }: { active: boolean; children: ReactNode }) {
   return (
     <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        opacity: active ? 1 : 0,
-        visibility: active ? "visible" : "hidden",
-        pointerEvents: active ? "auto" : "none",
-        contain: "layout style paint",
-      }}
+      style={
+        active
+          ? { position: "relative", width: "100%", height: "100%" }
+          : { position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+              visibility: "hidden", pointerEvents: "none", zIndex: -1 }
+      }
       aria-hidden={!active}
     >
       {children}
     </div>
   );
-});
+}
 
 function AppShellContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -95,8 +101,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const activeDocId = current.startsWith("reader:") ? current.slice("reader:".length) : null;
 
   return (
-    // position:relative container so absolute TabPanels stack correctly
-    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+    <>
       <TabPanel active={current === "library"}>
         <LibraryPageInner />
       </TabPanel>
@@ -116,11 +121,12 @@ function AppShellContent({ children }: { children: ReactNode }) {
       ))}
       {/* Fallback: render children behind active TabPanel so first load has content */}
       {activeDocId && (
-        <div style={{ position: "absolute", inset: 0, visibility: "hidden", pointerEvents: "none", zIndex: -1 }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+                      visibility: "hidden", pointerEvents: "none", zIndex: -2 }}>
           {children}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

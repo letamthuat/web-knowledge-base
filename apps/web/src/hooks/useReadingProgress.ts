@@ -66,11 +66,10 @@ export function useReadingProgress(docId: Id<"documents">) {
   );
 
   // savePosition now accepts optional total at call site
-  // NOTE: intentionally NOT calling setSaveStatus here — called per scroll frame,
-  // setting state here would trigger re-render ~60x/sec during scroll
   const savePosition = useCallback(
     (pos: ReadingPosition, total?: number) => {
       if (pendingRef.current) clearTimeout(pendingRef.current.timer);
+      setSaveStatus("pending");
       const timer = setTimeout(() => flush(pos, total), THROTTLE_MS);
       pendingRef.current = { pos, total, timer };
     },
