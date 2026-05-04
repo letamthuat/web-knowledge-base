@@ -402,8 +402,8 @@ export function LibraryPageInner() {
 
           <nav className="hidden items-center gap-1 md:flex">
             <Button variant="secondary" size="sm" aria-current={true}>{N.library}</Button>
-            <Button variant="ghost" size="sm" onClick={() => router.push("/notes")}>{N.notes}</Button>
-            <Button variant="ghost" size="sm" onClick={() => router.push("/settings")}>
+            <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/notes")} onClick={() => router.push("/notes")}>{N.notes}</Button>
+            <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => router.push("/settings")}>
               <Settings className="mr-1 h-4 w-4" />{N.settings}
             </Button>
             <button

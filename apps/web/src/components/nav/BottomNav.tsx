@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, StickyNote, Search, Settings } from "lucide-react";
 import { SearchModal } from "@/components/search/SearchModal";
@@ -16,12 +16,17 @@ export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
-  // Hide entirely on reader pages
+
+  // Prefetch all navigable routes on first render so they're warm on tap
+  const prefetch = useCallback((href: string) => {
+    router.prefetch(href);
+  }, [router]);
+
   if (pathname.startsWith("/reader/")) return null;
 
   function isActive(href: string | null) {
-    if (!href) return searchOpen; // Tìm kiếm tab: active when modal is open
-    if (searchOpen) return false; // other tabs: inactive when search is open
+    if (!href) return searchOpen;
+    if (searchOpen) return false;
     if (href === "/library") return pathname === "/library" || pathname.startsWith("/library/");
     return pathname === href || pathname.startsWith(href + "/");
   }
@@ -39,6 +44,8 @@ export function BottomNav() {
             return (
               <button
                 key={label}
+                onMouseEnter={() => href && prefetch(href)}
+                onTouchStart={() => href && prefetch(href)}
                 onClick={() => {
                   if (href) { setSearchOpen(false); router.push(href); }
                   else setSearchOpen(true);

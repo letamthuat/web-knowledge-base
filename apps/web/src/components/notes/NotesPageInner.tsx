@@ -158,12 +158,12 @@ export function NotesPageInner() {
         </div>
 
         <nav className="hidden items-center gap-1 md:flex">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/library")}>{N.library}</Button>
+          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/library")} onClick={() => router.push("/library")}>{N.library}</Button>
           <Button variant="secondary" size="sm" aria-current={true}>
             <StickyNote className="mr-1.5 h-3.5 w-3.5" />
             {N.notes}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => router.push("/settings")}>
+          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => router.push("/settings")}>
             <Settings className="mr-1 h-4 w-4" />{N.settings}
           </Button>
           <button

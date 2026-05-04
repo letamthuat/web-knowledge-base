@@ -7,6 +7,7 @@ import { AudioRecordingPillFloating } from "@/components/recording/AudioRecordin
 import { ScreenRecordingPillFloating } from "@/components/recording/ScreenRecordingPill";
 import { AppSettingsPanel } from "@/components/AppSettingsPanel";
 import { BottomNavDynamic as BottomNav } from "@/components/nav/BottomNavDynamic";
+import { DataPrefetcherDynamic as DataPrefetcher } from "@/components/DataPrefetcherDynamic";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
 import "@/styles/globals.css";
 
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <ConvexClientProvider>
           <RecordingProvider>
             {children}
+            <DataPrefetcher />
             <AudioRecordingPillFloating />
             <ScreenRecordingPillFloating />
             <BottomNav />
