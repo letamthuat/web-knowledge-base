@@ -109,7 +109,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const activeDocId = current.startsWith("reader:") ? current.slice("reader:".length) : null;
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+    <div style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
       <TabPanel active={current === "library"}>
         <LibraryPageInner />
       </TabPanel>
