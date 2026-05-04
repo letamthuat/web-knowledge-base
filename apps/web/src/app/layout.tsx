@@ -9,7 +9,6 @@ import { AppSettingsPanel } from "@/components/AppSettingsPanel";
 import { BottomNavDynamic as BottomNav } from "@/components/nav/BottomNavDynamic";
 import { DataPrefetcherDynamic as DataPrefetcher } from "@/components/DataPrefetcherDynamic";
 import { AppShellDynamic as AppShell } from "@/components/AppShellDynamic";
-import { ActiveTabProviderDynamic as ActiveTabProvider } from "@/contexts/ActiveTabProviderDynamic";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
 import "@/styles/globals.css";
 
@@ -60,7 +59,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <body className={inter.className}>
         {/* ConvexClientProvider bọc ConvexReactClient + Better Auth session */}
         <ConvexClientProvider>
-          <ActiveTabProvider>
           <RecordingProvider>
             <AppShell>{children}</AppShell>
             <DataPrefetcher />
@@ -70,7 +68,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <InstallBanner />
             <AppSettingsPanel />
           </RecordingProvider>
-          </ActiveTabProvider>
           {/* Toast notifications dùng tiếng Việt (NFR37) */}
           <Toaster
             richColors

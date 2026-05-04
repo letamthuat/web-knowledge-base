@@ -5,14 +5,15 @@
  * Switching tabs uses CSS visibility instead of navigation:
  * no unmount/remount, no re-fetch, zero perceived latency.
  *
+ * Reader tabs are lazy-mounted: only mount on first activation, then stay mounted.
  * Non-tab routes (login, offline) fall through via {children}.
  */
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { useTabSync } from "@/hooks/useTabSync";
 import { Id } from "@/_generated/dataModel";
-import { useActiveTab } from "@/contexts/ActiveTabContext";
+import { ActiveTabProvider, useActiveTab } from "@/contexts/ActiveTabContext";
 
 const LibraryPageInner = dynamic(
   () => import("@/components/library/LibraryPageInner").then((m) => m.LibraryPageInner),
@@ -40,7 +41,7 @@ function pathnameToPanel(pathname: string): string | null {
   return null;
 }
 
-// Each tab panel: always in the DOM, visible only when active.
+// Each tab panel: always in the DOM once mounted, visible only when active.
 function TabPanel({ active, children }: { active: boolean; children: ReactNode }) {
   return (
     <div
@@ -62,6 +63,9 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const { activePanel, setActivePanel } = useActiveTab();
   const { tabs } = useTabSync();
 
+  // Track which reader docIds have been activated at least once (lazy mount)
+  const mountedReaderIds = useRef<Set<string>>(new Set());
+
   // Sync active panel from Next.js router (handles initial load + browser back/forward)
   const routerPanel = pathnameToPanel(pathname);
   useEffect(() => {
@@ -71,10 +75,18 @@ function AppShellContent({ children }: { children: ReactNode }) {
   // Determine which panel to show: context-driven (instant) with router as fallback
   const current = activePanel ?? routerPanel;
 
+  // Track which reader tabs to mount (lazy: only once activated)
+  if (current?.startsWith("reader:")) {
+    mountedReaderIds.current.add(current.slice("reader:".length));
+  }
+
   // Non-shell route (login, offline, etc.)
   if (!current) {
     return <>{children}</>;
   }
+
+  // Only render reader tabs that have been activated at least once
+  const mountedTabs = tabs.filter((t) => mountedReaderIds.current.has(t.docId as string));
 
   return (
     <>
@@ -87,8 +99,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
       <TabPanel active={current === "settings"}>
         <SettingsPageInner />
       </TabPanel>
-      {/* Mount a persistent ReaderDocLoader for each open doc tab */}
-      {tabs.map((tab) => (
+      {mountedTabs.map((tab) => (
         <TabPanel
           key={tab._id}
           active={current === `reader:${tab.docId}`}
@@ -101,5 +112,9 @@ function AppShellContent({ children }: { children: ReactNode }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  return <AppShellContent>{children}</AppShellContent>;
+  return (
+    <ActiveTabProvider>
+      <AppShellContent>{children}</AppShellContent>
+    </ActiveTabProvider>
+  );
 }
