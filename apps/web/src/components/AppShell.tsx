@@ -5,15 +5,15 @@
  * Switching tabs uses CSS visibility instead of navigation:
  * no unmount/remount, no re-fetch, zero perceived latency.
  *
- * Reader tabs are lazy-mounted: only mount on first activation, then stay mounted.
+ * Reader tabs are lazy-mounted on first activation using docId directly.
  * Non-tab routes (login, offline) fall through via {children}.
  */
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { type ReactNode, useEffect, useRef } from "react";
+import { ActiveTabProvider, useActiveTab } from "@/contexts/ActiveTabContext";
 import { useTabSync } from "@/hooks/useTabSync";
 import { Id } from "@/_generated/dataModel";
-import { ActiveTabProvider, useActiveTab } from "@/contexts/ActiveTabContext";
 
 const LibraryPageInner = dynamic(
   () => import("@/components/library/LibraryPageInner").then((m) => m.LibraryPageInner),
@@ -41,7 +41,6 @@ function pathnameToPanel(pathname: string): string | null {
   return null;
 }
 
-// Each tab panel: always in the DOM once mounted, visible only when active.
 function TabPanel({ active, children }: { active: boolean; children: ReactNode }) {
   return (
     <div
@@ -63,8 +62,18 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const { activePanel, setActivePanel } = useActiveTab();
   const { tabs } = useTabSync();
 
-  // Track which reader docIds have been activated at least once (lazy mount)
-  const mountedReaderIds = useRef<Set<string>>(new Set());
+  // Ordered list of docIds that have been mounted (append-only, never shrinks)
+  // Using ref so mutations during render don't cause extra re-renders
+  const mountedDocIds = useRef<string[]>([]);
+
+  // Pre-mount the currently active tab from Convex on initial load
+  const activeConvexTab = tabs.find((t) => t.isActive);
+  if (activeConvexTab) {
+    const docId = activeConvexTab.docId as string;
+    if (!mountedDocIds.current.includes(docId)) {
+      mountedDocIds.current = [...mountedDocIds.current, docId];
+    }
+  }
 
   // Sync active panel from Next.js router (handles initial load + browser back/forward)
   const routerPanel = pathnameToPanel(pathname);
@@ -72,14 +81,14 @@ function AppShellContent({ children }: { children: ReactNode }) {
     if (routerPanel) setActivePanel(routerPanel);
   }, [routerPanel, setActivePanel]);
 
-  // Determine which panel to show: context-driven (instant) with router as fallback
   const current = activePanel ?? routerPanel;
 
-  // Track which reader tabs to mount (lazy: only once activated AND tab exists in Convex)
+  // Inline: when a reader panel becomes active, immediately add to mountedDocIds
+  // This runs during render so the TabPanel is included in this very render pass
   if (current?.startsWith("reader:")) {
     const docId = current.slice("reader:".length);
-    if (tabs.some((t) => t.docId === docId)) {
-      mountedReaderIds.current.add(docId);
+    if (!mountedDocIds.current.includes(docId)) {
+      mountedDocIds.current = [...mountedDocIds.current, docId];
     }
   }
 
@@ -88,18 +97,10 @@ function AppShellContent({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  // Only render reader tabs that have been activated at least once
-  const mountedTabs = tabs.filter((t) => mountedReaderIds.current.has(t.docId as string));
-
-  // If current panel is a reader tab but not yet in mountedTabs (tab not in Convex yet,
-  // or first navigation), fall through to {children} which is the page.tsx ReaderPageInner.
-  const activeDocId = current?.startsWith("reader:") ? current.slice("reader:".length) : null;
-  const activeTabMounted = activeDocId ? mountedTabs.some((t) => t.docId === activeDocId) : true;
-
-  if (!activeTabMounted) {
-    // Tab not yet mounted — let Next.js page render normally (children = ReaderPageInner)
-    return <>{children}</>;
-  }
+  // If active reader tab was just added this render (first time), it needs one render
+  // to hydrate ReaderDocLoader. Meanwhile render children as invisible underlay
+  // so there's no blank flash. Once mounted, the TabPanel takes over.
+  const activeDocId = current.startsWith("reader:") ? current.slice("reader:".length) : null;
 
   return (
     <>
@@ -112,14 +113,21 @@ function AppShellContent({ children }: { children: ReactNode }) {
       <TabPanel active={current === "settings"}>
         <SettingsPageInner />
       </TabPanel>
-      {mountedTabs.map((tab) => (
+      {mountedDocIds.current.map((docId) => (
         <TabPanel
-          key={tab._id}
-          active={current === `reader:${tab.docId}`}
+          key={docId}
+          active={current === `reader:${docId}`}
         >
-          <ReaderDocLoader docId={tab.docId as Id<"documents">} />
+          <ReaderDocLoader docId={docId as Id<"documents">} />
         </TabPanel>
       ))}
+      {/* Fallback: render children behind active TabPanel so first load has content */}
+      {activeDocId && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+                      visibility: "hidden", pointerEvents: "none", zIndex: -2 }}>
+          {children}
+        </div>
+      )}
     </>
   );
 }
