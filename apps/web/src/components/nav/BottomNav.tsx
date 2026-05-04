@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, StickyNote, Search, Settings } from "lucide-react";
 import { SearchModal } from "@/components/search/SearchModal";
-import { useActiveTab } from "@/contexts/ActiveTabContext";
 
 const tabs = [
   { label: "Thư viện", icon: BookOpen, href: "/library" },
@@ -16,7 +15,6 @@ const tabs = [
 export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { setActivePanel } = useActiveTab();
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Prefetch all navigable routes on first render so they're warm on tap
@@ -24,18 +22,13 @@ export function BottomNav() {
     router.prefetch(href);
   }, [router]);
 
-  // Determine current location from context (instant) or pathname (initial/fallback)
-  const { activePanel } = useActiveTab();
-  const currentPath = activePanel ? `/${activePanel.replace(/^reader:.*/, "reader")}` : pathname;
-
-  if (pathname.startsWith("/reader/") && !activePanel) return null;
-  if (activePanel?.startsWith("reader:")) return null;
+  if (pathname.startsWith("/reader/")) return null;
 
   function isActive(href: string | null) {
     if (!href) return searchOpen;
     if (searchOpen) return false;
-    if (href === "/library") return currentPath === "/library" || currentPath.startsWith("/library/");
-    return currentPath === href || currentPath.startsWith(href + "/");
+    if (href === "/library") return pathname === "/library" || pathname.startsWith("/library/");
+    return pathname === href || pathname.startsWith(href + "/");
   }
 
   return (
@@ -54,14 +47,8 @@ export function BottomNav() {
                 onMouseEnter={() => href && prefetch(href)}
                 onTouchStart={() => href && prefetch(href)}
                 onClick={() => {
-                  if (href) {
-                    setSearchOpen(false);
-                    const panel = href.replace("/", "");
-                    setActivePanel(panel);
-                    window.history.pushState(null, "", href);
-                  } else {
-                    setSearchOpen(true);
-                  }
+                  if (href) { setSearchOpen(false); router.push(href); }
+                  else setSearchOpen(true);
                 }}
                 className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
                   active
