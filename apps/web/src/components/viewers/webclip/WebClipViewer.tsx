@@ -166,7 +166,7 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
 
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
-        <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
+        <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch", transform: "translateZ(0)" }} onScroll={handleScroll}>
           {mode === "clean" && cleanHtml ? (
             <div
               ref={contentRef}

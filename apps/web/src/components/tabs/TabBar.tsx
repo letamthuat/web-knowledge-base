@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, PanelLeftClose, StickyNote } from "lucide-react";
-import { useQuery, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/_generated/api";
 import { getCachedUrl, setCachedUrl } from "@/app/reader/[docId]/ReaderPageInner";
 import { useTabSync, TabDoc } from "@/hooks/useTabSync";
@@ -43,8 +43,8 @@ interface SortableTabItemProps {
 
 function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemProps) {
   const router = useRouter();
-  const doc = useQuery(api.documents.queries.getById, { docId: tab.docId as Id<"documents"> });
-  const Icon = FORMAT_ICONS[doc?.format ?? ""] ?? FileText;
+  // Use joined data from tabs query — no per-tab Convex subscription needed
+  const Icon = FORMAT_ICONS[tab.docFormat ?? ""] ?? FileText;
   const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
 
   const {
@@ -93,7 +93,7 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
       ].join(" ")}
     >
       <Icon className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-      <span className="flex-1 truncate text-xs font-medium">{doc?.title ?? "…"}</span>
+      <span className="flex-1 truncate text-xs font-medium">{tab.docTitle ?? "…"}</span>
       <span
         role="button"
         aria-label="Đóng tab"

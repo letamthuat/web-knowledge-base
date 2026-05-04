@@ -5,7 +5,7 @@
  * Updated by TabBar clicks without triggering Next.js navigation.
  * Format: "library" | "notes" | "settings" | "reader:<docId>"
  */
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from "react";
 
 interface ActiveTabContextValue {
   activePanel: string | null;
@@ -21,8 +21,13 @@ export function ActiveTabProvider({ children }: { children: ReactNode }) {
     setActivePanelState(panel);
   }, []);
 
+  const value = useMemo(
+    () => ({ activePanel, setActivePanel }),
+    [activePanel, setActivePanel]
+  );
+
   return (
-    <ActiveTabContext.Provider value={{ activePanel, setActivePanel }}>
+    <ActiveTabContext.Provider value={value}>
       {children}
     </ActiveTabContext.Provider>
   );

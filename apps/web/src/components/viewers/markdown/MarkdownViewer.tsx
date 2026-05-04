@@ -532,7 +532,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         </div>
 
         {/* Content area */}
-        <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden" onScroll={handleScroll} onPointerUp={handleMouseUp}>
+        <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: "touch", transform: "translateZ(0)" }} onScroll={handleScroll} onPointerUp={handleMouseUp}>
           <div className={`mx-auto px-4 py-8 sm:px-6 ${typography?.colWidthClass ?? "max-w-3xl"}`} style={{ zoom: scale, fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
             <article className="prose prose-neutral dark:prose-invert max-w-none">
               <ReactMarkdown
