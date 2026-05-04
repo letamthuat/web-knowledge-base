@@ -339,18 +339,38 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     return () => observer.disconnect();
   }, [content]);
 
+  // Cached heading list — rebuilt only when content changes (not on every scroll)
+  const headingsCacheRef = useRef<HTMLElement[]>([]);
+  const scrollRafRef = useRef<number | undefined>(undefined);
+  useEffect(() => () => { if (scrollRafRef.current !== undefined) cancelAnimationFrame(scrollRafRef.current); }, []);
+
+  useEffect(() => {
+    if (!content || !contentRef.current) return;
+    // Small delay to let ReactMarkdown finish painting
+    const timer = setTimeout(() => {
+      headingsCacheRef.current = Array.from(
+        contentRef.current!.querySelectorAll("h1,h2,h3,h4,h5,h6")
+      ) as HTMLElement[];
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [content]);
+
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
       const el = e.currentTarget;
-      const pct = el.scrollTop / (el.scrollHeight - el.clientHeight || 1);
-      // Find the last heading that has scrolled past the top
-      const headings = Array.from(el.querySelectorAll("h1,h2,h3,h4,h5,h6")) as HTMLElement[];
-      let headingId: string | undefined;
-      for (const h of headings) {
-        if (h.offsetTop <= el.scrollTop + 8) headingId = h.id;
-        else break;
-      }
-      savePosition({ type: "scroll_pct", pct: Math.min(1, Math.max(0, pct)), headingId });
+      // Throttle via rAF — skip if a frame is already pending
+      if (scrollRafRef.current !== undefined) return;
+      scrollRafRef.current = requestAnimationFrame(() => {
+        scrollRafRef.current = undefined;
+        const pct = el.scrollTop / (el.scrollHeight - el.clientHeight || 1);
+        // Use cached headings instead of querying DOM each scroll
+        let headingId: string | undefined;
+        for (const h of headingsCacheRef.current) {
+          if (h.offsetTop <= el.scrollTop + 8) headingId = h.id;
+          else break;
+        }
+        savePosition({ type: "scroll_pct", pct: Math.min(1, Math.max(0, pct)), headingId });
+      });
     },
     [savePosition]
   );

@@ -44,6 +44,7 @@ function ReaderShell({ doc, downloadUrl }: {
   const [readingMode, setReadingMode] = useState(false);
   const [localPct, setLocalPct] = useState<number | null>(null);
   const [headerVisible, setHeaderVisible] = useState(true);
+  const headerVisibleRef = useRef(true);
   const headerTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const typography = useAppTypography();
@@ -84,21 +85,26 @@ function ReaderShell({ doc, downloadUrl }: {
     return () => window.removeEventListener("keydown", onKey);
   }, [doc.format, searchOpen]);
 
-  // Header auto-hide: hide after 3s of no interaction, show on tap/move
+  // Header auto-hide: hide after 3s of no touch/tap, show on tap/click only (not pointermove — fires every frame during scroll)
   const resetHeaderTimer = useCallback(() => {
-    setHeaderVisible(true);
+    if (!headerVisibleRef.current) {
+      headerVisibleRef.current = true;
+      setHeaderVisible(true);
+    }
     clearTimeout(headerTimerRef.current);
-    headerTimerRef.current = setTimeout(() => setHeaderVisible(false), 3000);
+    headerTimerRef.current = setTimeout(() => {
+      headerVisibleRef.current = false;
+      setHeaderVisible(false);
+    }, 3000);
   }, []);
 
   useEffect(() => {
     resetHeaderTimer();
-    document.addEventListener("pointermove", resetHeaderTimer, { passive: true });
-    document.addEventListener("touchstart", resetHeaderTimer, { passive: true });
+    // Use pointerdown/touchstart — fires once per tap, not continuously during scroll
+    document.addEventListener("pointerdown", resetHeaderTimer, { passive: true });
     return () => {
       clearTimeout(headerTimerRef.current);
-      document.removeEventListener("pointermove", resetHeaderTimer);
-      document.removeEventListener("touchstart", resetHeaderTimer);
+      document.removeEventListener("pointerdown", resetHeaderTimer);
     };
   }, [resetHeaderTimer]);
 

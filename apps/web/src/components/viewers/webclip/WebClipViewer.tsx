@@ -87,11 +87,18 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
     restored.current = true;
   }, [cleanHtml, progress]);
 
+  const scrollRafRef = useRef<number | undefined>(undefined);
+  useEffect(() => () => { if (scrollRafRef.current !== undefined) cancelAnimationFrame(scrollRafRef.current); }, []);
+
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
       const el = e.currentTarget;
-      const pct = el.scrollTop / (el.scrollHeight - el.clientHeight || 1);
-      savePosition({ type: "scroll_pct", pct: Math.min(1, Math.max(0, pct)) });
+      if (scrollRafRef.current !== undefined) return;
+      scrollRafRef.current = requestAnimationFrame(() => {
+        scrollRafRef.current = undefined;
+        const pct = el.scrollTop / (el.scrollHeight - el.clientHeight || 1);
+        savePosition({ type: "scroll_pct", pct: Math.min(1, Math.max(0, pct)) });
+      });
     },
     [savePosition]
   );
