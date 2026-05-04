@@ -14,6 +14,7 @@ import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
 import { toProgressPct } from "@/lib/position";
 import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search } from "lucide-react";
+import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
 import { toast } from "sonner";
@@ -287,9 +288,7 @@ function ReaderShell({ doc, downloadUrl }: {
             <Button variant="ghost" size="sm" className="p-1.5 shrink-0 md:hidden" onClick={() => setDrawerOpen(true)}>
               <Menu className="h-4 w-4" />
             </Button>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-              <BookOpen className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <AppLogo size={32} />
             <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
           </div>
 

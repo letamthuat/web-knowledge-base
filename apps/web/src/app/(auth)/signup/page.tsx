@@ -7,7 +7,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, BookOpen } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { AppLogo } from "@/components/AppLogo";
 
 import { signUp, signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -71,9 +72,7 @@ export default function SignupPage() {
     <div className="min-h-dvh flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <BookOpen className="h-7 w-7 text-primary-foreground" />
-          </div>
+          <AppLogo size={48} />
           <h1 className="text-2xl font-bold tracking-tight">{L.title}</h1>
           <p className="text-sm text-muted-foreground">{L.subtitle}</p>
         </div>
