@@ -41,6 +41,7 @@ interface SortableTabItemProps {
 }
 
 function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemProps) {
+  const router = useRouter();
   const doc = useQuery(api.documents.queries.getById, { docId: tab.docId as Id<"documents"> });
   const Icon = FORMAT_ICONS[doc?.format ?? ""] ?? FileText;
   const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
@@ -62,6 +63,9 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
   };
 
   const handleMouseEnter = () => {
+    // Prefetch the reader route bundle
+    router.prefetch(`/reader/${tab.docId}`);
+    // Also warm the download URL cache
     if (!isActive && !getCachedUrl(tab.docId as string)) {
       getDownloadUrl({ docId: tab.docId as Id<"documents"> })
         .then((url) => setCachedUrl(tab.docId as string, url))

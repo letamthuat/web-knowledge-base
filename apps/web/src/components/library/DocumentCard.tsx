@@ -181,6 +181,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
           <div className="flex-1 min-w-0">
             <button
               onClick={() => router.push(`/reader/${doc._id}`)}
+              onMouseEnter={() => router.prefetch(`/reader/${doc._id}`)}
               onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
               className="block truncate text-sm font-medium text-left hover:underline"
             >
@@ -261,6 +262,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
 
         <button
           onClick={() => router.push(`/reader/${doc._id}`)}
+          onMouseEnter={() => router.prefetch(`/reader/${doc._id}`)}
           onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
           className="mb-2 line-clamp-2 text-sm font-medium text-left leading-snug hover:underline"
         >

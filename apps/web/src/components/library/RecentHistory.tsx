@@ -42,6 +42,7 @@ export function RecentHistory() {
             <button
               key={doc._id}
               onClick={() => router.push(`/reader/${doc._id}`)}
+              onMouseEnter={() => router.prefetch(`/reader/${doc._id}`)}
               className="group flex w-44 shrink-0 flex-col rounded-xl border bg-card p-3 text-left hover:shadow-md transition-all hover:border-primary/30"
             >
               <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
