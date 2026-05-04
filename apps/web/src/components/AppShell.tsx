@@ -10,7 +10,7 @@
  */
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, memo } from "react";
 import { ActiveTabProvider, useActiveTab } from "@/contexts/ActiveTabContext";
 import { useTabSync } from "@/hooks/useTabSync";
 import { Id } from "@/_generated/dataModel";
@@ -30,6 +30,13 @@ const SettingsPageInner = dynamic(
   { ssr: false }
 );
 
+// Preload all dynamic chunks immediately so they're ready before user taps a tab
+if (typeof window !== "undefined") {
+  import("@/components/library/LibraryPageInner");
+  import("@/components/notes/NotesPageInner");
+  import("@/components/settings/SettingsPageInner");
+}
+
 function pathnameToPanel(pathname: string): string | null {
   if (pathname === "/library" || pathname.startsWith("/library/")) return "library";
   if (pathname === "/notes"   || pathname.startsWith("/notes/"))   return "notes";
@@ -39,21 +46,22 @@ function pathnameToPanel(pathname: string): string | null {
   return null;
 }
 
-function TabPanel({ active, children }: { active: boolean; children: ReactNode }) {
+const TabPanel = memo(function TabPanel({ active, children }: { active: boolean; children: ReactNode }) {
   return (
     <div
       style={
         active
-          ? { position: "relative", width: "100%", height: "100%" }
-          : { position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-              visibility: "hidden", pointerEvents: "none", zIndex: -1 }
+          ? { position: "absolute", inset: 0, opacity: 1, visibility: "visible", pointerEvents: "auto",
+              contain: "layout style paint" }
+          : { position: "absolute", inset: 0, opacity: 0, visibility: "hidden", pointerEvents: "none",
+              contain: "layout style paint" }
       }
       aria-hidden={!active}
     >
       {children}
     </div>
   );
-}
+});
 
 function AppShellContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -101,7 +109,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const activeDocId = current.startsWith("reader:") ? current.slice("reader:".length) : null;
 
   return (
-    <>
+    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
       <TabPanel active={current === "library"}>
         <LibraryPageInner />
       </TabPanel>
@@ -121,12 +129,12 @@ function AppShellContent({ children }: { children: ReactNode }) {
       ))}
       {/* Fallback: render children behind active TabPanel so first load has content */}
       {activeDocId && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+        <div style={{ position: "absolute", inset: 0,
                       visibility: "hidden", pointerEvents: "none", zIndex: -2 }}>
           {children}
         </div>
       )}
-    </>
+    </div>
   );
 }
 

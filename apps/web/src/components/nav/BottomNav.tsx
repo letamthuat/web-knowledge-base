@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, StickyNote, Search, Settings } from "lucide-react";
 import { SearchModal } from "@/components/search/SearchModal";
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 
 const tabs = [
   { label: "Thư viện", icon: BookOpen, href: "/library" },
@@ -12,9 +13,16 @@ const tabs = [
   { label: "Cài đặt",  icon: Settings,  href: "/settings" },
 ] as const;
 
+const hrefToPanel: Record<string, string> = {
+  "/library": "library",
+  "/notes": "notes",
+  "/settings": "settings",
+};
+
 export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { setActivePanel } = useActiveTab();
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Prefetch all navigable routes on first render so they're warm on tap
@@ -47,8 +55,18 @@ export function BottomNav() {
                 onMouseEnter={() => href && prefetch(href)}
                 onTouchStart={() => href && prefetch(href)}
                 onClick={() => {
-                  if (href) { setSearchOpen(false); router.push(href); }
-                  else setSearchOpen(true);
+                  if (href) {
+                    setSearchOpen(false);
+                    const panel = hrefToPanel[href];
+                    if (panel) {
+                      setActivePanel(panel);
+                      window.history.pushState(null, "", href);
+                    } else {
+                      router.push(href);
+                    }
+                  } else {
+                    setSearchOpen(true);
+                  }
                 }}
                 className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
                   active

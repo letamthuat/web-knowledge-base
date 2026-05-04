@@ -69,7 +69,7 @@ export function useReadingProgress(docId: Id<"documents">) {
   const savePosition = useCallback(
     (pos: ReadingPosition, total?: number) => {
       if (pendingRef.current) clearTimeout(pendingRef.current.timer);
-      setSaveStatus("pending");
+      // Don't call setSaveStatus here — it would re-render on every scroll event
       const timer = setTimeout(() => flush(pos, total), THROTTLE_MS);
       pendingRef.current = { pos, total, timer };
     },
