@@ -44,8 +44,6 @@ function ReaderShell({ doc, downloadUrl }: {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [readingMode, setReadingMode] = useState(false);
   const [localPct, setLocalPct] = useState<number | null>(null);
-  const [headerVisible, setHeaderVisible] = useState(true);
-  const headerVisibleRef = useRef(true);
   const headerTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const typography = useAppTypography();
@@ -86,28 +84,6 @@ function ReaderShell({ doc, downloadUrl }: {
     return () => window.removeEventListener("keydown", onKey);
   }, [doc.format, searchOpen]);
 
-  // Header auto-hide: hide after 3s of no touch/tap, show on tap/click only (not pointermove — fires every frame during scroll)
-  const resetHeaderTimer = useCallback(() => {
-    if (!headerVisibleRef.current) {
-      headerVisibleRef.current = true;
-      setHeaderVisible(true);
-    }
-    clearTimeout(headerTimerRef.current);
-    headerTimerRef.current = setTimeout(() => {
-      headerVisibleRef.current = false;
-      setHeaderVisible(false);
-    }, 3000);
-  }, []);
-
-  useEffect(() => {
-    resetHeaderTimer();
-    // Use pointerdown/touchstart — fires once per tap, not continuously during scroll
-    document.addEventListener("pointerdown", resetHeaderTimer, { passive: true });
-    return () => {
-      clearTimeout(headerTimerRef.current);
-      document.removeEventListener("pointerdown", resetHeaderTimer);
-    };
-  }, [resetHeaderTimer]);
 
   // Find the tab for this doc so we can persist scroll state into it
   const currentTab = allTabs.find((t) => t.docId === doc._id) ?? null;
@@ -282,7 +258,7 @@ function ReaderShell({ doc, downloadUrl }: {
         )}
         {!readingMode && <header
           className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4 transition-opacity duration-300"
-          style={{ paddingTop: 'var(--safe-top)', opacity: headerVisible ? 1 : 0, pointerEvents: headerVisible ? undefined : 'none' }}
+          style={{ paddingTop: 'var(--safe-top)' }}
         >
           <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" size="sm" className="p-1.5 shrink-0 md:hidden" onClick={() => setDrawerOpen(true)}>
