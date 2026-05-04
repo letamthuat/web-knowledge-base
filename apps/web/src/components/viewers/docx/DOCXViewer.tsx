@@ -222,12 +222,12 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
           <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
             <div
               ref={contentRef}
-              className="mx-auto max-w-3xl px-8 py-10"
+              className="mx-auto max-w-3xl px-3 py-6 sm:px-8 sm:py-10"
               style={{ zoom: scale }}
               onMouseUp={actions.handleMouseUp}
             >
               {/* Page-like wrapper */}
-              <div className="min-h-[29.7cm] rounded-lg border border-border/50 bg-white px-16 py-12 shadow-sm dark:bg-zinc-900">
+              <div className="min-h-[29.7cm] rounded-lg border border-border/50 bg-white px-4 py-8 sm:px-16 sm:py-12 shadow-sm dark:bg-zinc-900">
                 <article
                   className="prose prose-neutral dark:prose-invert max-w-none
                     prose-headings:font-semibold prose-headings:tracking-tight

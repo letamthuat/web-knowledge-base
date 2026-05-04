@@ -163,7 +163,7 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
           {mode === "clean" && cleanHtml ? (
             <div
               ref={contentRef}
-              className="mx-auto max-w-3xl px-6 py-8"
+              className="mx-auto max-w-3xl px-4 py-8 sm:px-6"
               style={{ zoom: scale }}
               onMouseUp={actions.handleMouseUp}
             >
