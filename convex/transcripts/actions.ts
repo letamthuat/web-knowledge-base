@@ -117,12 +117,78 @@ function splitWebmAtClusters(buf: Uint8Array, maxBytes: number): Uint8Array[] {
   return parts.length > 0 ? parts : [buf];
 }
 
-// Server-side transcription: download audio from URL, split at webm cluster boundaries,
-// send each part to Groq. Avoids client-side decodeAudioData which fails for live-recorded webm.
-export const transcribeFromUrl = action({
+// Step 1: Download file, find cluster boundaries, return byte ranges for each chunk.
+// Client calls this once, then calls transcribeWebmChunk for each range.
+export const getWebmChunks = action({
   args: {
     downloadUrl: v.string(),
     mimeType: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const res = await fetch(args.downloadUrl);
+    if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
+    const arrayBuffer = await res.arrayBuffer();
+    const buf = new Uint8Array(arrayBuffer);
+    const totalBytes = buf.length;
+
+    const GROQ_MAX = 24 * 1024 * 1024;
+    const isWebm = args.mimeType.includes("webm") || args.mimeType.includes("ogg");
+
+    if (!isWebm) {
+      // Non-webm: single chunk covering whole file
+      return { chunks: [{ byteStart: 0, byteEnd: totalBytes }], totalBytes };
+    }
+
+    // Find cluster offsets
+    const CLUSTER_ID = [0x1F, 0x43, 0xB6, 0x75];
+    let headerEnd = -1;
+    for (let i = 0; i < Math.min(buf.length - 4, 64 * 1024); i++) {
+      if (buf[i] === CLUSTER_ID[0] && buf[i+1] === CLUSTER_ID[1] &&
+          buf[i+2] === CLUSTER_ID[2] && buf[i+3] === CLUSTER_ID[3]) {
+        headerEnd = i; break;
+      }
+    }
+    if (headerEnd < 0) return { chunks: [{ byteStart: 0, byteEnd: totalBytes }], totalBytes };
+
+    const headerBytes = headerEnd;
+    const clusterOffsets: number[] = [headerEnd];
+    for (let i = headerEnd + 4; i < buf.length - 4; i++) {
+      if (buf[i] === CLUSTER_ID[0] && buf[i+1] === CLUSTER_ID[1] &&
+          buf[i+2] === CLUSTER_ID[2] && buf[i+3] === CLUSTER_ID[3]) {
+        clusterOffsets.push(i); i += 3;
+      }
+    }
+    clusterOffsets.push(buf.length);
+
+    // Group clusters into chunks ≤ GROQ_MAX, return as byte ranges
+    const chunks: { byteStart: number; byteEnd: number }[] = [];
+    let partStart = 0;
+    while (partStart < clusterOffsets.length - 1) {
+      let partEnd = partStart + 1;
+      while (partEnd < clusterOffsets.length - 1) {
+        const size = headerBytes + (clusterOffsets[partEnd + 1] - clusterOffsets[partStart]);
+        if (size > GROQ_MAX) break;
+        partEnd++;
+      }
+      chunks.push({ byteStart: clusterOffsets[partStart], byteEnd: clusterOffsets[partEnd] });
+      partStart = partEnd;
+    }
+
+    return { chunks: chunks.length > 0 ? chunks : [{ byteStart: 0, byteEnd: totalBytes }], totalBytes, headerBytes };
+  },
+});
+
+// Step 2: Download only the needed byte range + header, send to Groq.
+// One action call per chunk — stays well within Convex timeout.
+export const transcribeWebmChunk = action({
+  args: {
+    downloadUrl: v.string(),
+    mimeType: v.string(),
+    byteStart: v.number(),
+    byteEnd: v.number(),
+    headerBytes: v.optional(v.number()),
+    chunkIndex: v.number(),
+    timeOffsetSeconds: v.number(),
     language: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
@@ -131,60 +197,55 @@ export const transcribeFromUrl = action({
 
     const res = await fetch(args.downloadUrl);
     if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
-    const arrayBuffer = await res.arrayBuffer();
-    const buf = new Uint8Array(arrayBuffer);
+    const full = new Uint8Array(await res.arrayBuffer());
 
-    const GROQ_MAX = 24 * 1024 * 1024; // 24MB
     const isWebm = args.mimeType.includes("webm") || args.mimeType.includes("ogg");
-    const parts: Uint8Array[] = isWebm ? splitWebmAtClusters(buf, GROQ_MAX) : [buf];
+    let part: Uint8Array;
 
-    const allSegments: { start: number; end: number; text: string }[] = [];
-    let detectedLanguage = args.language ?? "vi";
-
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      const blob = new Blob([new Uint8Array(part)], { type: args.mimeType });
-      const ext = isWebm ? "webm" : "audio";
-      const formData = new FormData();
-      formData.append("file", blob, `chunk_${i}.${ext}`);
-      formData.append("model", "whisper-large-v3");
-      formData.append("response_format", "verbose_json");
-      if (args.language) formData.append("language", args.language);
-
-      if (i > 0) await new Promise((r) => setTimeout(r, 3100));
-
-      const groqRes = await fetch(GROQ_API_URL, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}` },
-        body: formData,
-      });
-
-      if (!groqRes.ok) {
-        const err = await groqRes.text();
-        console.error(`[transcribeFromUrl] chunk ${i} Groq error:`, err);
-        continue; // skip bad chunk, keep going
-      }
-
-      const data = await groqRes.json() as {
-        segments?: { start: number; end: number; text: string }[];
-        language?: string;
-      };
-
-      // Estimate time offset for this part based on accumulated segment end times
-      const timeOffset = allSegments.length > 0
-        ? allSegments[allSegments.length - 1].end
-        : 0;
-
-      const segs = (data.segments ?? []).map((s) => ({
-        start: s.start + timeOffset,
-        end: s.end + timeOffset,
-        text: s.text.trim(),
-      }));
-      allSegments.push(...segs);
-      if (data.language) detectedLanguage = data.language;
+    if (isWebm && args.headerBytes && args.byteStart > 0) {
+      // Prepend EBML+Segment header so this chunk is a valid webm file
+      const header = full.slice(0, args.headerBytes);
+      const clusterData = full.slice(args.byteStart, args.byteEnd);
+      part = new Uint8Array(header.length + clusterData.length);
+      part.set(header, 0);
+      part.set(clusterData, header.length);
+    } else {
+      part = full.slice(args.byteStart, args.byteEnd);
     }
 
-    return { segments: allSegments, language: detectedLanguage };
+    const ext = isWebm ? "webm" : "audio";
+    // Copy to a plain ArrayBuffer to satisfy TypeScript's strict BlobPart type
+    const partBuf = part.buffer.slice(part.byteOffset, part.byteOffset + part.byteLength) as ArrayBuffer;
+    const blob = new Blob([partBuf], { type: args.mimeType });
+    const formData = new FormData();
+    formData.append("file", blob, `chunk_${args.chunkIndex}.${ext}`);
+    formData.append("model", "whisper-large-v3");
+    formData.append("response_format", "verbose_json");
+    if (args.language) formData.append("language", args.language);
+
+    const groqRes = await fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: formData,
+    });
+
+    if (!groqRes.ok) {
+      const err = await groqRes.text();
+      throw new Error(`Groq error: ${err}`);
+    }
+
+    const data = await groqRes.json() as {
+      segments?: { start: number; end: number; text: string }[];
+      language?: string;
+    };
+
+    const segments = (data.segments ?? []).map((s) => ({
+      start: s.start + args.timeOffsetSeconds,
+      end: s.end + args.timeOffsetSeconds,
+      text: s.text.trim(),
+    }));
+
+    return { segments, language: data.language ?? args.language ?? "vi" };
   },
 });
 

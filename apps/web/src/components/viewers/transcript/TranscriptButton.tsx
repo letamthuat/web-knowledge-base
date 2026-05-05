@@ -23,8 +23,8 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
   const initTranscript = useMutation(api.transcripts.mutations.initTranscript);
   const updateStatus = useMutation(api.transcripts.mutations.updateStatus);
   const saveSegments = useMutation(api.transcripts.mutations.saveSegments);
-  const transcribeChunk = useAction(api.transcripts.actions.transcribeChunk);
-  const transcribeFromUrl = useAction(api.transcripts.actions.transcribeFromUrl);
+  const getWebmChunks = useAction(api.transcripts.actions.getWebmChunks);
+  const transcribeWebmChunk = useAction(api.transcripts.actions.transcribeWebmChunk);
 
   async function handleTranscribe() {
     if (isRunning) return;
@@ -33,15 +33,46 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
       transcriptId = await initTranscript({ docId });
       await updateStatus({ transcriptId, status: "processing" });
 
-      setProgress({ phase: "loading", message: "Đang xử lý âm thanh..." });
+      setProgress({ phase: "loading", message: "Đang phân tích file âm thanh..." });
 
-      // Use server-side action — avoids client decodeAudioData which fails for live-recorded webm
-      const { segments, language } = await transcribeFromUrl({
-        downloadUrl,
-        mimeType,
-      });
+      // Step 1: get chunk byte ranges from server
+      const { chunks, headerBytes } = await getWebmChunks({ downloadUrl, mimeType });
 
-      await saveSegments({ transcriptId, segments, language });
+      const allSegments: { start: number; end: number; text: string }[] = [];
+      let detectedLanguage = "vi";
+      let timeOffsetSeconds = 0;
+
+      for (let i = 0; i < chunks.length; i++) {
+        setProgress({
+          phase: "transcribing",
+          chunkIndex: i + 1,
+          totalChunks: chunks.length,
+          message: `Đang nhận dạng giọng nói... (${i + 1}/${chunks.length})`,
+        });
+
+        if (i > 0) await new Promise((r) => setTimeout(r, 3100));
+
+        // Step 2: each chunk is one short-lived action call
+        const result = await transcribeWebmChunk({
+          downloadUrl,
+          mimeType,
+          byteStart: chunks[i].byteStart,
+          byteEnd: chunks[i].byteEnd,
+          headerBytes,
+          chunkIndex: i,
+          timeOffsetSeconds,
+          language: undefined,
+        });
+
+        allSegments.push(...result.segments);
+        detectedLanguage = result.language;
+        // Next chunk offset = end time of last segment in this chunk
+        if (result.segments.length > 0) {
+          timeOffsetSeconds = result.segments[result.segments.length - 1].end;
+        }
+      }
+
+      await saveSegments({ transcriptId, segments: allSegments, language: detectedLanguage });
       setProgress({ phase: "done", message: "Hoàn tất!" });
       toast.success("Đã tạo transcript thành công");
     } catch (err: unknown) {
