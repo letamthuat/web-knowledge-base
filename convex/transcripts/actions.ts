@@ -69,7 +69,7 @@ export const transcribeChunk = action({
 
 // Split a Buffer at webm Cluster boundaries so each part is a valid webm fragment.
 // Each part reuses the EBML+Segment header from the beginning of the file.
-function splitWebmAtClusters(buf: Buffer, maxBytes: number): Buffer[] {
+function splitWebmAtClusters(buf: Uint8Array, maxBytes: number): Uint8Array[] {
   const CLUSTER_ID = [0x1F, 0x43, 0xB6, 0x75];
   // Find the offset of the first Cluster — everything before is the webm header
   let headerEnd = -1;
@@ -94,7 +94,7 @@ function splitWebmAtClusters(buf: Buffer, maxBytes: number): Buffer[] {
   }
   clusterOffsets.push(buf.length); // sentinel
 
-  const parts: Buffer[] = [];
+  const parts: Uint8Array[] = [];
   let partStart = 0; // index into clusterOffsets
 
   while (partStart < clusterOffsets.length - 1) {
@@ -106,7 +106,11 @@ function splitWebmAtClusters(buf: Buffer, maxBytes: number): Buffer[] {
       partEnd++;
     }
     const clusterData = buf.slice(clusterOffsets[partStart], clusterOffsets[partEnd]);
-    parts.push(Buffer.concat([header, clusterData]));
+    // Concatenate header + clusterData into a single Uint8Array
+    const merged = new Uint8Array(header.length + clusterData.length);
+    merged.set(header, 0);
+    merged.set(clusterData, header.length);
+    parts.push(merged);
     partStart = partEnd;
   }
 
@@ -128,18 +132,18 @@ export const transcribeFromUrl = action({
     const res = await fetch(args.downloadUrl);
     if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
     const arrayBuffer = await res.arrayBuffer();
-    const buf = Buffer.from(arrayBuffer);
+    const buf = new Uint8Array(arrayBuffer);
 
     const GROQ_MAX = 24 * 1024 * 1024; // 24MB
     const isWebm = args.mimeType.includes("webm") || args.mimeType.includes("ogg");
-    const parts: Buffer[] = isWebm ? splitWebmAtClusters(buf, GROQ_MAX) : [buf];
+    const parts: Uint8Array[] = isWebm ? splitWebmAtClusters(buf, GROQ_MAX) : [buf];
 
     const allSegments: { start: number; end: number; text: string }[] = [];
     let detectedLanguage = args.language ?? "vi";
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      const blob = new Blob([part], { type: args.mimeType });
+      const blob = new Blob([new Uint8Array(part)], { type: args.mimeType });
       const ext = isWebm ? "webm" : "audio";
       const formData = new FormData();
       formData.append("file", blob, `chunk_${i}.${ext}`);
