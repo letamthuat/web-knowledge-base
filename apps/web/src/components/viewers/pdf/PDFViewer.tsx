@@ -107,7 +107,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
       </div>
 
       {/* PDF content */}
-      <div className="flex flex-1 items-start justify-center overflow-auto py-6 px-3" style={{ paddingRight: 'max(12px, var(--safe-right, 0px))', paddingLeft: 'max(12px, var(--safe-left, 0px))' }}>
+      <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto py-6 px-3" style={{ paddingRight: 'max(12px, var(--safe-right, 0px))', paddingLeft: 'max(12px, var(--safe-left, 0px))' }}>
         <Document
           file={downloadUrl}
           onLoadSuccess={({ numPages }) => setNumPages(numPages)}
