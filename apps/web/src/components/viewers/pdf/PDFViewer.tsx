@@ -212,10 +212,11 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-muted/40" style={{ minHeight: 0 }}>
       {/* Toolbar */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-1.5">
-        <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-2 py-1.5">
+        {/* Left: page nav */}
+        <div className="flex items-center gap-0.5">
           <Button
-            variant="ghost" size="icon" className="h-10 w-10"
+            variant="ghost" size="icon" className="h-9 w-9"
             onClick={() => goToPage(currentPage - 1)}
             disabled={readMode === "scroll" || currentPage <= 1}
           >
@@ -240,12 +241,12 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className="w-12 rounded border border-input bg-background px-1 py-0.5 text-center text-sm"
+              className="w-10 rounded border border-input bg-background px-1 py-0.5 text-center text-sm"
             />
-            / {numPages || "—"}
+            <span className="text-muted-foreground">/ {numPages || "—"}</span>
           </span>
           <Button
-            variant="ghost" size="icon" className="h-10 w-10"
+            variant="ghost" size="icon" className="h-9 w-9"
             onClick={() => goToPage(currentPage + 1)}
             disabled={readMode === "scroll" || currentPage >= numPages}
           >
@@ -253,13 +254,14 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
           </Button>
         </div>
 
+        {/* Right: toggle + zoom */}
         <div className="flex items-center gap-1">
-          {/* Trang / Cuộn toggle */}
+          {/* Trang / Cuộn toggle — always visible */}
           <div className="flex items-center rounded-md border border-border overflow-hidden">
             <button
               onClick={() => setReadMode("page")}
               className={[
-                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors",
+                "flex items-center gap-1 px-2 py-1.5 text-xs transition-colors",
                 readMode === "page"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted",
@@ -272,7 +274,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
             <button
               onClick={() => setReadMode("scroll")}
               className={[
-                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors",
+                "flex items-center gap-1 px-2 py-1.5 text-xs transition-colors",
                 readMode === "scroll"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted",
@@ -283,7 +285,10 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
               <span className="hidden sm:inline">Cuộn</span>
             </button>
           </div>
-          <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={3} />
+          {/* Zoom — hidden on mobile to save space */}
+          <div className="hidden sm:flex items-center">
+            <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={3} />
+          </div>
         </div>
       </div>
 
