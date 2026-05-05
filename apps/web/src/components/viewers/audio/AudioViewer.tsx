@@ -27,8 +27,6 @@ function formatTime(s: number) {
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
-  const waveRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<import("wavesurfer.js").default | null>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -48,101 +46,103 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
 
   useEffect(() => {
     registerJump((pos) => {
-      if (pos.type === "time_seconds" && wsRef.current) {
-        const dur = wsRef.current.getDuration();
+      if (pos.type === "time_seconds" && audioRef.current) {
         const secs = (pos as { type: "time_seconds"; seconds: number }).seconds;
-        if (dur > 0) wsRef.current.seekTo(secs / dur);
+        audioRef.current.currentTime = secs;
       }
     });
   }, [registerJump]);
 
+  // HTML5 audio element ref — no WaveSurfer for large file support
+  const audioRef = useRef<HTMLAudioElement>(null);
+
   useEffect(() => {
-    if (!waveRef.current) return;
-    let cancelled = false;
+    const audio = audioRef.current;
+    if (!audio) return;
 
-    (async () => {
-      const WaveSurfer = (await import("wavesurfer.js")).default;
-      if (cancelled) return;
+    const onMeta = () => {
+      setDuration(audio.duration);
+      setReady(true);
+      if (!restored.current && progress?.positionType === "time_seconds") {
+        try {
+          const pos = JSON.parse(progress.positionValue);
+          if (typeof pos.seconds === "number" && pos.seconds < audio.duration) {
+            audio.currentTime = pos.seconds;
+          }
+        } catch {}
+        restored.current = true;
+      }
+    };
+    const onTime = () => {
+      setCurrentTime(audio.currentTime);
+      savePosition({ type: "time_seconds", seconds: audio.currentTime }, audio.duration || undefined);
+    };
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    const onEnded = () => setPlaying(false);
 
-      const ws = WaveSurfer.create({
-        container: waveRef.current!,
-        waveColor: "hsl(var(--muted-foreground) / 0.4)",
-        progressColor: "hsl(var(--primary))",
-        cursorColor: "hsl(var(--primary))",
-        barWidth: 2,
-        barGap: 1,
-        barRadius: 2,
-        height: 64,
-        normalize: true,
-        url: downloadUrl,
-        // MediaElement backend: uses HTML5 <audio>, fires ready on metadata load
-        // instead of waiting for full file download — critical for large files
-        backend: "MediaElement" as unknown as undefined,
-      });
-      wsRef.current = ws;
-
-      ws.on("ready", (dur) => {
-        if (cancelled) return;
-        setDuration(dur);
-        setReady(true);
-        if (!restored.current && progress?.positionType === "time_seconds") {
-          try {
-            const pos = JSON.parse(progress.positionValue);
-            if (typeof pos.seconds === "number" && pos.seconds < dur) {
-              ws.seekTo(pos.seconds / dur);
-            }
-          } catch {}
-          restored.current = true;
-        }
-      });
-
-      ws.on("timeupdate", (t) => {
-        setCurrentTime(t);
-        savePosition({ type: "time_seconds", seconds: t }, wsRef.current?.getDuration() || undefined);
-      });
-
-      ws.on("play", () => setPlaying(true));
-      ws.on("pause", () => setPlaying(false));
-      ws.on("finish", () => setPlaying(false));
-    })();
-
+    audio.addEventListener("loadedmetadata", onMeta);
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnded);
     return () => {
-      cancelled = true;
-      wsRef.current?.destroy();
-      wsRef.current = null;
+      audio.removeEventListener("loadedmetadata", onMeta);
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnded);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [downloadUrl]);
 
-  const togglePlay = useCallback(() => wsRef.current?.playPause(), []);
+  const togglePlay = useCallback(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.paused ? a.play() : a.pause();
+  }, []);
   const seek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const t = Number(e.target.value);
-    if (wsRef.current && duration > 0) wsRef.current.seekTo(t / duration);
+    if (audioRef.current) audioRef.current.currentTime = t;
     setCurrentTime(t);
-  }, [duration]);
+  }, []);
   const toggleMute = useCallback(() => {
     const next = !muted;
-    wsRef.current?.setMuted(next);
+    if (audioRef.current) audioRef.current.muted = next;
     setMuted(next);
   }, [muted]);
   const changeVolume = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const v = Number(e.target.value);
-    wsRef.current?.setVolume(v);
+    if (audioRef.current) audioRef.current.volume = v;
     setVolume(v);
   }, []);
   const changeSpeed = useCallback((s: number) => {
-    wsRef.current?.setPlaybackRate(s);
+    if (audioRef.current) audioRef.current.playbackRate = s;
     setSpeed(s);
   }, []);
 
   const playerPanel = (
     <div className="w-full max-w-lg rounded-2xl border bg-card p-8 shadow-lg">
-      {/* Waveform */}
-      <div className="mb-5 rounded-xl bg-muted/50 px-3 py-4">
-        <div ref={waveRef} />
-        {!ready && (
-          <div className="flex h-16 items-center justify-center">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      {/* Hidden audio element */}
+      <audio ref={audioRef} src={downloadUrl} preload="metadata" />
+
+      {/* Visual placeholder where waveform was */}
+      <div className="mb-5 rounded-xl bg-muted/50 px-3 py-4 flex h-20 items-center justify-center">
+        {!ready ? (
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        ) : (
+          <div className="flex w-full items-end justify-center gap-0.5 h-12">
+            {Array.from({ length: 40 }, (_, i) => (
+              <div
+                key={i}
+                className={`w-1 rounded-full transition-colors ${
+                  duration > 0 && (i / 40) < (currentTime / duration)
+                    ? "bg-primary"
+                    : "bg-muted-foreground/30"
+                }`}
+                style={{ height: `${20 + Math.sin(i * 0.8) * 15 + Math.cos(i * 0.4) * 10}%` }}
+              />
+            ))}
           </div>
         )}
       </div>
