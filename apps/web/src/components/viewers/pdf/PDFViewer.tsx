@@ -8,7 +8,7 @@ import { Id } from "@/_generated/dataModel";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, AlignJustify, FileText, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlignJustify, FileText, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { useZoom } from "@/components/viewers/ZoomControls";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -211,68 +211,70 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-muted/40" style={{ minHeight: 0 }}>
-      {/* Toolbar — single row */}
-      <div className="flex shrink-0 items-center justify-between border-b bg-card px-2 py-1">
-        {/* Left: page nav */}
-        <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="h-8 w-8"
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={readMode === "scroll" || currentPage <= 1}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex items-center gap-1 text-xs tabular-nums">
-            <input
-              type="text" inputMode="numeric" value={pageInput}
-              onChange={(e) => setPageInput(e.target.value)}
-              onBlur={() => {
-                const n = parseInt(pageInput, 10);
-                if (!isNaN(n)) readMode === "page" ? goToPage(n) : scrollToPage(n);
-                else setPageInput(String(currentPage));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
+      {/* Toolbar */}
+      <div className="shrink-0 border-b bg-card">
+        <div className="flex items-center justify-between px-2 py-1 overflow-x-auto scrollbar-none">
+          <div className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon" className="h-8 w-8"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={readMode === "scroll" || currentPage <= 1}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-1">
+              <input
+                type="text" inputMode="numeric" value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                onBlur={() => {
                   const n = parseInt(pageInput, 10);
                   if (!isNaN(n)) readMode === "page" ? goToPage(n) : scrollToPage(n);
                   else setPageInput(String(currentPage));
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              className="w-9 rounded border border-input bg-background px-1 py-0.5 text-center text-xs tabular-nums"
-              style={{ fontSize: '12px' }}
-            />
-            <span className="text-xs text-muted-foreground">/{numPages || "—"}</span>
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const n = parseInt(pageInput, 10);
+                    if (!isNaN(n)) readMode === "page" ? goToPage(n) : scrollToPage(n);
+                    else setPageInput(String(currentPage));
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                className="w-10 rounded border border-input bg-background px-1 py-0.5 text-center text-sm tabular-nums"
+              />
+              <span className="text-sm text-muted-foreground">/ {numPages || "—"}</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={readMode === "scroll" || currentPage >= numPages}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8"
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={readMode === "scroll" || currentPage >= numPages}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
 
-        {/* Right: zoom + toggle */}
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} disabled={scale <= 0.5}>
-            <ZoomOut className="h-3.5 w-3.5" />
-          </Button>
-          <span className="hidden sm:inline w-10 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} disabled={scale >= 3}>
-            <ZoomIn className="h-3.5 w-3.5" />
-          </Button>
-          <div className="mx-0.5 h-4 w-px bg-border" />
-          {/* Trang / Cuộn toggle */}
-          <div className="flex items-center rounded-md border border-border overflow-hidden">
-            <button onClick={() => setReadMode("page")}
-              className={["flex items-center justify-center h-7 w-7 transition-colors",
-                readMode === "page" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
-              ].join(" ")} title="Xem từng trang">
-              <FileText className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={() => setReadMode("scroll")}
-              className={["flex items-center justify-center h-7 w-7 transition-colors",
-                readMode === "scroll" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
-              ].join(" ")} title="Cuộn liên tục">
-              <AlignJustify className="h-3.5 w-3.5" />
-            </button>
+          {/* Right: zoom + toggle */}
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} disabled={scale <= 0.5}>
+              <ZoomOut className="h-3.5 w-3.5" />
+            </Button>
+            <span className="w-10 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} disabled={scale >= 3}>
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetZoom} title="Khớp màn hình">
+              <RotateCcw className="h-3.5 w-3.5" />
+            </Button>
+            <div className="h-4 w-px bg-border mx-0.5" />
+            <div className="flex items-center rounded-md border border-border overflow-hidden">
+              <button onClick={() => setReadMode("page")}
+                className={["flex items-center justify-center h-7 w-7 transition-colors",
+                  readMode === "page" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                ].join(" ")} title="Xem từng trang">
+                <FileText className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => setReadMode("scroll")}
+                className={["flex items-center justify-center h-7 w-7 transition-colors",
+                  readMode === "scroll" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                ].join(" ")} title="Cuộn liên tục">
+                <AlignJustify className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
