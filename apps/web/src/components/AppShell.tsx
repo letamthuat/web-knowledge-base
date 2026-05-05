@@ -51,8 +51,8 @@ const TabPanel = memo(function TabPanel({ active, children }: { active: boolean;
     <div
       style={
         active
-          ? { position: "absolute", inset: 0, visibility: "visible", pointerEvents: "auto" }
-          : { position: "absolute", inset: 0, visibility: "hidden", pointerEvents: "none" }
+          ? { position: "absolute", inset: 0, visibility: "visible", pointerEvents: "auto", overflowY: "auto" }
+          : { position: "absolute", inset: 0, visibility: "hidden", pointerEvents: "none", overflowY: "auto" }
       }
       aria-hidden={!active}
     >
