@@ -15,6 +15,24 @@ import { detectFormat, formatBytes } from "@/lib/storage";
 
 const L = labels.upload;
 
+function getMediaDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
+      resolve(null);
+      return;
+    }
+    const el = document.createElement(file.type.startsWith("audio/") ? "audio" : "video");
+    const url = URL.createObjectURL(file);
+    el.preload = "metadata";
+    el.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(isFinite(el.duration) && el.duration > 0 ? Math.round(el.duration * 1000) : null);
+    };
+    el.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    el.src = url;
+  });
+}
+
 interface FileUploadState {
   file: File;
   progress: number;
@@ -117,10 +135,12 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
             }
 
             const title = file.name.replace(/\.[^.]+$/, "");
+            const durationMs = await getMediaDuration(file);
             const docId = await finalizeUpload({
               title,
               format: format as "pdf" | "epub" | "docx" | "pptx" | "image" | "audio" | "video" | "markdown" | "web_clip",
               fileSizeBytes: file.size,
+              durationMs: durationMs ?? undefined,
               storageBackend,
               storageKey: finalStorageKey,
             });

@@ -34,8 +34,17 @@ export function AudioFinishDialog({ blob, durationMs, onClose, onCancel }: Props
     if (uploading) return;
     setUploading(true);
     try {
+      // Patch webm duration metadata so the file is seekable in browser
+      let uploadBlob = blob;
+      try {
+        const { default: fixWebmDuration } = await import("fix-webm-duration");
+        uploadBlob = await fixWebmDuration(blob, durationMs, { logger: false });
+      } catch {
+        // Non-critical — upload original if fix fails
+      }
+
       const { uploadUrl, storageKey } = await requestUploadUrl({
-        fileSizeBytes: blob.size,
+        fileSizeBytes: uploadBlob.size,
         format: "audio",
         fileName: `${fileName}.webm`,
         mimeType: "audio/webm",
@@ -43,7 +52,7 @@ export function AudioFinishDialog({ blob, durationMs, onClose, onCancel }: Props
 
       const res = await fetch(uploadUrl, {
         method: "PUT",
-        body: blob,
+        body: uploadBlob,
         headers: { "Content-Type": "audio/webm" },
       });
       if (!res.ok) throw new Error("Upload thất bại");
@@ -53,7 +62,7 @@ export function AudioFinishDialog({ blob, durationMs, onClose, onCancel }: Props
         format: "audio",
         storageBackend: "r2",
         storageKey,
-        fileSizeBytes: blob.size,
+        fileSizeBytes: uploadBlob.size,
         durationMs,
       });
 

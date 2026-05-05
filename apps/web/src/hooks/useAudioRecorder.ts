@@ -134,15 +134,9 @@ export function useAudioRecorder(): AudioRecorderResult {
       recorder.onstop = async () => {
         const raw = new Blob(chunksRef.current, { type: mimeType });
         const total = accumulatedRef.current;
-        try {
-          // Fix webm duration metadata so browsers can seek and report correct duration
-          const { default: fixWebmDuration } = await import("fix-webm-duration");
-          const fixed = await fixWebmDuration(raw, total, { logger: false });
-          resolveFinishRef.current?.({ blob: fixed, durationMs: total });
-        } catch {
-          // Fallback to unpatched blob if fix fails
-          resolveFinishRef.current?.({ blob: raw, durationMs: total });
-        }
+        // Resolve immediately with raw blob + correct duration from timer
+        // fix-webm-duration patches the container metadata but is not needed for duration display
+        resolveFinishRef.current?.({ blob: raw, durationMs: total });
         resolveFinishRef.current = null;
       };
 
