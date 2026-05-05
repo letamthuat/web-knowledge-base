@@ -31,7 +31,9 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
   const { progress } = useReadingProgress(doc._id);
   const { savePosition, registerJump } = useReaderProgress();
   const restored = useRef(false);
-  const scrollModeRef = useRef<HTMLDivElement>(null);
+
+  // One scroll container used by both modes
+  const scrollRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Restore saved position once numPages is known
@@ -54,17 +56,24 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
   useEffect(() => {
     if (readMode === "scroll" && prevModeRef.current !== "scroll") {
       const p = currentPage;
-      // Pages need time to render before scrollIntoView works
+      // Wait for scroll-mode pages to render
       const t = setTimeout(() => {
         pageRefs.current[p - 1]?.scrollIntoView({ block: "start" });
-      }, 250);
+      }, 100);
       prevModeRef.current = "scroll";
       return () => clearTimeout(t);
     }
-    if (readMode === "page") prevModeRef.current = "page";
+    if (readMode === "page") {
+      prevModeRef.current = "page";
+      // Scroll page-mode container back to top
+      const t = setTimeout(() => {
+        scrollRef.current?.scrollTo({ top: 0 });
+      }, 50);
+      return () => clearTimeout(t);
+    }
   }, [readMode, currentPage]);
 
-  // Jump to page (from history popover)
+  // Jump to page from history popover
   useEffect(() => {
     registerJump((pos) => {
       if (pos.type !== "pdf_page") return;
@@ -80,9 +89,8 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
   // Track visible page in scroll mode via IntersectionObserver
   useEffect(() => {
     if (readMode !== "scroll" || !numPages) return;
-    const container = scrollModeRef.current;
+    const container = scrollRef.current;
     if (!container) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
         let maxRatio = 0;
@@ -102,10 +110,9 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
       },
       { root: container, threshold: [0, 0.25, 0.5, 0.75, 1] }
     );
-
     const t = setTimeout(() => {
       pageRefs.current.slice(0, numPages).forEach((el) => el && observer.observe(el));
-    }, 350);
+    }, 100);
     return () => { clearTimeout(t); observer.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readMode, numPages, savePosition]);
@@ -118,6 +125,9 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
       savePosition({ type: "pdf_page", page: p, offset: 0 }, numPages);
       if (readMode === "scroll") {
         setTimeout(() => pageRefs.current[p - 1]?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      } else {
+        // Scroll page-mode container to top for clean display
+        scrollRef.current?.scrollTo({ top: 0 });
       }
     },
     [numPages, savePosition, readMode]
@@ -133,23 +143,18 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
   );
 
   if (loadError) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-destructive text-sm">
-        {loadError}
-      </div>
-    );
+    return <div className="flex flex-1 items-center justify-center text-destructive text-sm">{loadError}</div>;
   }
 
-  const safePadStyle: React.CSSProperties = {
+  const safePad: React.CSSProperties = {
     paddingLeft: "max(12px, var(--safe-left, 0px))",
     paddingRight: "max(12px, var(--safe-right, 0px))",
   };
 
   return (
-    // PDFViewer root: fills whatever space ViewerDispatcher gives it
-    <div style={{ display: "flex", flexDirection: "column", flex: "1 1 0%", minHeight: 0, overflow: "hidden", background: "var(--muted)" }}>
+    <div className="flex flex-1 flex-col" style={{ minHeight: 0, overflow: "hidden" }}>
 
-      {/* ── Toolbar ── always shrink-0 so it is never scrolled away */}
+      {/* Toolbar */}
       <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-1.5">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-10 w-10"
@@ -180,9 +185,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
               onClick={() => setReadMode("page")}
               className={[
                 "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
-                readMode === "page"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                readMode === "page" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
               <BookOpen className="h-3.5 w-3.5" />
@@ -192,9 +195,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
               onClick={() => setReadMode("scroll")}
               className={[
                 "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
-                readMode === "scroll"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                readMode === "scroll" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
               <AlignJustify className="h-3.5 w-3.5" />
@@ -205,92 +206,59 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
         </div>
       </div>
 
-      {/* ── Content area ──
-          position:relative + overflow:hidden → gives absolute children a bounded box.
-          This is the KEY fix: absolute children are constrained by THIS element,
-          not by AppShell (position:fixed) which was the source of all layout bugs. */}
-      <div style={{ position: "relative", flex: "1 1 0%", minHeight: 0, overflow: "hidden" }}>
-
-        {/* PAGE MODE — single page, own scroll */}
-        <div
-          style={{
-            position: "absolute", inset: 0,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            paddingTop: 24,
-            paddingBottom: 24,
-            ...safePadStyle,
-            // Hide (not unmount) when not active so Document stays loaded
-            visibility: readMode === "page" ? "visible" : "hidden",
-            pointerEvents: readMode === "page" ? "auto" : "none",
-            WebkitOverflowScrolling: "touch",
-          } as React.CSSProperties}
+      {/* Unified scroll container — used for both modes */}
+      <div
+        ref={scrollRef}
+        style={{
+          flex: "1 1 0",
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          paddingTop: 24,
+          paddingBottom: 24,
+          gap: readMode === "scroll" ? 16 : 0,
+          WebkitOverflowScrolling: "touch" as never,
+          background: "hsl(var(--muted) / 0.4)",
+          ...safePad,
+        }}
+      >
+        <Document
+          file={downloadUrl}
+          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+          onLoadError={() => setLoadError("Không thể tải PDF. File có thể bị lỗi hoặc không được hỗ trợ.")}
+          loading={<div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />}
         >
-          <Document
-            file={downloadUrl}
-            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-            onLoadError={() => setLoadError("Không thể tải PDF.")}
-            loading={
-              <div style={{ marginTop: 80 }}>
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              </div>
-            }
-          >
-            <Page
-              pageNumber={currentPage}
-              scale={scale}
-              className="shadow-xl"
-              renderTextLayer
-              renderAnnotationLayer
-            />
-          </Document>
-        </div>
-
-        {/* SCROLL MODE — all pages stacked, own scroll */}
-        <div
-          ref={scrollModeRef}
-          style={{
-            position: "absolute", inset: 0,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 16,
-            paddingTop: 24,
-            paddingBottom: 24,
-            ...safePadStyle,
-            visibility: readMode === "scroll" ? "visible" : "hidden",
-            pointerEvents: readMode === "scroll" ? "auto" : "none",
-            WebkitOverflowScrolling: "touch",
-          } as React.CSSProperties}
-        >
-          {readMode === "scroll" && numPages > 0 && (
-            <Document
-              file={downloadUrl}
-              onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-              onLoadError={() => {}}
-              loading={
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              }
-            >
-              {Array.from({ length: numPages }, (_, i) => (
-                <div key={i} ref={(el) => { pageRefs.current[i] = el; }} style={{ marginBottom: 0 }}>
-                  <Page
-                    pageNumber={i + 1}
-                    scale={scale}
-                    className="shadow-xl"
-                    renderTextLayer
-                    renderAnnotationLayer
-                  />
+          {readMode === "page" ? (
+            /* Page mode: show only current page */
+            numPages > 0 ? (
+              <Page
+                pageNumber={currentPage}
+                scale={scale}
+                className="shadow-xl"
+                renderTextLayer
+                renderAnnotationLayer
+                onRenderSuccess={() => {
+                  // Save progress on page render in page mode
+                  savePosition({ type: "pdf_page", page: currentPage, offset: 0 }, numPages);
+                }}
+              />
+            ) : null
+          ) : (
+            /* Scroll mode: show all pages */
+            numPages > 0
+              ? Array.from({ length: numPages }, (_, i) => (
+                <div key={i} ref={(el) => { pageRefs.current[i] = el; }}>
+                  <Page pageNumber={i + 1} scale={scale} className="shadow-xl" renderTextLayer renderAnnotationLayer />
                 </div>
-              ))}
-            </Document>
+              ))
+              : null
           )}
-        </div>
-
+        </Document>
       </div>
+
     </div>
   );
 }
