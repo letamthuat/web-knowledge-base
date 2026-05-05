@@ -34,7 +34,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Restore saved position when numPages becomes known
+  // Restore saved position
   useEffect(() => {
     if (restored.current || !numPages || !progress) return;
     if (progress.positionType === "pdf_page") {
@@ -49,21 +49,21 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
     restored.current = true;
   }, [progress, numPages]);
 
-  // When switching TO scroll mode, scroll to current page after pages render
+  // When switching TO scroll mode, scroll to current page
   const prevModeRef = useRef<ReadMode>("page");
   useEffect(() => {
     if (readMode === "scroll" && prevModeRef.current !== "scroll") {
       const p = currentPage;
       const timer = setTimeout(() => {
         pageRefs.current[p - 1]?.scrollIntoView({ block: "start" });
-      }, 150);
+      }, 200);
       prevModeRef.current = "scroll";
       return () => clearTimeout(timer);
     }
     if (readMode === "page") prevModeRef.current = "page";
   }, [readMode, currentPage]);
 
-  // Jump handler (from reading history popover etc.)
+  // Jump handler
   useEffect(() => {
     registerJump((pos) => {
       if (pos.type !== "pdf_page") return;
@@ -76,7 +76,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
     });
   }, [registerJump, readMode]);
 
-  // IntersectionObserver — track visible page in scroll mode, save progress
+  // Track visible page in scroll mode
   useEffect(() => {
     if (readMode !== "scroll" || !numPages) return;
     const container = scrollContainerRef.current;
@@ -102,11 +102,9 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
       { root: container, threshold: [0, 0.25, 0.5, 0.75, 1] }
     );
 
-    // Wait for page divs to be rendered before observing
     const timer = setTimeout(() => {
       pageRefs.current.slice(0, numPages).forEach((el) => el && observer.observe(el));
-    }, 200);
-
+    }, 300);
     return () => { clearTimeout(timer); observer.disconnect(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readMode, numPages, savePosition]);
@@ -134,9 +132,14 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
     return <div className="flex flex-1 items-center justify-center text-destructive text-sm">{loadError}</div>;
   }
 
+  const safePad = {
+    paddingRight: "max(12px, var(--safe-right, 0px))",
+    paddingLeft: "max(12px, var(--safe-left, 0px))",
+  };
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-muted/40">
-      {/* Toolbar */}
+      {/* Toolbar — shrink-0 so it never gets pushed off screen */}
       <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-1.5">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>
@@ -144,14 +147,10 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
           </Button>
           <span className="text-sm tabular-nums flex items-center gap-1">
             <input
-              type="text"
-              inputMode="numeric"
-              value={pageInput}
+              type="text" inputMode="numeric" value={pageInput}
               onChange={(e) => setPageInput(e.target.value)}
               onBlur={() => syncPageInput(pageInput)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") { syncPageInput(pageInput); (e.target as HTMLInputElement).blur(); }
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter") { syncPageInput(pageInput); (e.target as HTMLInputElement).blur(); } }}
               className="w-12 rounded border border-input bg-background px-1 py-0.5 text-center text-sm"
             />
             / {numPages || "—"}
@@ -165,22 +164,16 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
           <div className="flex items-center rounded-md border bg-muted/40 p-0.5">
             <button
               onClick={() => setReadMode("page")}
-              title="Đọc theo trang"
-              className={[
-                "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
-                readMode === "page" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
+              className={["flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
+                readMode === "page" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"].join(" ")}
             >
               <BookOpen className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Trang</span>
             </button>
             <button
               onClick={() => setReadMode("scroll")}
-              title="Cuộn liên tục"
-              className={[
-                "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
-                readMode === "scroll" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
+              className={["flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
+                readMode === "scroll" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"].join(" ")}
             >
               <AlignJustify className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Cuộn</span>
@@ -190,16 +183,15 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
         </div>
       </div>
 
-      {/* Single scroll container — always the same DOM node */}
+      {/* Content area — grows to fill remaining space, scrolls internally */}
       <div
-        ref={scrollContainerRef}
-        className="flex flex-1 flex-col items-center overflow-y-auto"
+        ref={readMode === "scroll" ? scrollContainerRef : undefined}
+        className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto"
         style={{
           paddingTop: 24,
           paddingBottom: 24,
-          paddingRight: "max(12px, var(--safe-right, 0px))",
-          paddingLeft: "max(12px, var(--safe-left, 0px))",
           gap: readMode === "scroll" ? 16 : 0,
+          ...safePad,
           WebkitOverflowScrolling: "touch",
         } as React.CSSProperties}
       >
@@ -207,10 +199,9 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
           file={downloadUrl}
           onLoadSuccess={({ numPages }) => setNumPages(numPages)}
           onLoadError={() => setLoadError("Không thể tải PDF. File có thể bị lỗi hoặc không được hỗ trợ.")}
-          loading={<div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />}
+          loading={<div className="mt-20 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />}
         >
           {readMode === "page" ? (
-            /* Page mode: single page */
             <Page
               pageNumber={currentPage}
               scale={scale}
@@ -219,7 +210,6 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
               renderAnnotationLayer
             />
           ) : (
-            /* Scroll mode: all pages stacked */
             numPages > 0 ? Array.from({ length: numPages }, (_, i) => (
               <div key={i} ref={(el) => { pageRefs.current[i] = el; }}>
                 <Page
