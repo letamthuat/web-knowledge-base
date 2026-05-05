@@ -21,12 +21,29 @@ function getMediaDuration(file: File): Promise<number | null> {
       resolve(null);
       return;
     }
+    // Try HTMLMediaElement first (fast, works for most formats)
     const el = document.createElement(file.type.startsWith("audio/") ? "audio" : "video");
     const url = URL.createObjectURL(file);
     el.preload = "metadata";
     el.onloadedmetadata = () => {
       URL.revokeObjectURL(url);
-      resolve(isFinite(el.duration) && el.duration > 0 ? Math.round(el.duration * 1000) : null);
+      if (isFinite(el.duration) && el.duration > 0) {
+        resolve(Math.round(el.duration * 1000));
+      } else {
+        // Fallback: AudioContext.decodeAudioData for webm without duration metadata
+        // Skip for large files (>50MB) to avoid memory issues
+        if (file.type.startsWith("audio/") && file.size < 50 * 1024 * 1024) {
+          file.arrayBuffer().then((buf) => {
+            const ctx = new AudioContext();
+            ctx.decodeAudioData(buf, (decoded) => {
+              ctx.close();
+              resolve(Math.round(decoded.duration * 1000));
+            }, () => { ctx.close(); resolve(null); });
+          }).catch(() => resolve(null));
+        } else {
+          resolve(null);
+        }
+      }
     };
     el.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
     el.src = url;
