@@ -89,56 +89,98 @@ export async function transcribeMedia(
   if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
   const arrayBuffer = await res.arrayBuffer();
 
-  onProgress?.({ phase: "extracting", message: "Đang giải mã âm thanh..." });
-
-  const audioCtx = new AudioContext({ sampleRate: 16000 });
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  await audioCtx.close();
-
-  const sampleRate = audioBuffer.sampleRate;
-  const totalSamples = audioBuffer.length;
-  const samplesPerChunk = WAV_CHUNK_SECS * sampleRate;
-  const numChunks = Math.ceil(totalSamples / samplesPerChunk);
-  // Get all channel data upfront — Float32Array, much lighter than full AudioBuffer
-  const channelData = audioBuffer.getChannelData(0);
-
   const allSegments: TranscriptSegment[] = [];
   let detectedLanguage = audioLanguage ?? "vi";
 
-  for (let i = 0; i < numChunks; i++) {
-    const startSample = i * samplesPerChunk;
-    const endSample = Math.min(startSample + samplesPerChunk, totalSamples);
-    const timeOffset = (startSample / sampleRate);
+  // Try to decode via AudioContext (works for mp3, m4a, standard webm)
+  onProgress?.({ phase: "extracting", message: "Đang giải mã âm thanh..." });
+  let decoded: AudioBuffer | null = null;
+  try {
+    const audioCtx = new AudioContext({ sampleRate: 16000 });
+    decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+    await audioCtx.close();
+  } catch {
+    decoded = null;
+  }
 
-    onProgress?.({
-      phase: "transcribing",
-      chunkIndex: i + 1,
-      totalChunks: numChunks,
-      message: `Đang nhận dạng giọng nói... (${i + 1}/${numChunks})`,
-    });
+  if (decoded) {
+    // Path A: decoded successfully → split into WAV chunks
+    const sampleRate = decoded.sampleRate;
+    const channelData = decoded.getChannelData(0);
+    const samplesPerChunk = WAV_CHUNK_SECS * sampleRate;
+    const numChunks = Math.ceil(channelData.length / samplesPerChunk);
 
-    const slice = channelData.slice(startSample, endSample);
-    const wavBlob = encodeWav(slice, sampleRate);
+    for (let i = 0; i < numChunks; i++) {
+      const startSample = i * samplesPerChunk;
+      const endSample = Math.min(startSample + samplesPerChunk, channelData.length);
+      const timeOffset = startSample / sampleRate;
 
-    if (wavBlob.size > GROQ_MAX_BYTES) {
-      console.warn(`Chunk ${i} quá lớn (${wavBlob.size} bytes), bỏ qua`);
-      continue;
+      onProgress?.({
+        phase: "transcribing",
+        chunkIndex: i + 1,
+        totalChunks: numChunks,
+        message: `Đang nhận dạng giọng nói... (${i + 1}/${numChunks})`,
+      });
+
+      const wavBlob = encodeWav(channelData.slice(startSample, endSample), sampleRate);
+      if (wavBlob.size > GROQ_MAX_BYTES) continue;
+
+      const audioBase64 = await blobToBase64(wavBlob);
+      if (i > 0) await new Promise((r) => setTimeout(r, 3100));
+
+      const result = await transcribeChunkFn({
+        audioBase64,
+        mimeType: "audio/wav",
+        fileName: `chunk_${i}.wav`,
+        chunkIndex: i,
+        timeOffsetSeconds: timeOffset,
+        language: audioLanguage,
+      });
+      allSegments.push(...result.segments);
+      if (result.language) detectedLanguage = result.language;
     }
+  } else {
+    // Path B: cannot decode (live-recorded webm without metadata)
+    // Split raw binary into ≤20MB chunks and send directly to Groq as audio/webm
+    // timeOffset is estimated from chunk index × average chunk duration
+    const BINARY_CHUNK = 20 * 1024 * 1024; // 20MB
+    const totalBytes = arrayBuffer.byteLength;
+    const numChunks = Math.ceil(totalBytes / BINARY_CHUNK);
+    // Estimate: file bitrate = totalBytes / durationMs (from doc) if available, else rough 64kbps
+    const estimatedBytesPerSec = 64 * 1024 / 8; // 8KB/s for 64kbps opus
 
-    const audioBase64 = await blobToBase64(wavBlob);
-    if (i > 0) await new Promise((r) => setTimeout(r, 3100));
+    for (let i = 0; i < numChunks; i++) {
+      const start = i * BINARY_CHUNK;
+      const end = Math.min(start + BINARY_CHUNK, totalBytes);
+      const chunkBytes = arrayBuffer.slice(start, end);
+      const estimatedTimeOffset = (start / estimatedBytesPerSec);
 
-    const result = await transcribeChunkFn({
-      audioBase64,
-      mimeType: "audio/wav",
-      fileName: `chunk_${i}.wav`,
-      chunkIndex: i,
-      timeOffsetSeconds: timeOffset,
-      language: audioLanguage,
-    });
+      onProgress?.({
+        phase: "transcribing",
+        chunkIndex: i + 1,
+        totalChunks: numChunks,
+        message: `Đang nhận dạng giọng nói... (${i + 1}/${numChunks})`,
+      });
 
-    allSegments.push(...result.segments);
-    if (result.language) detectedLanguage = result.language;
+      const blob = new Blob([chunkBytes], { type: "audio/webm" });
+      const audioBase64 = await blobToBase64(blob);
+      if (i > 0) await new Promise((r) => setTimeout(r, 3100));
+
+      try {
+        const result = await transcribeChunkFn({
+          audioBase64,
+          mimeType: "audio/webm",
+          fileName: `chunk_${i}.webm`,
+          chunkIndex: i,
+          timeOffsetSeconds: estimatedTimeOffset,
+          language: audioLanguage,
+        });
+        allSegments.push(...result.segments);
+        if (result.language) detectedLanguage = result.language;
+      } catch (e) {
+        console.warn(`[transcript] chunk ${i} failed:`, e);
+      }
+    }
   }
 
   const deduped = deduplicateSegments(allSegments);

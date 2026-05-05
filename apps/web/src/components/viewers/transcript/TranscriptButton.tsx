@@ -44,11 +44,12 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
       toast.success("Đã tạo transcript thành công");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Lỗi không xác định";
+      console.error("[TranscriptButton] error:", err);
       if (transcriptId) {
         await updateStatus({ transcriptId, status: "error", errorMessage: message });
       }
       setProgress({ phase: "error", message });
-      toast.error("Tạo transcript thất bại");
+      toast.error(`Tạo transcript thất bại: ${message}`);
     } finally {
       setTimeout(() => setProgress(null), 2000);
     }
