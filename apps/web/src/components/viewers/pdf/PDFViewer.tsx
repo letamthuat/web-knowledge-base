@@ -8,8 +8,8 @@ import { Id } from "@/_generated/dataModel";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, AlignJustify, FileText } from "lucide-react";
-import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
+import { ChevronLeft, ChevronRight, AlignJustify, FileText, ZoomIn, ZoomOut } from "lucide-react";
+import { useZoom } from "@/components/viewers/ZoomControls";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
@@ -211,22 +211,18 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-muted/40" style={{ minHeight: 0 }}>
-      {/* Toolbar */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-1 border-b bg-card px-2 py-1.5">
+      {/* Toolbar — single row */}
+      <div className="flex shrink-0 items-center justify-between border-b bg-card px-2 py-1">
         {/* Left: page nav */}
         <div className="flex items-center gap-0.5">
-          <Button
-            variant="ghost" size="icon" className="h-9 w-9"
+          <Button variant="ghost" size="icon" className="h-8 w-8"
             onClick={() => goToPage(currentPage - 1)}
-            disabled={readMode === "scroll" || currentPage <= 1}
-          >
+            disabled={readMode === "scroll" || currentPage <= 1}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm tabular-nums flex items-center gap-1">
+          <div className="flex items-center gap-1 text-sm tabular-nums">
             <input
-              type="text"
-              inputMode="numeric"
-              value={pageInput}
+              type="text" inputMode="numeric" value={pageInput}
               onChange={(e) => setPageInput(e.target.value)}
               onBlur={() => {
                 const n = parseInt(pageInput, 10);
@@ -241,51 +237,42 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className="w-10 rounded border border-input bg-background px-1 py-0.5 text-center text-sm"
+              className="w-9 rounded border border-input bg-background px-1 py-0.5 text-center text-xs"
             />
-            <span className="text-muted-foreground">/ {numPages || "—"}</span>
-          </span>
-          <Button
-            variant="ghost" size="icon" className="h-9 w-9"
+            <span className="text-xs text-muted-foreground">/{numPages || "—"}</span>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8"
             onClick={() => goToPage(currentPage + 1)}
-            disabled={readMode === "scroll" || currentPage >= numPages}
-          >
+            disabled={readMode === "scroll" || currentPage >= numPages}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Right: toggle + zoom */}
+        {/* Right: zoom + toggle */}
         <div className="flex items-center gap-1">
-          {/* Trang / Cuộn toggle — always visible */}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} disabled={scale <= 0.5}>
+            <ZoomOut className="h-3.5 w-3.5" />
+          </Button>
+          <span className="w-10 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} disabled={scale >= 3}>
+            <ZoomIn className="h-3.5 w-3.5" />
+          </Button>
+          <div className="mx-1 h-4 w-px bg-border" />
+          {/* Trang / Cuộn toggle */}
           <div className="flex items-center rounded-md border border-border overflow-hidden">
-            <button
-              onClick={() => setReadMode("page")}
-              className={[
-                "flex items-center gap-1 px-2 py-1.5 text-xs transition-colors",
-                readMode === "page"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted",
-              ].join(" ")}
-              title="Xem từng trang"
-            >
+            <button onClick={() => setReadMode("page")}
+              className={["flex items-center justify-center h-7 w-7 transition-colors",
+                readMode === "page" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+              ].join(" ")} title="Xem từng trang">
               <FileText className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Trang</span>
             </button>
-            <button
-              onClick={() => setReadMode("scroll")}
-              className={[
-                "flex items-center gap-1 px-2 py-1.5 text-xs transition-colors",
-                readMode === "scroll"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted",
-              ].join(" ")}
-              title="Cuộn liên tục"
-            >
+            <button onClick={() => setReadMode("scroll")}
+              className={["flex items-center justify-center h-7 w-7 transition-colors",
+                readMode === "scroll" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+              ].join(" ")} title="Cuộn liên tục">
               <AlignJustify className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Cuộn</span>
             </button>
           </div>
-          <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={3} />
         </div>
       </div>
 
