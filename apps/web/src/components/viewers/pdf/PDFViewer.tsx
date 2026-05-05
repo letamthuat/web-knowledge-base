@@ -197,62 +197,58 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
         </div>
       </div>
 
-      {/* Wrapper: flex-1, position:relative so absolute children fill it */}
-      <div className="relative flex-1 overflow-hidden">
+      {/* Page mode container */}
+      <div
+        className="flex items-start justify-center overflow-auto"
+        style={{
+          flex: readMode === "page" ? "1 1 0%" : "0 0 0px",
+          minHeight: 0,
+          paddingTop: 24,
+          paddingBottom: 24,
+          paddingRight: "max(12px, var(--safe-right, 0px))",
+          paddingLeft: "max(12px, var(--safe-left, 0px))",
+          overflowY: readMode === "page" ? "auto" : "hidden",
+        }}
+      >
         <Document
           file={downloadUrl}
           onLoadSuccess={({ numPages }) => setNumPages(numPages)}
           onLoadError={() => setLoadError("Không thể tải PDF. File có thể bị lỗi hoặc không được hỗ trợ.")}
-          loading={
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            </div>
-          }
+          loading={<div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />}
         >
-          {/* Page mode — visible when readMode==="page" */}
-          <div
-            className="absolute inset-0 flex items-start justify-center overflow-auto py-6"
-            style={{
-              visibility: readMode === "page" ? "visible" : "hidden",
-              pointerEvents: readMode === "page" ? "auto" : "none",
-              paddingRight: "max(12px, var(--safe-right, 0px))",
-              paddingLeft: "max(12px, var(--safe-left, 0px))",
-            }}
-          >
-            <Page
-              pageNumber={currentPage}
-              scale={scale}
-              className="shadow-xl"
-              renderTextLayer
-              renderAnnotationLayer
-            />
-          </div>
+          <Page pageNumber={currentPage} scale={scale} className="shadow-xl" renderTextLayer renderAnnotationLayer />
+        </Document>
+      </div>
 
-          {/* Scroll mode — visible when readMode==="scroll" */}
-          <div
-            ref={scrollContainerRef}
-            className="absolute inset-0 flex flex-col items-center overflow-y-auto py-6 gap-4"
-            style={{
-              visibility: readMode === "scroll" ? "visible" : "hidden",
-              pointerEvents: readMode === "scroll" ? "auto" : "none",
-              paddingRight: "max(12px, var(--safe-right, 0px))",
-              paddingLeft: "max(12px, var(--safe-left, 0px))",
-              WebkitOverflowScrolling: "touch",
-            } as React.CSSProperties}
+      {/* Scroll mode container */}
+      <div
+        ref={scrollContainerRef}
+        className="flex flex-col items-center gap-4"
+        style={{
+          flex: readMode === "scroll" ? "1 1 0%" : "0 0 0px",
+          minHeight: 0,
+          paddingTop: readMode === "scroll" ? 24 : 0,
+          paddingBottom: readMode === "scroll" ? 24 : 0,
+          paddingRight: "max(12px, var(--safe-right, 0px))",
+          paddingLeft: "max(12px, var(--safe-left, 0px))",
+          overflowY: readMode === "scroll" ? "auto" : "hidden",
+          WebkitOverflowScrolling: "touch",
+        } as React.CSSProperties}
+      >
+        {readMode === "scroll" && numPages > 0 && (
+          <Document
+            file={downloadUrl}
+            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+            onLoadError={() => {}}
+            loading={<div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />}
           >
-            {numPages > 0 && Array.from({ length: numPages }, (_, i) => (
-              <div key={i} ref={(el) => { pageRefs.current[i] = el; }}>
-                <Page
-                  pageNumber={i + 1}
-                  scale={scale}
-                  className="shadow-xl"
-                  renderTextLayer
-                  renderAnnotationLayer
-                />
+            {Array.from({ length: numPages }, (_, i) => (
+              <div key={i} ref={(el) => { pageRefs.current[i] = el; }} className="mb-4">
+                <Page pageNumber={i + 1} scale={scale} className="shadow-xl" renderTextLayer renderAnnotationLayer />
               </div>
             ))}
-          </div>
-        </Document>
+          </Document>
+        )}
       </div>
     </div>
   );
