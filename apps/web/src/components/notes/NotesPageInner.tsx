@@ -98,15 +98,21 @@ export function NotesPageInner() {
   }, [notes, openNoteTab]);
 
   const handleNew = useCallback(async () => {
+    console.log("[handleNew] called");
     try {
       const id = await addNote("[]", "");
+      console.log("[handleNew] addNote returned:", id);
       if (id) {
         const noteId = id as Id<"notes">;
         setNewNoteId(noteId);
         setPendingNoteId(noteId);
         openNoteTab(noteId, "");
+        console.log("[handleNew] openNoteTab called for", noteId);
+      } else {
+        console.warn("[handleNew] addNote returned falsy:", id);
       }
-    } catch {
+    } catch (err) {
+      console.error("[handleNew] error:", err);
       toast.error("Không thể tạo ghi chú");
     }
   }, [addNote, openNoteTab]);
@@ -246,7 +252,7 @@ export function NotesPageInner() {
       </div>
 
       {/* Main content */}
-      <div className="relative flex flex-1 overflow-hidden pb-14 md:pb-0">
+      <div className="relative flex flex-1 min-h-0 pb-14 md:pb-0">
         {/* Sidebar — BottomSheet on mobile, inline on desktop */}
         {isMobile ? (
           <BottomSheet open={sidebarOpen} onClose={() => setSidebarOpen(false)} title="Danh sách ghi chú">

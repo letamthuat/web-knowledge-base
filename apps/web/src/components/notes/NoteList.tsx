@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Id } from "@/_generated/dataModel";
 import { FilePlus, StickyNote, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,46 +47,65 @@ function bodyPreview(body: string): string {
 export function NoteList({ notes, selectedId, onSelect, onNew, onDelete }: NoteListProps) {
   const [, setTick] = useState(0);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const newMenuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const { audioRecorder, screenRecorder } = useRecording();
+
+  const openMenu = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setNewMenuOpen(true);
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000);
     return () => clearInterval(id);
   }, []);
 
+  const dropdownRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!newMenuOpen) return;
     function onDown(e: MouseEvent) {
-      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) setNewMenuOpen(false);
+      const target = e.target as Node;
+      const inTrigger = newMenuRef.current?.contains(target);
+      const inDropdown = dropdownRef.current?.contains(target);
+      if (!inTrigger && !inDropdown) setNewMenuOpen(false);
     }
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [newMenuOpen]);
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-r bg-card">
+    <aside className="relative flex w-72 shrink-0 flex-col border-r bg-card">
       {/* Header */}
       <div className="shrink-0 border-b">
         <div className="flex items-center justify-between px-4 py-3">
           <span className="text-sm font-semibold">Ghi chú</span>
           <div ref={newMenuRef}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 h-7 text-xs"
-              onClick={() => setNewMenuOpen((v) => !v)}
-            >
-              <FilePlus className="h-3.5 w-3.5" />
-              Mới
-              <ChevronDown className={`h-3 w-3 opacity-60 transition-transform ${newMenuOpen ? "rotate-180" : ""}`} />
-            </Button>
+            <div ref={triggerRef}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 h-7 text-xs"
+                onClick={() => newMenuOpen ? setNewMenuOpen(false) : openMenu()}
+              >
+                <FilePlus className="h-3.5 w-3.5" />
+                Mới
+                <ChevronDown className={`h-3 w-3 opacity-60 transition-transform ${newMenuOpen ? "rotate-180" : ""}`} />
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Inline new-item menu — no absolute positioning, never clipped */}
-        {newMenuOpen && (
-          <div className="border-t bg-muted/40 py-1">
+        {newMenuOpen && menuPos && (
+          <div
+            ref={dropdownRef}
+            className="fixed z-[9999] w-52 rounded-md border bg-card shadow-lg py-1"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
             <button
               onClick={() => { setNewMenuOpen(false); onNew(); }}
               className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
