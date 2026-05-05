@@ -92,8 +92,8 @@ export function NotesPageInner() {
       const id = await addNote("[]", "");
       if (id) {
         const noteId = id as Id<"notes">;
-        openNoteTab(noteId, "");
         setNewNoteId(noteId);
+        await openNoteTab(noteId, "");
       }
     } catch {
       toast.error("Không thể tạo ghi chú");
@@ -258,6 +258,11 @@ export function NotesPageInner() {
           )
         )}
 
+        {!selectedNote && activeNoteId && (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        )}
         {selectedNote ? (
           <NoteEditor
             key={selectedNote._id}
