@@ -98,21 +98,15 @@ export function NotesPageInner() {
   }, [notes, openNoteTab]);
 
   const handleNew = useCallback(async () => {
-    console.log("[handleNew] called");
     try {
       const id = await addNote("[]", "");
-      console.log("[handleNew] addNote returned:", id);
       if (id) {
         const noteId = id as Id<"notes">;
         setNewNoteId(noteId);
         setPendingNoteId(noteId);
         openNoteTab(noteId, "");
-        console.log("[handleNew] openNoteTab called for", noteId);
-      } else {
-        console.warn("[handleNew] addNote returned falsy:", id);
       }
-    } catch (err) {
-      console.error("[handleNew] error:", err);
+    } catch {
       toast.error("Không thể tạo ghi chú");
     }
   }, [addNote, openNoteTab]);
