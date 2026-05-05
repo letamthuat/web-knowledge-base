@@ -177,11 +177,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
   }
 
   return (
-    // Use position-based layout to bypass flex height chain issues.
-    // PDFViewer fills its parent (which is position:absolute inset:0 from TabPanel,
-    // or flex-1 from ReaderPageInner wrapper). We use position:relative + absolute
-    // children so height is always derived from the container, not from content.
-    <div className="relative flex-1" style={{ minHeight: 0 }}>
+    <div style={{ position: "absolute", inset: 0 }}>
 
       {/* Toolbar — fixed at top of this container */}
       <div ref={toolbarRef} className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 border-b bg-card px-4 py-1.5">

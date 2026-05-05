@@ -347,7 +347,7 @@ function ReaderShell({ doc, downloadUrl }: {
           </div>
         )}
 
-        <div className="flex flex-1 flex-col overflow-hidden" style={{ minHeight: 0 }}>
+        <div className="flex flex-1 flex-col overflow-hidden" style={{ minHeight: 0, position: "relative" }}>
           <ViewerDispatcher
             doc={doc}
             downloadUrl={downloadUrl}
