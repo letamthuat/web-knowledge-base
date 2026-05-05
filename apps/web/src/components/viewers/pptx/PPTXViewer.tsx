@@ -315,7 +315,8 @@ export function PPTXViewer({ doc, downloadUrl }: PPTXViewerProps) {
         style={{
           minHeight: 0,
           alignItems: readMode === "scroll" ? "flex-start" : "center",
-          justifyContent: "center",
+          justifyContent: readMode === "scroll" ? "flex-start" : "center",
+          padding: readMode === "scroll" ? "16px" : "16px",
           ...(isFullscreen ? {
             background: "#18181b",
             display: "flex",
@@ -332,20 +333,23 @@ export function PPTXViewer({ doc, downloadUrl }: PPTXViewerProps) {
           </div>
         )}
 
-        <div
-          style={{
-            width: SLIDE_W,
-            transform: `scale(${scale})`,
-            transformOrigin: readMode === "scroll" ? "top center" : "center center",
-            flexShrink: 0,
-          }}
-        >
-          <div
-            ref={containerRef}
-            className="overflow-hidden bg-white [&_.pptx-preview-wrapper-next]:hidden [&_.pptx-preview-wrapper-pagination]:hidden"
-            style={{ width: SLIDE_W }}
-          />
-        </div>
+        {readMode === "page" ? (
+          <div style={{ width: SLIDE_W, transform: `scale(${scale})`, transformOrigin: "center center", flexShrink: 0 }}>
+            <div
+              ref={containerRef}
+              className="overflow-hidden rounded-lg shadow-2xl bg-white [&_.pptx-preview-wrapper-next]:hidden [&_.pptx-preview-wrapper-pagination]:hidden"
+              style={{ width: SLIDE_W, height: SLIDE_H }}
+            />
+          </div>
+        ) : (
+          <div style={{ width: "100%", maxWidth: "100%" }}>
+            <div
+              ref={containerRef}
+              className="bg-white [&_.pptx-preview-wrapper-next]:hidden [&_.pptx-preview-wrapper-pagination]:hidden [&_canvas]:w-full! [&_canvas]:h-auto! [&_canvas]:block [&_canvas]:mb-4 [&_canvas]:shadow-xl [&_canvas]:rounded"
+              style={{ width: "100%" }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
