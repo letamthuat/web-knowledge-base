@@ -30,7 +30,16 @@ export function NotesPageInner() {
   const [searchOpen, setSearchOpen] = useState(false);
   const { notes, addNote, updateNote, removeNote } = useAllNotes();
   const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
-  const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
+  const [pendingNoteId, setPendingNoteId] = useState<Id<"notes"> | null>(null);
+  const { noteTabs, activeNoteId: convexActiveNoteId, openNoteTab, closeNoteTab, updateNoteTabTitle, setActiveNoteId } = useNoteTabs();
+  // Use pendingNoteId as optimistic active note while Convex reactive query catches up
+  const activeNoteId = pendingNoteId ?? convexActiveNoteId;
+  // Clear pending once Convex reflects the change
+  useEffect(() => {
+    if (pendingNoteId && convexActiveNoteId === pendingNoteId) {
+      setPendingNoteId(null);
+    }
+  }, [convexActiveNoteId, pendingNoteId]);
   const { setActivePanel } = useActiveTab();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
@@ -83,6 +92,7 @@ export function NotesPageInner() {
   const handleSelect = useCallback((id: Id<"notes">) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const note = (notes as any[]).find((n) => n._id === id);
+    setPendingNoteId(id);
     openNoteTab(id, note?.title ?? "");
     setNoteSaveStatus("saved");
   }, [notes, openNoteTab]);
@@ -93,7 +103,8 @@ export function NotesPageInner() {
       if (id) {
         const noteId = id as Id<"notes">;
         setNewNoteId(noteId);
-        await openNoteTab(noteId, "");
+        setPendingNoteId(noteId);
+        openNoteTab(noteId, "");
       }
     } catch {
       toast.error("Không thể tạo ghi chú");
@@ -203,6 +214,7 @@ export function NotesPageInner() {
         activeNoteId={activeNoteId}
         onSelectNoteTab={(id) => {
           const note = (notes as any[]).find((n) => n._id === id);
+          setPendingNoteId(id as Id<"notes">);
           openNoteTab(id as Id<"notes">, note?.title ?? "");
         }}
         onCloseNoteTab={(id) => {
