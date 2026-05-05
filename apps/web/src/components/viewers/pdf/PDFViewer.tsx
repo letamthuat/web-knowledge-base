@@ -213,7 +213,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
     <div className="flex flex-1 flex-col overflow-hidden bg-muted/40" style={{ minHeight: 0 }}>
       {/* Toolbar */}
       <div className="shrink-0 border-b bg-card">
-        <div className="flex items-center justify-between px-2 py-1 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1 px-2 py-1 overflow-x-auto scrollbar-none">
           <div className="flex items-center gap-0.5">
             <Button variant="ghost" size="icon" className="h-8 w-8"
               onClick={() => goToPage(currentPage - 1)}
@@ -248,8 +248,8 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
             </Button>
           </div>
 
-          {/* Right: zoom + toggle */}
-          <div className="flex items-center gap-1">
+          {/* zoom + toggle */}
+          <div className="flex shrink-0 items-center gap-1 ml-auto">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} disabled={scale <= 0.5}>
               <ZoomOut className="h-3.5 w-3.5" />
             </Button>
