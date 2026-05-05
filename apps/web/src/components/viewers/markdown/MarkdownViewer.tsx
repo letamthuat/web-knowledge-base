@@ -314,7 +314,8 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     return () => clearTimeout(timer);
   }, [highlightQuery, content]);
 
-  // Track active heading via IntersectionObserver on the content scroll area
+  // Track active heading via IntersectionObserver — only update ref, batch setActiveId via rAF
+  const activeIdRafRef = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (!content || !contentRef.current) return;
     const container = contentRef.current;
@@ -329,14 +330,20 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
           .filter((e) => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
         if (visible.length > 0) {
-        activeIdRef.current = visible[0].target.id;
-        setActiveId(visible[0].target.id);
-      }
+          activeIdRef.current = visible[0].target.id;
+          // Batch DOM update — skip if a frame is already scheduled
+          if (activeIdRafRef.current === undefined) {
+            activeIdRafRef.current = requestAnimationFrame(() => {
+              activeIdRafRef.current = undefined;
+              setActiveId(activeIdRef.current);
+            });
+          }
+        }
       },
       { root: container, rootMargin: "0px 0px -70% 0px", threshold: 0 }
     );
     headings.forEach((h) => observer.observe(h));
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); if (activeIdRafRef.current !== undefined) cancelAnimationFrame(activeIdRafRef.current); };
   }, [content]);
 
   // Cached heading list — rebuilt only when content changes (not on every scroll)
@@ -532,7 +539,13 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         </div>
 
         {/* Content area */}
-        <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden" onScroll={handleScroll} onPointerUp={handleMouseUp}>
+        <div
+          ref={contentRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden"
+          style={{ WebkitOverflowScrolling: "touch", willChange: "scroll-position" } as React.CSSProperties}
+          onScroll={handleScroll}
+          onPointerUp={handleMouseUp}
+        >
           <div className={`mx-auto px-4 py-8 sm:px-6 ${typography?.colWidthClass ?? "max-w-3xl"}`} style={{ zoom: scale, fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
             <article className="prose prose-neutral dark:prose-invert max-w-none">
               <ReactMarkdown

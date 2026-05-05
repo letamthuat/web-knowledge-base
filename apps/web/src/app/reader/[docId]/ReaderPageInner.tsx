@@ -88,8 +88,10 @@ function ReaderShell({ doc, downloadUrl }: {
   // Find the tab for this doc so we can persist scroll state into it
   const currentTab = allTabs.find((t) => t.docId === doc._id) ?? null;
   const currentTabId = currentTab?._id ?? null;
+  const scrollStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Wrap savePosition to also update scrollState in the tab + update local progress pct
+  // updateScrollState is throttled to once per 10s to avoid flooding Convex on mobile
   const savePositionWithTab = useCallback(
     (pos: ReadingPosition, total?: number) => {
       savePosition(pos, total);
@@ -97,8 +99,13 @@ function ReaderShell({ doc, downloadUrl }: {
       const pct = toProgressPct(pos, total);
       if (pct !== null) setLocalPct(Math.round(pct * 100));
       if (currentTabId) {
-        const scrollState = JSON.stringify(pos);
-        updateScrollState(currentTabId, scrollState).catch(() => {});
+        if (!scrollStateTimerRef.current) {
+          scrollStateTimerRef.current = setTimeout(() => {
+            scrollStateTimerRef.current = null;
+            const scrollState = JSON.stringify(pos);
+            updateScrollState(currentTabId, scrollState).catch(() => {});
+          }, 10_000);
+        }
       }
     },
     [savePosition, updateScrollState, currentTabId]
