@@ -49,7 +49,6 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
     });
   }, [registerJump, readMode]);
 
-  // Restore position once both progress data and numPages are available
   useEffect(() => {
     if (restored.current || !numPages || !progress) return;
     if (progress.positionType === "pdf_page") {
@@ -64,16 +63,17 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
     restored.current = true;
   }, [progress, numPages]);
 
-  // In scroll mode, scroll to restored page after pages render
-  const scrollRestored = useRef(false);
+  // When switching to scroll mode, scroll to current page after render
+  const prevMode = useRef<ReadMode>("page");
   useEffect(() => {
-    if (readMode !== "scroll" || scrollRestored.current || !numPages || currentPage <= 1) return;
-    const timer = setTimeout(() => {
-      pageRefs.current[currentPage - 1]?.scrollIntoView({ block: "start" });
-      scrollRestored.current = true;
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [readMode, numPages, currentPage]);
+    if (readMode === "scroll" && prevMode.current === "page" && currentPage > 1) {
+      const timer = setTimeout(() => {
+        pageRefs.current[currentPage - 1]?.scrollIntoView({ block: "start" });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    prevMode.current = readMode;
+  }, [readMode, currentPage]);
 
   // IntersectionObserver in scroll mode — track which page is most visible
   useEffect(() => {
@@ -179,7 +179,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
               <span className="hidden sm:inline">Trang</span>
             </button>
             <button
-              onClick={() => { setReadMode("scroll"); scrollRestored.current = false; }}
+              onClick={() => setReadMode("scroll")}
               title="Cuộn liên tục"
               className={[
                 "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
@@ -197,62 +197,69 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
         </div>
       </div>
 
-      {/* PDF content — Page mode */}
-      {readMode === "page" && (
-        <div className="flex flex-1 items-start justify-center overflow-auto py-6 px-3" style={{ paddingRight: "max(12px, var(--safe-right, 0px))", paddingLeft: "max(12px, var(--safe-left, 0px))" }}>
-          <Document
-            file={downloadUrl}
-            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-            onLoadError={() => setLoadError("Không thể tải PDF. File có thể bị lỗi hoặc không được hỗ trợ.")}
-            loading={<div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />}
-          >
-            <Page
-              pageNumber={currentPage}
-              scale={scale}
-              className="shadow-xl"
-              renderTextLayer
-              renderAnnotationLayer
-            />
-          </Document>
-        </div>
-      )}
-
-      {/* PDF content — Scroll mode */}
-      {readMode === "scroll" && (
+      {/* Single Document — always mounted to avoid re-loading PDF on mode switch */}
+      <Document
+        file={downloadUrl}
+        onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+        onLoadError={() => setLoadError("Không thể tải PDF. File có thể bị lỗi hoặc không được hỗ trợ.")}
+        loading={
+          <div className="flex flex-1 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        }
+        className="flex flex-1 overflow-hidden"
+      >
+        {/* Page mode */}
         <div
-          ref={scrollContainerRef}
-          className="flex flex-1 flex-col items-center overflow-y-auto py-6 gap-4 px-3"
+          className="flex flex-1 items-start justify-center overflow-auto py-6 px-3"
           style={{
-            WebkitOverflowScrolling: "touch",
-            willChange: "scroll-position",
+            display: readMode === "page" ? undefined : "none",
             paddingRight: "max(12px, var(--safe-right, 0px))",
             paddingLeft: "max(12px, var(--safe-left, 0px))",
           }}
         >
-          <Document
-            file={downloadUrl}
-            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-            onLoadError={() => setLoadError("Không thể tải PDF. File có thể bị lỗi hoặc không được hỗ trợ.")}
-            loading={<div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />}
-          >
-            {Array.from({ length: numPages }, (_, i) => (
-              <div
-                key={i}
-                ref={(el) => { pageRefs.current[i] = el; }}
-                className="mb-4"
-              >
-                <Page
-                  pageNumber={i + 1}
-                  scale={scale}
-                  className="shadow-xl"
-                  renderTextLayer
-                  renderAnnotationLayer
-                />
-              </div>
-            ))}
-          </Document>
+          <Page
+            pageNumber={currentPage}
+            scale={scale}
+            className="shadow-xl"
+            renderTextLayer
+            renderAnnotationLayer
+          />
         </div>
-      )}
+
+        {/* Scroll mode */}
+        <div
+          ref={scrollContainerRef}
+          style={{
+            display: readMode === "scroll" ? "flex" : "none",
+            flexDirection: "column",
+            alignItems: "center",
+            flex: 1,
+            overflowY: "auto",
+            paddingTop: 24,
+            paddingBottom: 24,
+            gap: 16,
+            paddingRight: "max(12px, var(--safe-right, 0px))",
+            paddingLeft: "max(12px, var(--safe-left, 0px))",
+            WebkitOverflowScrolling: "touch",
+          } as React.CSSProperties}
+        >
+          {numPages > 0 && Array.from({ length: numPages }, (_, i) => (
+            <div
+              key={i}
+              ref={(el) => { pageRefs.current[i] = el; }}
+            >
+              <Page
+                pageNumber={i + 1}
+                scale={scale}
+                className="shadow-xl"
+                renderTextLayer
+                renderAnnotationLayer
+              />
+            </div>
+          ))}
+        </div>
+      </Document>
     </div>
   );
 }
