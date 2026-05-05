@@ -212,7 +212,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-muted/40" style={{ minHeight: 0 }}>
       {/* Toolbar */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-2 py-1.5">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-1 border-b bg-card px-2 py-1.5">
         {/* Left: page nav */}
         <div className="flex items-center gap-0.5">
           <Button
@@ -285,10 +285,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
               <span className="hidden sm:inline">Cuộn</span>
             </button>
           </div>
-          {/* Zoom — hidden on mobile to save space */}
-          <div className="hidden sm:flex items-center">
-            <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={3} />
-          </div>
+          <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} minScale={0.5} maxScale={3} />
         </div>
       </div>
 
