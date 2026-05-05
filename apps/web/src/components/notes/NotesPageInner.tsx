@@ -118,7 +118,7 @@ export function NotesPageInner() {
   const selectedNote = (notes as any[]).find((n) => n._id === activeNoteId) ?? null;
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+    <div className="flex flex-1 flex-col overflow-hidden bg-background">
       {/* Mobile nav drawer */}
       {navDrawerOpen && (
         <div className="fixed inset-0 z-50 md:hidden">

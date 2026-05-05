@@ -220,7 +220,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
   return (
     <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition: savePositionWithTab, jumpTo, registerJump }}>
-      <div className="flex h-dvh flex-col overflow-hidden bg-background transition-colors">
+      <div className="flex flex-1 flex-col overflow-hidden bg-background transition-colors">
         {/* Reading Mode exit button */}
         {readingMode && (
           <button
