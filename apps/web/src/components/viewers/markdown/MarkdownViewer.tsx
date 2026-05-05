@@ -121,6 +121,15 @@ function splitIntoSections(markdown: string): string[] {
   return sections.length > 0 ? sections : [markdown];
 }
 
+const MD_COMPONENTS: Components = {
+  code({ className, children, ...props }) {
+    const lang = /language-(\w+)/.exec(className ?? "")?.[1];
+    const code = String(children).replace(/\n$/, "");
+    if (lang === "mermaid") return <MermaidBlock code={code} />;
+    return <code className={className} {...props}>{children}</code>;
+  },
+};
+
 export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }: MarkdownViewerProps) {
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -474,15 +483,6 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
   const minLevel = toc.length > 0 ? Math.min(...toc.map((t) => t.level)) : 1;
   const hasToc = toc.length > 0;
 
-  const mdComponents: Components = useMemo(() => ({
-    code({ className, children, ...props }) {
-      const lang = /language-(\w+)/.exec(className ?? "")?.[1];
-      const code = String(children).replace(/\n$/, "");
-      if (lang === "mermaid") return <MermaidBlock code={code} />;
-      return <code className={className} {...props}>{children}</code>;
-    },
-  }), []);
-
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* ── TOC Sidebar — independent scroll ── */}
@@ -617,7 +617,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
-                  components={mdComponents}
+                  components={MD_COMPONENTS}
                 >
                   {sections[0]}
                 </ReactMarkdown>
@@ -626,7 +626,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
                   <LazySection
                     key={i}
                     content={section}
-                    components={mdComponents}
+                    components={MD_COMPONENTS}
                     scrollRoot={contentRef}
                   />
                 ))
