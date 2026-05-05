@@ -13,29 +13,18 @@ export interface TranscriptProgress {
 
 export type OutputMode = "source" | "vi" | "en" | "bilingual";
 
-// 16kHz mono 16-bit = 32KB/s → 25s ≈ 800KB WAV → base64 ≈ 1.07MB
-// Convex string limit ~1MB — giữ 25s để vừa đủ
-const CHUNK_DURATION_SECS = 25;
 const GROQ_MAX_BYTES = 24 * 1024 * 1024;
+// Fetch ~10MB at a time, decode, encode WAV — avoids loading entire file into RAM
+const FETCH_CHUNK_BYTES = 10 * 1024 * 1024;
+// WAV chunk: 25s × 16kHz × 2 bytes = 800KB, well within Groq 25MB limit
+const WAV_CHUNK_SECS = 25;
 
-async function decodeAudio(url: string): Promise<AudioBuffer> {
-  const proxyUrl = `/api/proxy-audio?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxyUrl);
-  if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
-  const arrayBuffer = await res.arrayBuffer();
-  const audioCtx = new AudioContext({ sampleRate: 16000 });
-  return audioCtx.decodeAudioData(arrayBuffer);
-}
 
-function encodeWav(buffer: AudioBuffer, startSample: number, endSample: number): Blob {
-  const sampleRate = buffer.sampleRate;
-  const numChannels = 1;
-  const numSamples = endSample - startSample;
+function encodeWav(channelData: Float32Array, sampleRate: number): Blob {
+  const numSamples = channelData.length;
   const byteCount = numSamples * 2;
-
   const arrayBuf = new ArrayBuffer(44 + byteCount);
   const view = new DataView(arrayBuf);
-
   const writeStr = (offset: number, s: string) => {
     for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i));
   };
@@ -45,22 +34,19 @@ function encodeWav(buffer: AudioBuffer, startSample: number, endSample: number):
   writeStr(12, "fmt ");
   view.setUint32(16, 16, true);
   view.setUint16(20, 1, true);
-  view.setUint16(22, numChannels, true);
+  view.setUint16(22, 1, true);
   view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * numChannels * 2, true);
-  view.setUint16(32, numChannels * 2, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
   view.setUint16(34, 16, true);
   writeStr(36, "data");
   view.setUint32(40, byteCount, true);
-
-  const channelData = buffer.getChannelData(0);
   let offset = 44;
-  for (let i = startSample; i < endSample; i++) {
-    const sample = Math.max(-1, Math.min(1, channelData[i]));
-    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+  for (let i = 0; i < numSamples; i++) {
+    const s = Math.max(-1, Math.min(1, channelData[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
     offset += 2;
   }
-
   return new Blob([arrayBuf], { type: "audio/wav" });
 }
 
@@ -100,52 +86,95 @@ export async function transcribeMedia(
 }> {
   onProgress?.({ phase: "loading", message: "Đang tải âm thanh..." });
 
-  const audioBuffer = await decodeAudio(sourceUrl);
-  const sampleRate = audioBuffer.sampleRate;
-  const totalSamples = audioBuffer.length;
-  const samplesPerChunk = CHUNK_DURATION_SECS * sampleRate;
-  const numChunks = Math.ceil(totalSamples / samplesPerChunk);
-
-  onProgress?.({ phase: "extracting", message: "Đang chuẩn bị chunks..." });
+  // Fetch file in chunks to avoid loading entire large file into RAM
+  const proxyBase = `/api/proxy-audio?url=${encodeURIComponent(sourceUrl)}`;
+  const headRes = await fetch(proxyBase, { method: "HEAD" }).catch(() => null);
+  const contentLength = headRes?.headers.get("content-length");
+  const fileSize = contentLength ? parseInt(contentLength, 10) : null;
 
   const allSegments: TranscriptSegment[] = [];
   let detectedLanguage = audioLanguage ?? "vi";
+  let chunkGlobalIndex = 0;
+  let timeOffsetSeconds = 0;
 
-  for (let i = 0; i < numChunks; i++) {
-    const startSample = i * samplesPerChunk;
-    const endSample = Math.min(startSample + samplesPerChunk, totalSamples);
-    const timeOffset = i * CHUNK_DURATION_SECS;
+  // Estimate total WAV chunks for progress display (rough: 1MB compressed ≈ 10s audio)
+  const estimatedTotalChunks = fileSize ? Math.ceil((fileSize / 1_000_000) * 10 / WAV_CHUNK_SECS) : null;
 
-    onProgress?.({
-      phase: "transcribing",
-      chunkIndex: i + 1,
-      totalChunks: numChunks,
-      message: `Đang nhận dạng giọng nói... (${i + 1}/${numChunks})`,
-    });
+  const numFetchChunks = fileSize ? Math.ceil(fileSize / FETCH_CHUNK_BYTES) : 1;
 
-    const wavBlob = encodeWav(audioBuffer, startSample, endSample);
+  for (let fetchIdx = 0; fetchIdx < numFetchChunks; fetchIdx++) {
+    onProgress?.({ phase: "loading", message: `Đang tải phần ${fetchIdx + 1}/${numFetchChunks}...` });
 
-    if (wavBlob.size > GROQ_MAX_BYTES) {
-      console.warn(`Chunk ${i} quá lớn (${wavBlob.size} bytes), bỏ qua`);
-      continue;
+    let arrayBuffer: ArrayBuffer;
+    if (fileSize) {
+      const start = fetchIdx * FETCH_CHUNK_BYTES;
+      const end = Math.min(start + FETCH_CHUNK_BYTES - 1, fileSize - 1);
+      const res = await fetch(proxyBase, { headers: { Range: `bytes=${start}-${end}` } });
+      if (!res.ok && res.status !== 206) throw new Error(`Failed to fetch audio chunk: ${res.status}`);
+      arrayBuffer = await res.arrayBuffer();
+    } else {
+      const res = await fetch(proxyBase);
+      if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
+      arrayBuffer = await res.arrayBuffer();
     }
 
-    const audioBase64 = await blobToBase64(wavBlob);
+    onProgress?.({ phase: "extracting", message: `Đang giải mã phần ${fetchIdx + 1}...` });
 
-    // Groq free tier: 20 RPM → đợi 3s giữa mỗi chunk để không bị rate limit
-    if (i > 0) await new Promise((r) => setTimeout(r, 3100));
+    const audioCtx = new AudioContext({ sampleRate: 16000 });
+    let audioBuffer: AudioBuffer;
+    try {
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    } catch {
+      await audioCtx.close();
+      console.warn(`[transcribe] Could not decode fetch chunk ${fetchIdx}, skipping`);
+      continue;
+    }
+    await audioCtx.close();
 
-    const result = await transcribeChunkFn({
-      audioBase64,
-      mimeType: "audio/wav",
-      fileName: `chunk_${i}.wav`,
-      chunkIndex: i,
-      timeOffsetSeconds: timeOffset,
-      language: audioLanguage,
-    });
+    const sampleRate = audioBuffer.sampleRate;
+    const totalSamples = audioBuffer.length;
+    const samplesPerWavChunk = WAV_CHUNK_SECS * sampleRate;
+    const numWavChunks = Math.ceil(totalSamples / samplesPerWavChunk);
+    const channelData = audioBuffer.getChannelData(0);
 
-    allSegments.push(...result.segments);
-    if (result.language) detectedLanguage = result.language;
+    for (let w = 0; w < numWavChunks; w++) {
+      const startSample = w * samplesPerWavChunk;
+      const endSample = Math.min(startSample + samplesPerWavChunk, totalSamples);
+      const slice = channelData.slice(startSample, endSample);
+
+      onProgress?.({
+        phase: "transcribing",
+        chunkIndex: chunkGlobalIndex + 1,
+        totalChunks: estimatedTotalChunks ?? undefined,
+        message: `Đang nhận dạng giọng nói... (chunk ${chunkGlobalIndex + 1}${estimatedTotalChunks ? `/${estimatedTotalChunks}` : ""})`,
+      });
+
+      const wavBlob = encodeWav(slice, sampleRate);
+      if (wavBlob.size > GROQ_MAX_BYTES) {
+        console.warn(`WAV chunk ${chunkGlobalIndex} quá lớn, bỏ qua`);
+        timeOffsetSeconds += WAV_CHUNK_SECS;
+        chunkGlobalIndex++;
+        continue;
+      }
+
+      const audioBase64 = await blobToBase64(wavBlob);
+      if (chunkGlobalIndex > 0) await new Promise((r) => setTimeout(r, 3100));
+
+      const result = await transcribeChunkFn({
+        audioBase64,
+        mimeType: "audio/wav",
+        fileName: `chunk_${chunkGlobalIndex}.wav`,
+        chunkIndex: chunkGlobalIndex,
+        timeOffsetSeconds,
+        language: audioLanguage,
+      });
+
+      allSegments.push(...result.segments);
+      if (result.language) detectedLanguage = result.language;
+
+      timeOffsetSeconds += (endSample - startSample) / sampleRate;
+      chunkGlobalIndex++;
+    }
   }
 
   const deduped = deduplicateSegments(allSegments);

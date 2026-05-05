@@ -26,24 +26,35 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const upstream = await fetch(url);
+    const fetchHeaders: HeadersInit = {};
+    const rangeHeader = req.headers.get("range");
+    if (rangeHeader) fetchHeaders["Range"] = rangeHeader;
+
+    const upstream = await fetch(url, { headers: fetchHeaders });
     console.log("[proxy-audio] upstream status:", upstream.status);
-    if (!upstream.ok) {
+    if (!upstream.ok && upstream.status !== 206) {
       const text = await upstream.text();
       console.log("[proxy-audio] upstream error body:", text.slice(0, 200));
       return NextResponse.json({ error: "Upstream error", status: upstream.status }, { status: 502 });
     }
 
     const contentType = upstream.headers.get("content-type") ?? "application/octet-stream";
+    const contentLength = upstream.headers.get("content-length");
+    const contentRange = upstream.headers.get("content-range");
     const body = await upstream.arrayBuffer();
     console.log("[proxy-audio] success, bytes:", body.byteLength);
 
+    const resHeaders: Record<string, string> = {
+      "Content-Type": contentType,
+      "Cache-Control": "private, max-age=600",
+      "Accept-Ranges": "bytes",
+    };
+    if (contentLength) resHeaders["Content-Length"] = contentLength;
+    if (contentRange) resHeaders["Content-Range"] = contentRange;
+
     return new NextResponse(body, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "private, max-age=600",
-      },
+      status: upstream.status === 206 ? 206 : 200,
+      headers: resHeaders,
     });
   } catch (e) {
     console.log("[proxy-audio] fetch error:", e);
