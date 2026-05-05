@@ -15,6 +15,61 @@ import { detectFormat, formatBytes } from "@/lib/storage";
 
 const L = labels.upload;
 
+// Scan last 256KB of a webm file to find the highest Cluster Timecode.
+// Cluster element ID = 0x1F43B675, Timecode element ID = 0xE7.
+// TimecodeScale is usually 1,000,000 ns (= 1ms per timecode unit) — we assume default.
+async function getWebmDurationFromTail(file: File): Promise<number | null> {
+  const TAIL = Math.min(256 * 1024, file.size);
+  const buf = await file.slice(file.size - TAIL).arrayBuffer();
+  const view = new DataView(buf);
+
+  // Read TimecodeScale from beginning of file (first 4KB)
+  let timecodeScale = 1_000_000; // default: 1ms per unit
+  try {
+    const headBuf = await file.slice(0, 4096).arrayBuffer();
+    const hv = new DataView(headBuf);
+    for (let i = 0; i < hv.byteLength - 4; i++) {
+      // TimecodeScale EBML ID = 0xAD7B1 → encoded as [0x2A, 0xD7, 0xB1]
+      if (hv.getUint8(i) === 0x2A && hv.getUint8(i+1) === 0xD7 && hv.getUint8(i+2) === 0xB1) {
+        // Next byte is size (usually 0x83 = 3 bytes)
+        const sz = hv.getUint8(i+3) & 0x7F;
+        if (sz >= 1 && sz <= 4 && i + 4 + sz <= hv.byteLength) {
+          let val = 0;
+          for (let b = 0; b < sz; b++) val = (val << 8) | hv.getUint8(i + 4 + b);
+          if (val > 0) timecodeScale = val;
+        }
+        break;
+      }
+    }
+  } catch { /* use default */ }
+
+  let maxTimecode = -1;
+  for (let i = 0; i < view.byteLength - 8; i++) {
+    // Cluster ID = 1F 43 B6 75
+    if (view.getUint8(i) === 0x1F && view.getUint8(i+1) === 0x43 &&
+        view.getUint8(i+2) === 0xB6 && view.getUint8(i+3) === 0x75) {
+      // Skip cluster size (variable length EBML), scan next ~32 bytes for Timecode (0xE7)
+      for (let j = i + 4; j < Math.min(i + 48, view.byteLength - 4); j++) {
+        if (view.getUint8(j) === 0xE7) {
+          // Timecode size byte
+          const sz = view.getUint8(j+1) & 0x7F;
+          if (sz >= 1 && sz <= 8 && j + 2 + sz <= view.byteLength) {
+            let tc = 0;
+            for (let b = 0; b < sz; b++) tc = (tc * 256) + view.getUint8(j + 2 + b);
+            if (tc > maxTimecode) maxTimecode = tc;
+          }
+          break;
+        }
+      }
+      i += 7; // skip ahead
+    }
+  }
+
+  if (maxTimecode < 0) return null;
+  // Convert timecode units to milliseconds
+  return Math.round((maxTimecode * timecodeScale) / 1_000_000);
+}
+
 function getMediaDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     if (!file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
@@ -30,16 +85,10 @@ function getMediaDuration(file: File): Promise<number | null> {
       if (isFinite(el.duration) && el.duration > 0) {
         resolve(Math.round(el.duration * 1000));
       } else {
-        // Fallback: AudioContext.decodeAudioData for webm without duration metadata
-        // Skip for large files (>50MB) to avoid memory issues
-        if (file.type.startsWith("audio/") && file.size < 50 * 1024 * 1024) {
-          file.arrayBuffer().then((buf) => {
-            const ctx = new AudioContext();
-            ctx.decodeAudioData(buf, (decoded) => {
-              ctx.close();
-              resolve(Math.round(decoded.duration * 1000));
-            }, () => { ctx.close(); resolve(null); });
-          }).catch(() => resolve(null));
+        // Fallback for webm without duration metadata: scan tail bytes for last Cluster timecode
+        // Reads only the last 64KB of the file — safe for large files
+        if (file.type.startsWith("audio/")) {
+          getWebmDurationFromTail(file).then(resolve).catch(() => resolve(null));
         } else {
           resolve(null);
         }
