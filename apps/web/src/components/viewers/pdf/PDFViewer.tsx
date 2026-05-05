@@ -60,7 +60,7 @@ const VirtualPage = memo(function VirtualPage({
         wrapperRef.current = el;
         pageRef(el);
       }}
-      style={{ minHeight: pageHeight, display: "flex", justifyContent: "center" }}
+      style={{ minHeight: pageHeight, display: "flex", justifyContent: "center", marginBottom: 16 }}
     >
       {mounted && (
         <Page
@@ -218,12 +218,9 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
     minHeight: 0,
     overflowY: "auto",
     overflowX: "auto",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
+    // block layout — Document renders as display:block, can't be a flex child
     paddingTop: 24,
     paddingBottom: 24,
-    gap: readMode === "scroll" ? 16 : 0,
     WebkitOverflowScrolling: "touch" as never,
     willChange: "scroll-position",
     background: "hsl(var(--muted) / 0.4)",
@@ -322,17 +319,19 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
           }
         >
           {numPages > 0 && readMode === "page" && (
-            /* Page mode: single page only */
-            <Page
-              pageNumber={currentPage}
-              scale={scale}
-              className="shadow-xl"
-              renderTextLayer
-              renderAnnotationLayer
-              onRenderSuccess={() => {
-                savePosition({ type: "pdf_page", page: currentPage, offset: 0 }, numPages);
-              }}
-            />
+            /* Page mode: single page, centered */
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <Page
+                pageNumber={currentPage}
+                scale={scale}
+                className="shadow-xl"
+                renderTextLayer
+                renderAnnotationLayer
+                onRenderSuccess={() => {
+                  savePosition({ type: "pdf_page", page: currentPage, offset: 0 }, numPages);
+                }}
+              />
+            </div>
           )}
 
           {numPages > 0 && readMode === "scroll" && (
