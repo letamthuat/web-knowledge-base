@@ -75,6 +75,9 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
         height: 64,
         normalize: true,
         url: downloadUrl,
+        // MediaElement backend: uses HTML5 <audio>, fires ready on metadata load
+        // instead of waiting for full file download — critical for large files
+        backend: "MediaElement" as unknown as undefined,
       });
       wsRef.current = ws;
 
