@@ -253,11 +253,11 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} disabled={scale <= 0.5}>
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
-          <span className="w-10 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
+          <span className="hidden sm:inline w-10 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} disabled={scale >= 3}>
             <ZoomIn className="h-3.5 w-3.5" />
           </Button>
-          <div className="mx-1 h-4 w-px bg-border" />
+          <div className="mx-0.5 h-4 w-px bg-border" />
           {/* Trang / Cuộn toggle */}
           <div className="flex items-center rounded-md border border-border overflow-hidden">
             <button onClick={() => setReadMode("page")}
