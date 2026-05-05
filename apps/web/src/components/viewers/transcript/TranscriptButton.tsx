@@ -6,7 +6,7 @@ import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Captions, Loader2, RefreshCw } from "lucide-react";
-import { transcribeMedia, TranscriptProgress } from "@/lib/transcriptService";
+import { TranscriptProgress } from "@/lib/transcriptService";
 import { toast } from "sonner";
 
 interface TranscriptButtonProps {
@@ -24,6 +24,7 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
   const updateStatus = useMutation(api.transcripts.mutations.updateStatus);
   const saveSegments = useMutation(api.transcripts.mutations.saveSegments);
   const transcribeChunk = useAction(api.transcripts.actions.transcribeChunk);
+  const transcribeFromUrl = useAction(api.transcripts.actions.transcribeFromUrl);
 
   async function handleTranscribe() {
     if (isRunning) return;
@@ -32,12 +33,13 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
       transcriptId = await initTranscript({ docId });
       await updateStatus({ transcriptId, status: "processing" });
 
-      const { segments, language } = await transcribeMedia(
+      setProgress({ phase: "loading", message: "Đang xử lý âm thanh..." });
+
+      // Use server-side action — avoids client decodeAudioData which fails for live-recorded webm
+      const { segments, language } = await transcribeFromUrl({
         downloadUrl,
         mimeType,
-        transcribeChunk,
-        (p) => setProgress(p),
-      );
+      });
 
       await saveSegments({ transcriptId, segments, language });
       setProgress({ phase: "done", message: "Hoàn tất!" });

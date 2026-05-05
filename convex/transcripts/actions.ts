@@ -67,6 +67,123 @@ export const transcribeChunk = action({
   },
 });
 
+// Split a Buffer at webm Cluster boundaries so each part is a valid webm fragment.
+// Each part reuses the EBML+Segment header from the beginning of the file.
+function splitWebmAtClusters(buf: Buffer, maxBytes: number): Buffer[] {
+  const CLUSTER_ID = [0x1F, 0x43, 0xB6, 0x75];
+  // Find the offset of the first Cluster — everything before is the webm header
+  let headerEnd = -1;
+  for (let i = 0; i < Math.min(buf.length - 4, 64 * 1024); i++) {
+    if (buf[i] === CLUSTER_ID[0] && buf[i+1] === CLUSTER_ID[1] &&
+        buf[i+2] === CLUSTER_ID[2] && buf[i+3] === CLUSTER_ID[3]) {
+      headerEnd = i;
+      break;
+    }
+  }
+  if (headerEnd < 0) return [buf]; // Can't find clusters — return as-is
+
+  const header = buf.slice(0, headerEnd);
+  // Collect all cluster start positions
+  const clusterOffsets: number[] = [headerEnd];
+  for (let i = headerEnd + 4; i < buf.length - 4; i++) {
+    if (buf[i] === CLUSTER_ID[0] && buf[i+1] === CLUSTER_ID[1] &&
+        buf[i+2] === CLUSTER_ID[2] && buf[i+3] === CLUSTER_ID[3]) {
+      clusterOffsets.push(i);
+      i += 3;
+    }
+  }
+  clusterOffsets.push(buf.length); // sentinel
+
+  const parts: Buffer[] = [];
+  let partStart = 0; // index into clusterOffsets
+
+  while (partStart < clusterOffsets.length - 1) {
+    let partEnd = partStart + 1;
+    // Accumulate clusters until we'd exceed maxBytes (accounting for header prepended)
+    while (partEnd < clusterOffsets.length - 1) {
+      const size = header.length + (clusterOffsets[partEnd + 1] - clusterOffsets[partStart]);
+      if (size > maxBytes) break;
+      partEnd++;
+    }
+    const clusterData = buf.slice(clusterOffsets[partStart], clusterOffsets[partEnd]);
+    parts.push(Buffer.concat([header, clusterData]));
+    partStart = partEnd;
+  }
+
+  return parts.length > 0 ? parts : [buf];
+}
+
+// Server-side transcription: download audio from URL, split at webm cluster boundaries,
+// send each part to Groq. Avoids client-side decodeAudioData which fails for live-recorded webm.
+export const transcribeFromUrl = action({
+  args: {
+    downloadUrl: v.string(),
+    mimeType: v.string(),
+    language: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) throw new Error("GROQ_API_KEY not configured");
+
+    const res = await fetch(args.downloadUrl);
+    if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
+    const arrayBuffer = await res.arrayBuffer();
+    const buf = Buffer.from(arrayBuffer);
+
+    const GROQ_MAX = 24 * 1024 * 1024; // 24MB
+    const isWebm = args.mimeType.includes("webm") || args.mimeType.includes("ogg");
+    const parts: Buffer[] = isWebm ? splitWebmAtClusters(buf, GROQ_MAX) : [buf];
+
+    const allSegments: { start: number; end: number; text: string }[] = [];
+    let detectedLanguage = args.language ?? "vi";
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const blob = new Blob([part], { type: args.mimeType });
+      const ext = isWebm ? "webm" : "audio";
+      const formData = new FormData();
+      formData.append("file", blob, `chunk_${i}.${ext}`);
+      formData.append("model", "whisper-large-v3");
+      formData.append("response_format", "verbose_json");
+      if (args.language) formData.append("language", args.language);
+
+      if (i > 0) await new Promise((r) => setTimeout(r, 3100));
+
+      const groqRes = await fetch(GROQ_API_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: formData,
+      });
+
+      if (!groqRes.ok) {
+        const err = await groqRes.text();
+        console.error(`[transcribeFromUrl] chunk ${i} Groq error:`, err);
+        continue; // skip bad chunk, keep going
+      }
+
+      const data = await groqRes.json() as {
+        segments?: { start: number; end: number; text: string }[];
+        language?: string;
+      };
+
+      // Estimate time offset for this part based on accumulated segment end times
+      const timeOffset = allSegments.length > 0
+        ? allSegments[allSegments.length - 1].end
+        : 0;
+
+      const segs = (data.segments ?? []).map((s) => ({
+        start: s.start + timeOffset,
+        end: s.end + timeOffset,
+        text: s.text.trim(),
+      }));
+      allSegments.push(...segs);
+      if (data.language) detectedLanguage = data.language;
+    }
+
+    return { segments: allSegments, language: detectedLanguage };
+  },
+});
+
 // Dịch segments từ transcript đã lưu trong DB — dùng transcriptId để tránh vượt arg size limit
 export const translateSegments = action({
   args: {
