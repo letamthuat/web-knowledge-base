@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -55,6 +55,70 @@ function extractToc(markdown: string): TocEntry[] {
     entries.push({ id, text, level });
   }
   return entries;
+}
+
+// LazySection: renders a placeholder until the section is near the viewport,
+// then mounts ReactMarkdown. Prevents rendering thousands of DOM nodes upfront.
+const LazySection = memo(function LazySection({
+  content,
+  components,
+  scrollRoot,
+}: {
+  content: string;
+  components: Components;
+  scrollRoot: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Estimate height from content length — avoids layout collapse after mount
+  const estimatedHeight = Math.max(200, Math.round(content.length * 0.6));
+
+  useEffect(() => {
+    if (mounted) return;
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setMounted(true); observer.disconnect(); } },
+      { root: scrollRoot.current, rootMargin: "600px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [mounted, scrollRoot]);
+
+  return (
+    <div ref={ref} style={!mounted ? { minHeight: estimatedHeight } : undefined}>
+      {mounted && (
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
+          components={components}
+        >
+          {content}
+        </ReactMarkdown>
+      )}
+    </div>
+  );
+});
+
+// Split large markdown into sections at top-level headings (h1/h2).
+// Each section is rendered independently so content-visibility:auto can skip off-screen ones.
+// For small docs (<20KB) returns a single section to avoid overhead.
+function splitIntoSections(markdown: string): string[] {
+  if (markdown.length < 20_000) return [markdown];
+  const lines = markdown.split("\n");
+  const sections: string[] = [];
+  let current: string[] = [];
+  for (const line of lines) {
+    if (/^#{1,2}\s/.test(line) && current.length > 0) {
+      sections.push(current.join("\n"));
+      current = [line];
+    } else {
+      current.push(line);
+    }
+  }
+  if (current.length > 0) sections.push(current.join("\n"));
+  return sections.length > 0 ? sections : [markdown];
 }
 
 export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }: MarkdownViewerProps) {
@@ -242,6 +306,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
   }, [downloadUrl]);
 
   const toc = useMemo(() => (content ? extractToc(content) : []), [content]);
+  const sections = useMemo(() => (content ? splitIntoSections(content) : []), [content]);
 
   // Restore scroll position after content renders
   useEffect(() => {
@@ -409,14 +474,14 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
   const minLevel = toc.length > 0 ? Math.min(...toc.map((t) => t.level)) : 1;
   const hasToc = toc.length > 0;
 
-  const mdComponents: Components = {
+  const mdComponents: Components = useMemo(() => ({
     code({ className, children, ...props }) {
       const lang = /language-(\w+)/.exec(className ?? "")?.[1];
       const code = String(children).replace(/\n$/, "");
       if (lang === "mermaid") return <MermaidBlock code={code} />;
       return <code className={className} {...props}>{children}</code>;
     },
-  };
+  }), []);
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -548,13 +613,24 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         >
           <div className={`mx-auto px-4 py-8 sm:px-6 ${typography?.colWidthClass ?? "max-w-3xl"}`} style={{ zoom: scale, fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
             <article className="prose prose-neutral dark:prose-invert max-w-none">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
-                components={mdComponents}
-              >
-                {content}
-              </ReactMarkdown>
+              {sections.length === 1 ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
+                  components={mdComponents}
+                >
+                  {sections[0]}
+                </ReactMarkdown>
+              ) : (
+                sections.map((section, i) => (
+                  <LazySection
+                    key={i}
+                    content={section}
+                    components={mdComponents}
+                    scrollRoot={contentRef}
+                  />
+                ))
+              )}
             </article>
           </div>
         </div>
