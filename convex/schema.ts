@@ -116,6 +116,7 @@ export default defineSchema({
     title: v.string(),
     format: documentFormat,
     fileSizeBytes: v.optional(v.number()),
+    durationMs: v.optional(v.number()),
     mimeType: v.optional(v.string()),
 
     // Storage (D10)

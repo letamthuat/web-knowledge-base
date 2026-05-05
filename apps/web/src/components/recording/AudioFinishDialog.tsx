@@ -54,6 +54,7 @@ export function AudioFinishDialog({ blob, durationMs, onClose, onCancel }: Props
         storageBackend: "r2",
         storageKey,
         fileSizeBytes: blob.size,
+        durationMs,
       });
 
       toast.success("Đã lưu vào thư viện", {

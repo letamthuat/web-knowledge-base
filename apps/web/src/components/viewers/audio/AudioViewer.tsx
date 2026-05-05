@@ -7,14 +7,14 @@ import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useQuery } from "convex/react";
 import { api } from "@/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward } from "lucide-react";
 import { TranscriptPanel } from "@/components/viewers/transcript/TranscriptPanel";
 import { SubtitleOverlay } from "@/components/viewers/transcript/SubtitleOverlay";
 import { TranscriptButton } from "@/components/viewers/transcript/TranscriptButton";
 import { useResizable } from "@/hooks/useResizable";
 
 interface AudioViewerProps {
-  doc: { _id: Id<"documents">; title: string; mimeType?: string };
+  doc: { _id: Id<"documents">; title: string; mimeType?: string; durationMs?: number };
   downloadUrl: string;
 }
 
@@ -29,7 +29,8 @@ const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  // Seed duration from stored metadata so seek bar works immediately even for webm without index
+  const [duration, setDuration] = useState(() => doc.durationMs ? doc.durationMs / 1000 : 0);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [speed, setSpeed] = useState(1);
@@ -61,12 +62,14 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
     if (!audio) return;
 
     const onMeta = () => {
-      setDuration(audio.duration);
+      const dur = audio.duration;
+      // webm live recordings often have Infinity duration — treat as unknown
+      if (isFinite(dur)) setDuration(dur);
       setReady(true);
       if (!restored.current && progress?.positionType === "time_seconds") {
         try {
           const pos = JSON.parse(progress.positionValue);
-          if (typeof pos.seconds === "number" && pos.seconds < audio.duration) {
+          if (typeof pos.seconds === "number" && (isFinite(dur) ? pos.seconds < dur : true)) {
             audio.currentTime = pos.seconds;
           }
         } catch {}
@@ -75,20 +78,32 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
     };
     const onTime = () => {
       setCurrentTime(audio.currentTime);
-      savePosition({ type: "time_seconds", seconds: audio.currentTime }, audio.duration || undefined);
+      // For Infinity-duration webm, update duration as playback progresses
+      if (!isFinite(audio.duration)) {
+        setDuration((prev) => Math.max(prev, audio.currentTime));
+      } else {
+        setDuration(audio.duration);
+      }
+      savePosition({ type: "time_seconds", seconds: audio.currentTime }, isFinite(audio.duration) ? audio.duration : undefined);
     };
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onEnded = () => setPlaying(false);
+    // Fired when browser updates duration (e.g. after buffering more of an Infinity-duration webm)
+    const onDurationChange = () => {
+      if (isFinite(audio.duration)) setDuration(audio.duration);
+    };
 
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("durationchange", onDurationChange);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnded);
     return () => {
       audio.removeEventListener("loadedmetadata", onMeta);
       audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("durationchange", onDurationChange);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
@@ -160,15 +175,36 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
       </div>
 
       {/* Seek bar */}
-      <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="w-10 text-right tabular-nums">{formatTime(currentTime)}</span>
-        <input
-          type="range" min={0} max={duration || 1} step={0.5}
-          value={currentTime} onChange={seek}
-          className="flex-1 accent-primary"
-        />
-        <span className="w-10 tabular-nums">{formatTime(duration)}</span>
-      </div>
+      {isFinite(duration) && duration > 0 ? (
+        <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="w-10 text-right tabular-nums">{formatTime(currentTime)}</span>
+          <input
+            type="range" min={0} max={duration} step={0.5}
+            value={currentTime} onChange={seek}
+            className="flex-1 accent-primary"
+          />
+          <span className="w-10 tabular-nums">{formatTime(duration)}</span>
+        </div>
+      ) : (
+        /* Duration unknown (old webm without metadata) — show skip buttons + current time */
+        <div className="mb-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span className="tabular-nums">{formatTime(currentTime)}</span>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+              if (audioRef.current) audioRef.current.currentTime = Math.max(0, currentTime - 10);
+            }} title="Tua lùi 10s">
+              <SkipBack className="h-3.5 w-3.5" />
+            </Button>
+            <span className="text-[11px] text-muted-foreground/60">±10s</span>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+              if (audioRef.current) audioRef.current.currentTime = currentTime + 10;
+            }} title="Tua tới 10s">
+              <SkipForward className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <span className="text-[11px] text-muted-foreground/60">Không có thông tin tổng thời gian</span>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex items-center justify-between">

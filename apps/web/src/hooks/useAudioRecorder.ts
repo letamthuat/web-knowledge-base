@@ -122,7 +122,8 @@ export function useAudioRecorder(): AudioRecorderResult {
         ? "audio/webm;codecs=opus"
         : "audio/webm";
 
-      const recorder = new MediaRecorder(dest.stream, { mimeType });
+      // 64kbps is sufficient for voice recordings; reduces file size ~10x vs default
+      const recorder = new MediaRecorder(dest.stream, { mimeType, audioBitsPerSecond: 64_000 });
       recorderRef.current = recorder;
       chunksRef.current = [];
 
@@ -130,10 +131,18 @@ export function useAudioRecorder(): AudioRecorderResult {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: mimeType });
+      recorder.onstop = async () => {
+        const raw = new Blob(chunksRef.current, { type: mimeType });
         const total = accumulatedRef.current;
-        resolveFinishRef.current?.({ blob, durationMs: total });
+        try {
+          // Fix webm duration metadata so browsers can seek and report correct duration
+          const { default: fixWebmDuration } = await import("fix-webm-duration");
+          const fixed = await fixWebmDuration(raw, total, { logger: false });
+          resolveFinishRef.current?.({ blob: fixed, durationMs: total });
+        } catch {
+          // Fallback to unpatched blob if fix fails
+          resolveFinishRef.current?.({ blob: raw, durationMs: total });
+        }
         resolveFinishRef.current = null;
       };
 
