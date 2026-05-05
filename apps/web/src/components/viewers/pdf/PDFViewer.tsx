@@ -220,7 +220,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
             disabled={readMode === "scroll" || currentPage <= 1}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="flex items-center gap-1 text-sm tabular-nums">
+          <div className="flex items-center gap-1 text-xs tabular-nums">
             <input
               type="text" inputMode="numeric" value={pageInput}
               onChange={(e) => setPageInput(e.target.value)}
@@ -237,7 +237,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className="w-9 rounded border border-input bg-background px-1 py-0.5 text-center text-xs"
+              className="w-9 rounded border border-input bg-background px-1 py-0.5 text-center text-xs tabular-nums"
             />
             <span className="text-xs text-muted-foreground">/{numPages || "—"}</span>
           </div>
