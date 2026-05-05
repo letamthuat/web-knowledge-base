@@ -22,6 +22,7 @@ import { TabBar } from "@/components/tabs/TabBar";
 import { TabDropdown } from "@/components/tabs/TabDropdown";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
+import { useAllNotes } from "@/hooks/useNotes";
 import { SearchModal } from "@/components/search/SearchModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useAppTypography } from "@/components/AppSettingsPanel";
@@ -38,7 +39,8 @@ function ReaderShell({ doc, downloadUrl }: {
   const { data: session } = useSession();
   const { saveNow, saveStatus, savePosition, progress } = useReadingProgress(doc._id);
   const { tabs: allTabs, isLoading: tabsLoading, openTab, updateScrollState } = useTabSync();
-  const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
+  const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, setActiveNoteId } = useNoteTabs();
+  const { addNote } = useAllNotes();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -49,6 +51,20 @@ function ReaderShell({ doc, downloadUrl }: {
   const typography = useAppTypography();
   const { setActivePanel } = useActiveTab();
   const { exportDoc, isExporting } = useDocExport();
+
+  const handleNewNote = useCallback(async () => {
+    try {
+      const id = await addNote("[]", "");
+      if (id) {
+        const noteId = id as Id<"notes">;
+        await openNoteTab(noteId, "");
+        setActivePanel("notes");
+        window.history.pushState(null, "", "/notes");
+      }
+    } catch {
+      toast("Không thể tạo ghi chú");
+    }
+  }, [addNote, openNoteTab, setActivePanel]);
   const TEXT_FORMATS = new Set(["markdown", "epub", "docx", "web_clip"]);
   const READING_MODE_FORMATS = new Set(["pdf", "epub", "docx", "markdown", "web_clip"]);
 
@@ -343,6 +359,7 @@ function ReaderShell({ doc, downloadUrl }: {
                     window.history.pushState(null, "", "/notes");
                   }}
                   onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
+                  onAddNote={handleNewNote}
                 />}
           </div>
         )}

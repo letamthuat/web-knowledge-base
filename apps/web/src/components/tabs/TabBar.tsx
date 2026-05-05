@@ -120,12 +120,13 @@ interface TabBarProps {
   activeNoteId?: string | null;
   onCloseNoteTab?: (noteId: string) => void;
   onSelectNoteTab?: (noteId: string) => void;
+  onAddNote?: () => void;
 }
 
 // Session-local stack of recently closed tab docIds for Ctrl+Shift+T
 const closedTabStack: string[] = [];
 
-export function TabBar({ currentDocId, showAddButton = false, notesActive = false, noteTabs = [], activeNoteId, onCloseNoteTab, onSelectNoteTab }: TabBarProps) {
+export function TabBar({ currentDocId, showAddButton = false, notesActive = false, noteTabs = [], activeNoteId, onCloseNoteTab, onSelectNoteTab, onAddNote }: TabBarProps) {
   const router = useRouter();
   const { audioRecorder, screenRecorder } = useRecording();
   const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab, setActive } = useTabSync();
@@ -238,11 +239,11 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                 Mở tài liệu
               </button>
               <button
-                onClick={() => { setAddMenuOpen(false); router.push("/notes"); }}
+                onClick={() => { setAddMenuOpen(false); onAddNote ? onAddNote() : router.push("/notes"); }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
               >
                 <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
-                Ghi chú
+                Ghi chú mới
               </button>
               <div className="my-1 h-px bg-border/60" />
               <button
