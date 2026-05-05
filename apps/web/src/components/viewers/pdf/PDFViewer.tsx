@@ -238,6 +238,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
                 }
               }}
               className="w-9 rounded border border-input bg-background px-1 py-0.5 text-center text-xs tabular-nums"
+              style={{ fontSize: '12px' }}
             />
             <span className="text-xs text-muted-foreground">/{numPages || "—"}</span>
           </div>
