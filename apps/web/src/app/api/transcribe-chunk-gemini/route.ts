@@ -183,11 +183,26 @@ Times in seconds from start of this audio clip.`;
   // Parse JSON from Gemini response
   let segments: Segment[] = [];
   const detectedLanguage = lang;
+
+  // Convert Gemini timestamp that may be "M:SS.ss" or "MM:SS.ss" → seconds
+  function parseTimestamp(val: unknown): number | null {
+    if (typeof val === "number") return val;
+    if (typeof val === "string") {
+      // "5:48.66" → 5*60 + 48.66
+      const m = val.match(/^(\d+):(\d+(?:\.\d+)?)$/);
+      if (m) return parseInt(m[1]) * 60 + parseFloat(m[2]);
+      const n = parseFloat(val);
+      if (!isNaN(n)) return n;
+    }
+    return null;
+  }
+
   try {
-    // Strip markdown fences and thinking-model artifacts (box_2d, label fields)
+    // Strip markdown fences (```json ... ```) and leading "json\n" word
     let cleaned = rawText
       .replace(/^```(?:json)?\s*/im, "")
       .replace(/\s*```\s*$/m, "")
+      .replace(/^json\s*/i, "")
       .trim();
 
     // Extract first JSON array if response has extra text before/after
@@ -197,17 +212,26 @@ Times in seconds from start of this audio clip.`;
     const parsed = JSON.parse(cleaned) as Record<string, unknown>[];
     if (Array.isArray(parsed)) {
       segments = parsed
-        .filter((s) => typeof s.start === "number" && typeof s.end === "number" && typeof s.text === "string")
-        .map((s) => ({
-          start: (s.start as number) + timeOffsetSeconds,
-          end: (s.end as number) + timeOffsetSeconds,
-          text: (s.text as string).trim(),
-          ...(typeof s.speaker === "string" ? { speaker: s.speaker as string } : {}),
-        }))
+        .filter((s) => {
+          const st = parseTimestamp(s.start);
+          const en = parseTimestamp(s.end);
+          return st !== null && en !== null && typeof s.text === "string";
+        })
+        .map((s) => {
+          const st = parseTimestamp(s.start)!;
+          const en = parseTimestamp(s.end)!;
+          return {
+            start: st + timeOffsetSeconds,
+            end: en + timeOffsetSeconds,
+            text: (s.text as string).trim(),
+            ...(typeof s.speaker === "string" ? { speaker: s.speaker as string } : {}),
+          };
+        })
         .filter((s) => {
           if (s.text.length === 0) return false;
           // Drop hallucinated filler-only segments (e.g. repeated "Ừm." every 0.2s)
-          const isFillerLoop = (s.end - s.start) <= 0.3 && /^[ừưừm\.…\s]+$/i.test(s.text);
+          const dur = s.end - s.start;
+          const isFillerLoop = dur <= 0.5 && /^[ừưm\.…,\s]+$/i.test(s.text);
           return !isFillerLoop;
         });
     }
@@ -215,7 +239,7 @@ Times in seconds from start of this audio clip.`;
     console.warn(`[transcribe-gemini] chunk=${chunkIndex} JSON parse failed. rawText: ${rawText.slice(0, 300)}`);
     // Fallback: one segment spanning estimated chunk duration
     const estimatedDurationSec = part.byteLength / (128 * 1024 / 8);
-    const plainText = rawText.replace(/```/g, "").replace(/box_2d[\s\S]*$/m, "").trim();
+    const plainText = rawText.replace(/```/g, "").replace(/^json\s*/i, "").replace(/box_2d[\s\S]*$/m, "").trim();
     segments = plainText ? [{
       start: timeOffsetSeconds,
       end: timeOffsetSeconds + estimatedDurationSec,
