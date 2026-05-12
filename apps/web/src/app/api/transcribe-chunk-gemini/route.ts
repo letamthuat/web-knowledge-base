@@ -107,15 +107,17 @@ export async function POST(req: NextRequest) {
   const lang = language ?? "vi";
 
   const prompt = diarization
-    ? `Transcribe this audio. Language is ${lang} unless detected otherwise.
+    ? `Transcribe this audio clip. Detected language: ${lang}.
 Identify different speakers as SPEAKER_1, SPEAKER_2, etc.
-Return ONLY a JSON array (no markdown, no explanation):
-[{"start": 0.0, "end": 5.2, "speaker": "SPEAKER_1", "text": "..."}]
-Times in seconds from start of this audio clip.`
-    : `Transcribe this audio. Language is ${lang} unless detected otherwise.
-Return ONLY a JSON array (no markdown, no explanation):
-[{"start": 0.0, "end": 5.2, "text": "..."}]
-Times in seconds from start of this audio clip.`;
+Output MUST be a valid JSON array only — no markdown fences, no explanation, no extra text before or after.
+Use decimal seconds (not MM:SS format) for start and end.
+Example format:
+[{"start":0.0,"end":5.2,"speaker":"SPEAKER_1","text":"..."},{"start":5.5,"end":9.1,"speaker":"SPEAKER_2","text":"..."}]`
+    : `Transcribe this audio clip. Detected language: ${lang}.
+Output MUST be a valid JSON array only — no markdown fences, no explanation, no extra text before or after.
+Use decimal seconds (not MM:SS format) for start and end.
+Example format:
+[{"start":0.0,"end":5.2,"text":"..."},{"start":5.5,"end":9.1,"text":"..."}]`;
 
   const requestBody = JSON.stringify({
     contents: [{
@@ -124,7 +126,10 @@ Times in seconds from start of this audio clip.`;
         { text: prompt },
       ],
     }],
-    generationConfig: { temperature: 0 },
+    generationConfig: {
+      temperature: 0,
+      responseMimeType: "application/json",
+    },
   });
 
   // Try each model in fallback chain, with retries — skip to next on 429/503
