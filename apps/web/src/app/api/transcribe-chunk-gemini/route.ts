@@ -203,12 +203,20 @@ Example format:
   }
 
   try {
-    // Strip markdown fences (```json ... ```) and leading "json\n" word
+    // Strip markdown fences and leading "json\n" word
     let cleaned = rawText
       .replace(/^```(?:json)?\s*/im, "")
       .replace(/\s*```\s*$/m, "")
       .replace(/^json\s*/i, "")
       .trim();
+
+    // If Gemini wrapped everything in a single {"text":"...json..."} object, unwrap it
+    if (cleaned.startsWith("{")) {
+      try {
+        const obj = JSON.parse(cleaned) as Record<string, unknown>;
+        if (typeof obj.text === "string") cleaned = obj.text;
+      } catch { /* not a single object, continue */ }
+    }
 
     // Extract first JSON array if response has extra text before/after
     const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
