@@ -222,7 +222,19 @@ Example format:
     const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
     if (arrayMatch) cleaned = arrayMatch[0];
 
-    const parsed = JSON.parse(cleaned) as Record<string, unknown>[];
+    let parsed = JSON.parse(cleaned) as Record<string, unknown>[];
+
+    // If Gemini returned array with 1 element whose text is itself a JSON array, unwrap it
+    if (Array.isArray(parsed) && parsed.length === 1 && typeof parsed[0].text === "string") {
+      const inner = (parsed[0].text as string).trim();
+      if (inner.startsWith("[")) {
+        try {
+          const innerParsed = JSON.parse(inner) as Record<string, unknown>[];
+          if (Array.isArray(innerParsed) && innerParsed.length > 1) parsed = innerParsed;
+        } catch { /* not a nested array, keep original */ }
+      }
+    }
+
     if (Array.isArray(parsed)) {
       segments = parsed
         .filter((s) => {
