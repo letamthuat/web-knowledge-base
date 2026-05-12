@@ -19,7 +19,7 @@ const L = labels.upload;
 // Cluster element ID = 0x1F43B675, Timecode element ID = 0xE7.
 // TimecodeScale is usually 1,000,000 ns (= 1ms per timecode unit) — we assume default.
 async function getWebmDurationFromTail(file: File): Promise<number | null> {
-  const TAIL = Math.min(256 * 1024, file.size);
+  const TAIL = Math.min(2 * 1024 * 1024, file.size);
   const buf = await file.slice(file.size - TAIL).arrayBuffer();
   const view = new DataView(buf);
 
@@ -65,6 +65,7 @@ async function getWebmDurationFromTail(file: File): Promise<number | null> {
     }
   }
 
+  console.log("[webm-duration] timecodeScale:", timecodeScale, "maxTimecode:", maxTimecode, "→", maxTimecode >= 0 ? Math.round((maxTimecode * timecodeScale) / 1_000_000) + "ms" : "null");
   if (maxTimecode < 0) return null;
   // Convert timecode units to milliseconds
   return Math.round((maxTimecode * timecodeScale) / 1_000_000);
