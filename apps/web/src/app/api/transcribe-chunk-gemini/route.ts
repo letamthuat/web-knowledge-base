@@ -126,10 +126,7 @@ Example format:
         { text: prompt },
       ],
     }],
-    generationConfig: {
-      temperature: 0,
-      responseMimeType: "application/json",
-    },
+    generationConfig: { temperature: 0 },
   });
 
   // Try each model in fallback chain, with retries — skip to next on 429/503
