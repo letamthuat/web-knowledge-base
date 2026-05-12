@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "@/_generated/api";
@@ -52,6 +52,8 @@ function AiSettingsSection() {
   const [fetchingModels, setFetchingModels] = useState(false);
   const [saving, setSaving] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const dragIndex = useRef<number | null>(null);
 
   // Populate from saved settings once loaded
   useEffect(() => {
@@ -111,6 +113,40 @@ function AiSettingsSection() {
     setModels((prev) =>
       prev.includes(model) ? prev.filter((m) => m !== model) : [...prev, model]
     );
+  }
+
+  function toggleSelect(model: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(model) ? next.delete(model) : next.add(model);
+      return next;
+    });
+  }
+
+  function deleteSelected() {
+    setModels((prev) => prev.filter((m) => !selected.has(m)));
+    setSelected(new Set());
+  }
+
+  function onDragStart(i: number) {
+    dragIndex.current = i;
+  }
+
+  function onDragOver(e: React.DragEvent, i: number) {
+    e.preventDefault();
+    const from = dragIndex.current;
+    if (from === null || from === i) return;
+    setModels((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(i, 0, item);
+      return next;
+    });
+    dragIndex.current = i;
+  }
+
+  function onDragEnd() {
+    dragIndex.current = null;
   }
 
   async function handleSave() {
@@ -185,35 +221,43 @@ function AiSettingsSection() {
       {/* Models list */}
       {models.length > 0 && (
         <div className="space-y-2">
-          <label className="text-sm font-medium">Thứ tự fallback models</label>
-          <p className="text-xs text-muted-foreground">Model ở trên được dùng trước, tự động chuyển sang model tiếp theo nếu bị rate limit.</p>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Thứ tự fallback models</label>
+            {selected.size > 0 && (
+              <button
+                onClick={deleteSelected}
+                className="text-xs text-destructive hover:underline"
+              >
+                Xóa {selected.size} đã chọn
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">Kéo thả để sắp xếp. Tích chọn nhiều rồi xóa cùng lúc.</p>
           <div className="space-y-1.5">
             {models.map((model, i) => (
-              <div key={model} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-                <span className="text-xs text-muted-foreground w-5 text-right">{i + 1}.</span>
+              <div
+                key={model}
+                draggable
+                onDragStart={() => onDragStart(i)}
+                onDragOver={(e) => onDragOver(e, i)}
+                onDragEnd={onDragEnd}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-grab active:cursor-grabbing transition-colors ${selected.has(model) ? "bg-primary/10 border-primary/30" : "bg-muted/30"}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(model)}
+                  onChange={() => toggleSelect(model)}
+                  className="h-3.5 w-3.5 shrink-0 cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{i + 1}.</span>
                 <span className="flex-1 text-sm font-mono">{model}</span>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => moveUp(i)}
-                    disabled={i === 0}
-                    className="p-0.5 rounded hover:bg-accent disabled:opacity-30"
-                  >
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => moveDown(i)}
-                    disabled={i === models.length - 1}
-                    className="p-0.5 rounded hover:bg-accent disabled:opacity-30"
-                  >
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => toggleModel(model)}
-                    className="ml-1 text-xs text-destructive hover:underline"
-                  >
-                    Xóa
-                  </button>
-                </div>
+                <button
+                  onClick={() => { setModels((p) => p.filter((m) => m !== model)); setSelected((p) => { const n = new Set(p); n.delete(model); return n; }); }}
+                  className="text-xs text-destructive hover:underline shrink-0"
+                >
+                  Xóa
+                </button>
               </div>
             ))}
           </div>
