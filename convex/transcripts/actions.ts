@@ -123,58 +123,65 @@ export const getWebmChunks = action({
   args: {
     downloadUrl: v.string(),
     mimeType: v.string(),
+    fileSizeBytes: v.optional(v.number()),
   },
   handler: async (_ctx, args) => {
-    const res = await fetch(args.downloadUrl);
-    if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
-    const arrayBuffer = await res.arrayBuffer();
-    const buf = new Uint8Array(arrayBuffer);
-    const totalBytes = buf.length;
+    // 10MB per chunk — safe under Groq 25MB limit, ~10 min audio per chunk
+    const CHUNK_SIZE = 10 * 1024 * 1024;
 
-    const GROQ_MAX = 24 * 1024 * 1024;
-    const isWebm = args.mimeType.includes("webm") || args.mimeType.includes("ogg");
-
-    if (!isWebm) {
-      // Non-webm: single chunk covering whole file
-      return { chunks: [{ byteStart: 0, byteEnd: totalBytes }], totalBytes };
+    // Get file size — prefer from DB, fallback to Range probe
+    let totalBytes = args.fileSizeBytes ?? 0;
+    if (!totalBytes) {
+      const probeRes = await fetch(args.downloadUrl, { headers: { Range: "bytes=0-0" } });
+      const contentRange = probeRes.headers.get("content-range");
+      if (contentRange) {
+        const match = contentRange.match(/\/(\d+)$/);
+        if (match) totalBytes = parseInt(match[1], 10);
+      }
+      if (!totalBytes) {
+        const cl = probeRes.headers.get("content-length");
+        if (cl) totalBytes = parseInt(cl, 10);
+      }
     }
 
-    // Find cluster offsets
+    if (!totalBytes) {
+      return { chunks: [{ byteStart: 0, byteEnd: CHUNK_SIZE }], totalBytes: 0, headerBytes: 0 };
+    }
+
+    // Simple even split — no cluster parsing needed.
+    // transcribe-chunk route prepends header to each chunk so Groq gets valid webm.
+    // First, find where EBML header ends (first Cluster element at 0x1F43B675).
+    const headBuf = new Uint8Array(await (await fetch(args.downloadUrl, {
+      headers: { Range: "bytes=0-65535" },
+    })).arrayBuffer());
+
     const CLUSTER_ID = [0x1F, 0x43, 0xB6, 0x75];
-    let headerEnd = -1;
-    for (let i = 0; i < Math.min(buf.length - 4, 64 * 1024); i++) {
-      if (buf[i] === CLUSTER_ID[0] && buf[i+1] === CLUSTER_ID[1] &&
-          buf[i+2] === CLUSTER_ID[2] && buf[i+3] === CLUSTER_ID[3]) {
-        headerEnd = i; break;
+    let headerBytes = 0;
+    for (let i = 0; i < headBuf.length - 4; i++) {
+      if (headBuf[i] === CLUSTER_ID[0] && headBuf[i+1] === CLUSTER_ID[1] &&
+          headBuf[i+2] === CLUSTER_ID[2] && headBuf[i+3] === CLUSTER_ID[3]) {
+        headerBytes = i;
+        break;
       }
     }
-    if (headerEnd < 0) return { chunks: [{ byteStart: 0, byteEnd: totalBytes }], totalBytes };
+    // headerBytes=0 means no cluster found — split from byte 0, no header prepend
 
-    const headerBytes = headerEnd;
-    const clusterOffsets: number[] = [headerEnd];
-    for (let i = headerEnd + 4; i < buf.length - 4; i++) {
-      if (buf[i] === CLUSTER_ID[0] && buf[i+1] === CLUSTER_ID[1] &&
-          buf[i+2] === CLUSTER_ID[2] && buf[i+3] === CLUSTER_ID[3]) {
-        clusterOffsets.push(i); i += 3;
-      }
-    }
-    clusterOffsets.push(buf.length);
-
-    // Group clusters into chunks ≤ GROQ_MAX, return as byte ranges
+    // Chunk 0 always starts at byte 0 (includes EBML header naturally).
+    // Subsequent chunks start at headerBytes + N*CHUNK_SIZE so each gets cluster data only
+    // (transcribe-chunk route will prepend header bytes 0..headerBytes-1 for chunks > 0).
+    const dataStart = headerBytes > 0 ? headerBytes : 0;
+    const numChunks = Math.ceil((totalBytes - dataStart) / CHUNK_SIZE);
     const chunks: { byteStart: number; byteEnd: number }[] = [];
-    let partStart = 0;
-    while (partStart < clusterOffsets.length - 1) {
-      let partEnd = partStart + 1;
-      while (partEnd < clusterOffsets.length - 1) {
-        const size = headerBytes + (clusterOffsets[partEnd + 1] - clusterOffsets[partStart]);
-        if (size > GROQ_MAX) break;
-        partEnd++;
-      }
-      chunks.push({ byteStart: clusterOffsets[partStart], byteEnd: clusterOffsets[partEnd] });
-      partStart = partEnd;
+    for (let c = 0; c < numChunks; c++) {
+      const byteStart = c === 0 ? 0 : dataStart + c * CHUNK_SIZE;
+      const byteEnd = c === 0
+        ? Math.min(dataStart + CHUNK_SIZE, totalBytes)
+        : Math.min(dataStart + (c + 1) * CHUNK_SIZE, totalBytes);
+      chunks.push({ byteStart, byteEnd });
     }
 
-    return { chunks: chunks.length > 0 ? chunks : [{ byteStart: 0, byteEnd: totalBytes }], totalBytes, headerBytes };
+    console.log(`[getWebmChunks] totalBytes=${totalBytes} headerBytes=${headerBytes} numChunks=${chunks.length}`);
+    return { chunks, totalBytes, headerBytes };
   },
 });
 
@@ -195,26 +202,34 @@ export const transcribeWebmChunk = action({
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) throw new Error("GROQ_API_KEY not configured");
 
-    const res = await fetch(args.downloadUrl);
-    if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
-    const full = new Uint8Array(await res.arrayBuffer());
-
     const isWebm = args.mimeType.includes("webm") || args.mimeType.includes("ogg");
     let part: Uint8Array;
 
+    console.log(`[transcribeWebmChunk] chunk=${args.chunkIndex} bytes=${args.byteStart}-${args.byteEnd} headerBytes=${args.headerBytes}`);
+
     if (isWebm && args.headerBytes && args.byteStart > 0) {
-      // Prepend EBML+Segment header so this chunk is a valid webm file
-      const header = full.slice(0, args.headerBytes);
-      const clusterData = full.slice(args.byteStart, args.byteEnd);
+      const [headerRes, clusterRes] = await Promise.all([
+        fetch(args.downloadUrl, { headers: { Range: `bytes=0-${args.headerBytes - 1}` } }),
+        fetch(args.downloadUrl, { headers: { Range: `bytes=${args.byteStart}-${args.byteEnd - 1}` } }),
+      ]);
+      if (!headerRes.ok && headerRes.status !== 206) throw new Error(`Header fetch failed: ${headerRes.status}`);
+      if (!clusterRes.ok && clusterRes.status !== 206) throw new Error(`Cluster fetch failed: ${clusterRes.status}`);
+      const header = new Uint8Array(await headerRes.arrayBuffer());
+      const clusterData = new Uint8Array(await clusterRes.arrayBuffer());
       part = new Uint8Array(header.length + clusterData.length);
       part.set(header, 0);
       part.set(clusterData, header.length);
     } else {
-      part = full.slice(args.byteStart, args.byteEnd);
+      const rangeRes = await fetch(args.downloadUrl, {
+        headers: { Range: `bytes=${args.byteStart}-${args.byteEnd - 1}` },
+      });
+      if (!rangeRes.ok && rangeRes.status !== 206) throw new Error(`Fetch failed: ${rangeRes.status}`);
+      part = new Uint8Array(await rangeRes.arrayBuffer());
     }
 
+    console.log(`[transcribeWebmChunk] chunk=${args.chunkIndex} downloaded ${part.byteLength} bytes, calling Groq...`);
+
     const ext = isWebm ? "webm" : "audio";
-    // Copy to a plain ArrayBuffer to satisfy TypeScript's strict BlobPart type
     const partBuf = part.buffer.slice(part.byteOffset, part.byteOffset + part.byteLength) as ArrayBuffer;
     const blob = new Blob([partBuf], { type: args.mimeType });
     const formData = new FormData();
@@ -228,6 +243,7 @@ export const transcribeWebmChunk = action({
       headers: { Authorization: `Bearer ${apiKey}` },
       body: formData,
     });
+    console.log(`[transcribeWebmChunk] chunk=${args.chunkIndex} Groq status=${groqRes.status}`);
 
     if (!groqRes.ok) {
       const err = await groqRes.text();

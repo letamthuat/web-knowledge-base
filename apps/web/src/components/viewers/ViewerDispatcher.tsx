@@ -8,6 +8,9 @@ interface Doc {
   _id: Id<"documents">;
   format: string;
   title: string;
+  mimeType?: string;
+  durationMs?: number;
+  fileSizeBytes?: number;
 }
 
 export interface TypographyStyle {

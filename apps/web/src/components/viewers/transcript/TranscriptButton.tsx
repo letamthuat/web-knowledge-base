@@ -14,9 +14,10 @@ interface TranscriptButtonProps {
   downloadUrl: string;
   mimeType: string;
   hasTranscript: boolean;
+  fileSizeBytes?: number;
 }
 
-export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }: TranscriptButtonProps) {
+export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes }: TranscriptButtonProps) {
   const [progress, setProgress] = useState<TranscriptProgress | null>(null);
   const isRunning = progress !== null && progress.phase !== "done" && progress.phase !== "error";
 
@@ -24,7 +25,40 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
   const updateStatus = useMutation(api.transcripts.mutations.updateStatus);
   const saveSegments = useMutation(api.transcripts.mutations.saveSegments);
   const getWebmChunks = useAction(api.transcripts.actions.getWebmChunks);
-  const transcribeWebmChunk = useAction(api.transcripts.actions.transcribeWebmChunk);
+  const getFreshDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
+
+  async function transcribeChunkViaApi(params: {
+    downloadUrl: string;
+    byteStart: number;
+    byteEnd: number;
+    headerBytes?: number;
+    mimeType: string;
+    chunkIndex: number;
+    timeOffsetSeconds: number;
+    language?: string;
+  }): Promise<{ segments: { start: number; end: number; text: string }[]; language: string }> {
+    const MAX_RETRIES = 5;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const res = await fetch("/api/transcribe-chunk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+      if (res.ok) return res.json();
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      const is429 = typeof err.error === "string" && err.error.includes("429");
+      if (is429 && attempt < MAX_RETRIES - 1) {
+        // Parse "Please try again in Xm Ys" from Groq message
+        const match = typeof err.error === "string" && err.error.match(/try again in (\d+)m(\d+)s/);
+        const groqWait = match ? (parseInt(match[1]) * 60 + parseInt(match[2]) + 5) * 1000 : 60000 + attempt * 30000;
+        console.log(`[TranscriptButton] chunk=${params.chunkIndex} rate limited, retrying in ${groqWait/1000}s...`);
+        await new Promise((r) => setTimeout(r, groqWait));
+        continue;
+      }
+      throw new Error(err.error ?? `HTTP ${res.status}`);
+    }
+    throw new Error("Max retries exceeded");
+  }
 
   async function handleTranscribe() {
     if (isRunning) return;
@@ -35,8 +69,12 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
 
       setProgress({ phase: "loading", message: "Đang phân tích file âm thanh..." });
 
-      // Step 1: get chunk byte ranges from server
-      const { chunks, headerBytes } = await getWebmChunks({ downloadUrl, mimeType });
+      // Get fresh presigned URL (cached URL may have expired after 15 min)
+      const freshUrl = await getFreshDownloadUrl({ docId });
+
+      // Step 1: get chunk byte ranges from Convex (lightweight — no binary data)
+      const webmInfo = await getWebmChunks({ downloadUrl: freshUrl, mimeType, fileSizeBytes });
+      const { chunks, headerBytes } = webmInfo;
 
       const allSegments: { start: number; end: number; text: string }[] = [];
       let detectedLanguage = "vi";
@@ -50,11 +88,14 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
           message: `Đang nhận dạng giọng nói... (${i + 1}/${chunks.length})`,
         });
 
-        if (i > 0) await new Promise((r) => setTimeout(r, 3100));
+        if (i > 0) await new Promise((r) => setTimeout(r, 15000));
 
-        // Step 2: each chunk is one short-lived action call
-        const result = await transcribeWebmChunk({
-          downloadUrl,
+        // Refresh URL before each chunk — presigned URL expires in 15 min
+        const chunkUrl = await getFreshDownloadUrl({ docId });
+
+        // Step 2: transcribe via Next.js API route (not Convex — avoids memory/timeout limits)
+        const result = await transcribeChunkViaApi({
+          downloadUrl: chunkUrl,
           mimeType,
           byteStart: chunks[i].byteStart,
           byteEnd: chunks[i].byteEnd,
@@ -66,7 +107,6 @@ export function TranscriptButton({ docId, downloadUrl, mimeType, hasTranscript }
 
         allSegments.push(...result.segments);
         detectedLanguage = result.language;
-        // Next chunk offset = end time of last segment in this chunk
         if (result.segments.length > 0) {
           timeOffsetSeconds = result.segments[result.segments.length - 1].end;
         }

@@ -14,7 +14,7 @@ import { TranscriptButton } from "@/components/viewers/transcript/TranscriptButt
 import { useResizable } from "@/hooks/useResizable";
 
 interface AudioViewerProps {
-  doc: { _id: Id<"documents">; title: string; mimeType?: string; durationMs?: number };
+  doc: { _id: Id<"documents">; title: string; mimeType?: string; durationMs?: number; fileSizeBytes?: number };
   downloadUrl: string;
 }
 
@@ -34,7 +34,8 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [speed, setSpeed] = useState(1);
-  const [ready, setReady] = useState(false);
+  // If we already have stored duration, treat as ready immediately (don't wait for loadedmetadata)
+  const [ready, setReady] = useState(() => !!doc.durationMs);
   const { progress } = useReadingProgress(doc._id);
   const { savePosition, registerJump } = useReaderProgress();
   const restored = useRef(false);
@@ -63,7 +64,6 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
 
     const onMeta = () => {
       const dur = audio.duration;
-      // webm live recordings often have Infinity duration — treat as unknown
       if (isFinite(dur)) setDuration(dur);
       setReady(true);
       if (!restored.current && progress?.positionType === "time_seconds") {
@@ -94,19 +94,27 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
       if (isFinite(audio.duration)) setDuration(audio.duration);
     };
 
+    // Fallback: if metadata never fires (e.g. old file without durationMs), unblock UI after 5s
+    const readyTimer = setTimeout(() => setReady(true), 5000);
+
+    const onError = () => { setReady(true); };
+
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("durationchange", onDurationChange);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
     return () => {
+      clearTimeout(readyTimer);
       audio.removeEventListener("loadedmetadata", onMeta);
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("durationchange", onDurationChange);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [downloadUrl]);
@@ -114,7 +122,13 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
   const togglePlay = useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
-    a.paused ? a.play() : a.pause();
+    if (a.paused) {
+      a.play().catch((e) => {
+        if (e?.name !== "AbortError") console.error("[AudioViewer] play error:", e);
+      });
+    } else {
+      a.pause();
+    }
   }, []);
   const seek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const t = Number(e.target.value);
@@ -171,6 +185,7 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
           downloadUrl={downloadUrl}
           mimeType={doc.mimeType ?? "audio/mpeg"}
           hasTranscript={segments.length > 0}
+          fileSizeBytes={doc.fileSizeBytes}
         />
       </div>
 

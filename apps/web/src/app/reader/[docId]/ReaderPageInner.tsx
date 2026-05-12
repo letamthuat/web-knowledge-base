@@ -30,7 +30,7 @@ import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useDocExport } from "@/hooks/useDocExport";
 
 function ReaderShell({ doc, downloadUrl }: {
-  doc: { _id: Id<"documents">; format: string; title: string };
+  doc: { _id: Id<"documents">; format: string; title: string; mimeType?: string; durationMs?: number; fileSizeBytes?: number };
   downloadUrl: string;
 }) {
   const router = useRouter();

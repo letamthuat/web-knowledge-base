@@ -73,7 +73,7 @@ export const generateDownloadUrl = action({
         Bucket: process.env.R2_BUCKET_NAME!,
         Key: args.storageKey,
       });
-      return await getSignedUrl(r2, command, { expiresIn: 900 });
+      return await getSignedUrl(r2, command, { expiresIn: 3600 });
     }
   },
 });
@@ -97,7 +97,7 @@ export const getDownloadUrl = action({
         Bucket: process.env.R2_BUCKET_NAME!,
         Key: doc.storageKey,
       });
-      return await getSignedUrl(r2, command, { expiresIn: 900 });
+      return await getSignedUrl(r2, command, { expiresIn: 3600 });
     }
   },
 });
