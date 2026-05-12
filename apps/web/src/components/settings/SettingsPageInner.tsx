@@ -7,7 +7,7 @@ import { api } from "@/_generated/api";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2, ArchiveIcon, Search, Bot, Eye, EyeOff, ChevronUp, ChevronDown } from "lucide-react";
+import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2, ArchiveIcon, Search, Bot, Eye, EyeOff } from "lucide-react";
 import { useBackupDownload } from "@/hooks/useBackupDownload";
 import { SearchModal } from "@/components/search/SearchModal";
 
