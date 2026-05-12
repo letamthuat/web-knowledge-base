@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     diarization?: boolean;
     geminiApiKey?: string;
     geminiModels?: string[];
+    startModelIndex?: number;
   };
   try {
     body = await req.json();
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { downloadUrl, byteStart, byteEnd, headerBytes, mimeType, chunkIndex, timeOffsetSeconds, language, diarization, geminiApiKey: userApiKey, geminiModels: userModels } = body;
+  const { downloadUrl, byteStart, byteEnd, headerBytes, mimeType, chunkIndex, timeOffsetSeconds, language, diarization, geminiApiKey: userApiKey, geminiModels: userModels, startModelIndex } = body;
 
   // Use user's key/models if provided, else fall back to env vars
   const apiKey = (userApiKey && userApiKey.trim()) ? userApiKey.trim() : process.env.GEMINI_API_KEY;
@@ -129,11 +130,12 @@ Example format:
     generationConfig: { temperature: 0 },
   });
 
-  // Try each model in fallback chain, with retries — skip to next on 429/503
+  // Try each model in fallback chain starting from startModelIndex, with retries
   let rawText = "";
   let lastError = "";
-  let succeeded = false;
-  const MAX_CHAIN_ATTEMPTS = 3; // retry the whole chain up to 3 times if all 503
+  let succeededModelIndex = -1;
+  const MAX_CHAIN_ATTEMPTS = 3;
+  const startIdx = Math.min(startModelIndex ?? 0, GEMINI_MODELS_ACTIVE.length - 1);
 
   outer: for (let attempt = 0; attempt < MAX_CHAIN_ATTEMPTS; attempt++) {
     if (attempt > 0) {
@@ -142,7 +144,8 @@ Example format:
       await new Promise((r) => setTimeout(r, waitMs));
     }
 
-    for (const model of GEMINI_MODELS_ACTIVE) {
+    for (let mi = (attempt === 0 ? startIdx : 0); mi < GEMINI_MODELS_ACTIVE.length; mi++) {
+      const model = GEMINI_MODELS_ACTIVE[mi];
       let geminiRes: Response;
       try {
         geminiRes = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, {
@@ -161,14 +164,14 @@ Example format:
           candidates?: { content?: { parts?: { text?: string }[] } }[];
         };
         rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-        console.log(`[transcribe-gemini] chunk=${chunkIndex} model=${model} OK (attempt ${attempt + 1})`);
-        succeeded = true;
+        console.log(`[transcribe-gemini] chunk=${chunkIndex} model=${model} (index=${mi}) OK (attempt ${attempt + 1})`);
+        succeededModelIndex = mi;
         break outer;
       }
 
       const errText = await geminiRes.text();
       lastError = `Gemini error ${geminiRes.status} on ${model}: ${errText}`;
-      const shouldFallback = geminiRes.status === 429 || geminiRes.status === 503;
+      const shouldFallback = geminiRes.status === 429 || geminiRes.status === 503 || geminiRes.status === 500;
       console.warn(`[transcribe-gemini] chunk=${chunkIndex} model=${model} status=${geminiRes.status}`);
 
       if (!shouldFallback) {
@@ -177,7 +180,7 @@ Example format:
     }
   }
 
-  if (!succeeded) {
+  if (succeededModelIndex === -1) {
     return NextResponse.json({ error: `All models failed after retries. Last: ${lastError}` }, { status: 502 });
   }
   console.log(`[transcribe-gemini] chunk=${chunkIndex} rawText preview: ${rawText.slice(0, 200)}`);
@@ -250,5 +253,5 @@ Example format:
   }
 
   // Try to detect language from Gemini (not explicit in response — keep passed lang)
-  return NextResponse.json({ segments, language: detectedLanguage });
+  return NextResponse.json({ segments, language: detectedLanguage, modelIndex: succeededModelIndex });
 }

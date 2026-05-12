@@ -84,7 +84,8 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
     diarization?: boolean;
     geminiApiKey?: string;
     geminiModels?: string[];
-  }): Promise<{ segments: { start: number; end: number; text: string; speaker?: string }[]; language: string }> {
+    startModelIndex?: number;
+  }): Promise<{ segments: { start: number; end: number; text: string; speaker?: string }[]; language: string; modelIndex?: number }> {
     const route = provider === "gemini" ? "/api/transcribe-chunk-gemini" : "/api/transcribe-chunk";
     const MAX_RETRIES = 5;
 
@@ -152,6 +153,7 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
       const allSegments: { start: number; end: number; text: string; speaker?: string }[] = [];
       let detectedLanguage = "vi";
       let timeOffsetSeconds = 0;
+      let currentModelIndex = 0;
 
       for (let i = 0; i < chunks.length; i++) {
         setProgress({
@@ -181,8 +183,12 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
           ...(provider === "gemini" && aiSettings?.geminiModels?.length
             ? { geminiModels: aiSettings.geminiModels }
             : {}),
+          ...(provider === "gemini" ? { startModelIndex: currentModelIndex } : {}),
         });
 
+        if (provider === "gemini" && typeof result.modelIndex === "number") {
+          currentModelIndex = result.modelIndex;
+        }
         allSegments.push(...result.segments);
         detectedLanguage = result.language;
         if (result.segments.length > 0) {
