@@ -113,50 +113,61 @@ export function TranscriptPanel({ segments, currentTime, translatedSegments, tra
         {filtered.length === 0 && (
           <p className="text-xs text-muted-foreground text-center pt-4">Không tìm thấy kết quả</p>
         )}
-        {filtered.map((seg) => {
+        {filtered.map((seg, idx) => {
           const isActive = seg.i === activeIndex && !query;
           const hl = highlight(seg.text);
           const hlTranslated = seg.translated ? highlight(seg.translated.text) : null;
+          const prevSeg = filtered[idx - 1];
+          const showSpeakerLabel = seg.speaker && seg.speaker !== prevSeg?.speaker;
 
           return (
-            <div
-              key={seg.i}
-              ref={isActive ? activeRef : undefined}
-              className={`rounded-lg px-3 py-2 transition-colors ${
-                isActive ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/50"
-              }`}
-            >
-              <span className="text-xs font-mono text-muted-foreground mr-2 shrink-0">
-                {formatTime(seg.start)}
-              </span>
-
-              {/* Original text */}
-              {hl ? (
-                <span
-                  className="text-sm leading-relaxed text-muted-foreground"
-                  dangerouslySetInnerHTML={{ __html: hl }}
-                />
-              ) : (
-                <span className={`text-sm leading-relaxed ${isActive ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                  {seg.text}
-                </span>
-              )}
-
-              {/* Translated text */}
-              {isBilingual && seg.translated && (
-                <div className="mt-1 border-l-2 border-primary/30 pl-2">
-                  {hlTranslated ? (
-                    <span
-                      className="text-sm leading-relaxed text-foreground/70 italic"
-                      dangerouslySetInnerHTML={{ __html: hlTranslated }}
-                    />
-                  ) : (
-                    <span className={`text-sm leading-relaxed italic ${isActive ? "text-foreground/80" : "text-foreground/60"}`}>
-                      {seg.translated.text}
-                    </span>
-                  )}
+            <div key={seg.i}>
+              {/* Speaker label — show when speaker changes */}
+              {showSpeakerLabel && (
+                <div className="flex items-center gap-2 mt-2 mb-1 px-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 bg-primary/10 rounded px-1.5 py-0.5">
+                    {seg.speaker}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
                 </div>
               )}
+
+              <div
+                ref={isActive ? activeRef : undefined}
+                className={`rounded-lg px-3 py-2 transition-colors ${
+                  isActive ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/50"
+                }`}
+              >
+                <span className="text-xs font-mono text-muted-foreground mr-2 shrink-0">
+                  {formatTime(seg.start)}
+                </span>
+
+                {hl ? (
+                  <span
+                    className="text-sm leading-relaxed text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: hl }}
+                  />
+                ) : (
+                  <span className={`text-sm leading-relaxed ${isActive ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                    {seg.text}
+                  </span>
+                )}
+
+                {isBilingual && seg.translated && (
+                  <div className="mt-1 border-l-2 border-primary/30 pl-2">
+                    {hlTranslated ? (
+                      <span
+                        className="text-sm leading-relaxed text-foreground/70 italic"
+                        dangerouslySetInnerHTML={{ __html: hlTranslated }}
+                      />
+                    ) : (
+                      <span className={`text-sm leading-relaxed italic ${isActive ? "text-foreground/80" : "text-foreground/60"}`}>
+                        {seg.translated.text}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}

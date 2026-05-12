@@ -470,6 +470,14 @@ export default defineSchema({
     .index("by_upload_id", ["uploadId"])
     .index("by_expires", ["expiresAt"]),
 
+  // ─── AI SETTINGS (per user) ───────────────────────────────────────────────
+  userAiSettings: defineTable({
+    userId: v.id("users"),
+    geminiApiKey: v.optional(v.string()),
+    geminiModels: v.optional(v.array(v.string())), // ordered list e.g. ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   // ─── TRANSCRIPTS ─────────────────────────────────────────────────────────────
   transcripts: defineTable({
     docId: v.id("documents"),
@@ -480,11 +488,12 @@ export default defineSchema({
       v.literal("completed"),
       v.literal("error"),
     ),
-    // Mảng segments với timestamp (từ Groq Whisper)
+    // Mảng segments với timestamp (Groq Whisper hoặc Gemini Flash)
     segments: v.optional(v.array(v.object({
       start: v.number(),   // seconds
       end: v.number(),     // seconds
       text: v.string(),
+      speaker: v.optional(v.string()), // diarization: SPEAKER_1, SPEAKER_2, ...
     }))),
     translatedSegments: v.optional(v.array(v.object({
       start: v.number(),

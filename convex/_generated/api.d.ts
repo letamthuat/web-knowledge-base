@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as aiSettings_mutations from "../aiSettings/mutations.js";
+import type * as aiSettings_queries from "../aiSettings/queries.js";
 import type * as auth from "../auth.js";
 import type * as betterAuthFunctions from "../betterAuthFunctions.js";
 import type * as crons from "../crons.js";
@@ -50,6 +52,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "aiSettings/mutations": typeof aiSettings_mutations;
+  "aiSettings/queries": typeof aiSettings_queries;
   auth: typeof auth;
   betterAuthFunctions: typeof betterAuthFunctions;
   crons: typeof crons;

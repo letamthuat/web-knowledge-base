@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useAction } from "convex/react";
+import { useState, useRef, useEffect } from "react";
+import { useMutation, useAction, useQuery } from "convex/react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Captions, Loader2, RefreshCw } from "lucide-react";
+import { Captions, Loader2, RefreshCw, ChevronDown, Check } from "lucide-react";
 import { TranscriptProgress } from "@/lib/transcriptService";
 import { toast } from "sonner";
+
+type Provider = "gemini" | "groq";
 
 interface TranscriptButtonProps {
   docId: Id<"documents">;
@@ -17,15 +19,58 @@ interface TranscriptButtonProps {
   fileSizeBytes?: number;
 }
 
+function getStoredProvider(): Provider {
+  if (typeof window === "undefined") return "gemini";
+  return (localStorage.getItem("transcriptProvider") as Provider) ?? "gemini";
+}
+
+function getStoredDiarization(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem("transcriptDiarization") === "true";
+}
+
 export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes }: TranscriptButtonProps) {
   const [progress, setProgress] = useState<TranscriptProgress | null>(null);
+  const [provider, setProvider] = useState<Provider>(getStoredProvider);
+  const [diarization, setDiarization] = useState<boolean>(getStoredDiarization);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const isRunning = progress !== null && progress.phase !== "done" && progress.phase !== "error";
+
+  const aiSettings = useQuery(api.aiSettings.queries.getAiSettings);
 
   const initTranscript = useMutation(api.transcripts.mutations.initTranscript);
   const updateStatus = useMutation(api.transcripts.mutations.updateStatus);
   const saveSegments = useMutation(api.transcripts.mutations.saveSegments);
   const getWebmChunks = useAction(api.transcripts.actions.getWebmChunks);
   const getFreshDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [dropdownOpen]);
+
+  function selectProvider(p: Provider) {
+    setProvider(p);
+    localStorage.setItem("transcriptProvider", p);
+    if (p === "groq") {
+      setDiarization(false);
+      localStorage.setItem("transcriptDiarization", "false");
+    }
+  }
+
+  function toggleDiarization() {
+    const next = !diarization;
+    setDiarization(next);
+    localStorage.setItem("transcriptDiarization", String(next));
+  }
 
   async function transcribeChunkViaApi(params: {
     downloadUrl: string;
@@ -36,32 +81,63 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
     chunkIndex: number;
     timeOffsetSeconds: number;
     language?: string;
-  }): Promise<{ segments: { start: number; end: number; text: string }[]; language: string }> {
+    diarization?: boolean;
+    geminiApiKey?: string;
+    geminiModels?: string[];
+  }): Promise<{ segments: { start: number; end: number; text: string; speaker?: string }[]; language: string }> {
+    const route = provider === "gemini" ? "/api/transcribe-chunk-gemini" : "/api/transcribe-chunk";
     const MAX_RETRIES = 5;
+
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      const res = await fetch("/api/transcribe-chunk", {
+      const res = await fetch(route, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
       });
       if (res.ok) return res.json();
+
       const err = await res.json().catch(() => ({ error: res.statusText }));
-      const is429 = typeof err.error === "string" && err.error.includes("429");
-      if (is429 && attempt < MAX_RETRIES - 1) {
-        // Parse "Please try again in Xm Ys" from Groq message
-        const match = typeof err.error === "string" && err.error.match(/try again in (\d+)m(\d+)s/);
-        const groqWait = match ? (parseInt(match[1]) * 60 + parseInt(match[2]) + 5) * 1000 : 60000 + attempt * 30000;
-        console.log(`[TranscriptButton] chunk=${params.chunkIndex} rate limited, retrying in ${groqWait/1000}s...`);
-        await new Promise((r) => setTimeout(r, groqWait));
+      const errMsg = typeof err.error === "string" ? err.error : String(err.error ?? res.statusText);
+
+      const is429 = errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("All models failed");
+      const is503 = errMsg.includes("503") || errMsg.includes("UNAVAILABLE");
+
+      // Nếu hết quota hoàn toàn (all models failed) → báo ngay, không retry
+      const isQuotaExhausted = errMsg.includes("All models failed") || (errMsg.includes("429") && errMsg.includes("limit: 0"));
+      if (isQuotaExhausted) {
+        throw new Error("__QUOTA_EXHAUSTED__");
+      }
+
+      if ((is429 || is503) && attempt < MAX_RETRIES - 1) {
+        const match = errMsg.match(/try again in (\d+)m(\d+)s/);
+        const retryMatch = errMsg.match(/retry in (\d+)s/);
+        const waitMs = match
+          ? (parseInt(match[1]) * 60 + parseInt(match[2]) + 5) * 1000
+          : retryMatch
+          ? (parseInt(retryMatch[1]) + 5) * 1000
+          : is503
+          ? 15000 + attempt * 10000
+          : 60000 + attempt * 30000;
+        const waitSec = Math.round(waitMs / 1000);
+        toast.warning(`Đang chờ ${waitSec}s rồi thử lại (chunk ${params.chunkIndex + 1})...`, { duration: waitMs });
+        console.log(`[TranscriptButton] chunk=${params.chunkIndex} ${is503 ? "503 overload" : "rate limited"} (${provider}), retry in ${waitSec}s`);
+        await new Promise((r) => setTimeout(r, waitMs));
         continue;
       }
-      throw new Error(err.error ?? `HTTP ${res.status}`);
+      throw new Error(errMsg ?? `HTTP ${res.status}`);
     }
     throw new Error("Max retries exceeded");
   }
 
   async function handleTranscribe() {
     if (isRunning) return;
+    setDropdownOpen(false);
+
+    // Check Gemini settings if using Gemini provider
+    if (provider === "gemini" && aiSettings !== undefined && !aiSettings?.geminiApiKey) {
+      toast.warning("Chưa cấu hình Gemini API key. Vào Cài đặt → Trợ lý AI để setup.");
+      return;
+    }
     let transcriptId: Id<"transcripts"> | null = null;
     try {
       transcriptId = await initTranscript({ docId });
@@ -69,14 +145,11 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
 
       setProgress({ phase: "loading", message: "Đang phân tích file âm thanh..." });
 
-      // Get fresh presigned URL (cached URL may have expired after 15 min)
       const freshUrl = await getFreshDownloadUrl({ docId });
-
-      // Step 1: get chunk byte ranges from Convex (lightweight — no binary data)
       const webmInfo = await getWebmChunks({ downloadUrl: freshUrl, mimeType, fileSizeBytes });
       const { chunks, headerBytes } = webmInfo;
 
-      const allSegments: { start: number; end: number; text: string }[] = [];
+      const allSegments: { start: number; end: number; text: string; speaker?: string }[] = [];
       let detectedLanguage = "vi";
       let timeOffsetSeconds = 0;
 
@@ -88,12 +161,10 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
           message: `Đang nhận dạng giọng nói... (${i + 1}/${chunks.length})`,
         });
 
-        if (i > 0) await new Promise((r) => setTimeout(r, 15000));
+        if (i > 0) await new Promise((r) => setTimeout(r, provider === "gemini" ? 4000 : 15000));
 
-        // Refresh URL before each chunk — presigned URL expires in 15 min
         const chunkUrl = await getFreshDownloadUrl({ docId });
 
-        // Step 2: transcribe via Next.js API route (not Convex — avoids memory/timeout limits)
         const result = await transcribeChunkViaApi({
           downloadUrl: chunkUrl,
           mimeType,
@@ -103,6 +174,13 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
           chunkIndex: i,
           timeOffsetSeconds,
           language: undefined,
+          diarization: provider === "gemini" ? diarization : false,
+          ...(provider === "gemini" && aiSettings?.geminiApiKey
+            ? { geminiApiKey: aiSettings.geminiApiKey }
+            : {}),
+          ...(provider === "gemini" && aiSettings?.geminiModels?.length
+            ? { geminiModels: aiSettings.geminiModels }
+            : {}),
         });
 
         allSegments.push(...result.segments);
@@ -122,34 +200,100 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
         await updateStatus({ transcriptId, status: "error", errorMessage: message });
       }
       setProgress({ phase: "error", message });
-      toast.error(`Tạo transcript thất bại: ${message}`);
+
+      if (message === "__QUOTA_EXHAUSTED__") {
+        const settingsHint = provider === "gemini"
+          ? " Vào Cài đặt → Trợ lý AI để đổi API key hoặc thêm model khác."
+          : " Quota Groq đã hết, thử lại sau hoặc chuyển sang Gemini.";
+        toast.error(`Đã hết quota tất cả models.${settingsHint}`, {
+          duration: 10000,
+          action: provider === "gemini" ? {
+            label: "Mở Cài đặt",
+            onClick: () => window.location.href = "/settings",
+          } : undefined,
+        });
+      } else {
+        toast.error(`Tạo transcript thất bại: ${message}`);
+      }
     } finally {
       setTimeout(() => setProgress(null), 2000);
     }
   }
 
+  const providerLabel = provider === "gemini" ? "Gemini" : "Groq";
+
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      onClick={handleTranscribe}
-      disabled={isRunning}
-      className="gap-2"
-    >
-      {isRunning ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : hasTranscript ? (
-        <RefreshCw className="h-4 w-4" />
-      ) : (
-        <Captions className="h-4 w-4" />
+    <div className="flex items-center gap-1">
+      {/* Main transcript button */}
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleTranscribe}
+        disabled={isRunning}
+        className="gap-2"
+      >
+        {isRunning ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : hasTranscript ? (
+          <RefreshCw className="h-4 w-4" />
+        ) : (
+          <Captions className="h-4 w-4" />
+        )}
+        {isRunning
+          ? progress?.totalChunks
+            ? `${progress.chunkIndex}/${progress.totalChunks}`
+            : "Đang xử lý..."
+          : hasTranscript
+          ? "Tạo lại"
+          : "Tạo transcript"}
+      </Button>
+
+      {/* Provider selector dropdown */}
+      {!isRunning && (
+        <div className="relative" ref={dropdownRef}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setDropdownOpen((o) => !o)}
+            className="gap-1 px-2 text-xs text-muted-foreground h-8"
+          >
+            {providerLabel}
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+
+          {dropdownOpen && (
+            <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-md border bg-popover shadow-md">
+              <div className="p-1">
+                <p className="px-2 py-1 text-xs font-medium text-muted-foreground">Provider</p>
+
+                {(["gemini", "groq"] as Provider[]).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => selectProvider(p)}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                  >
+                    <Check className={`h-3.5 w-3.5 ${provider === p ? "opacity-100" : "opacity-0"}`} />
+                    {p === "gemini" ? "Gemini Flash" : "Groq Whisper"}
+                  </button>
+                ))}
+
+                {provider === "gemini" && (
+                  <>
+                    <div className="my-1 border-t" />
+                    <button
+                      onClick={toggleDiarization}
+                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                    >
+                      <Check className={`h-3.5 w-3.5 ${diarization ? "opacity-100" : "opacity-0"}`} />
+                      Nhận dạng người nói
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       )}
-      {isRunning
-        ? progress?.totalChunks
-          ? `${progress.chunkIndex}/${progress.totalChunks}`
-          : "Đang xử lý..."
-        : hasTranscript
-        ? "Tạo lại"
-        : "Tạo transcript"}
-    </Button>
+    </div>
   );
 }

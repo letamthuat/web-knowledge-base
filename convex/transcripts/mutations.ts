@@ -49,6 +49,7 @@ export const saveSegments = mutation({
       start: v.number(),
       end: v.number(),
       text: v.string(),
+      speaker: v.optional(v.string()),
     })),
     language: v.optional(v.string()),
     translatedSegments: v.optional(v.array(v.object({

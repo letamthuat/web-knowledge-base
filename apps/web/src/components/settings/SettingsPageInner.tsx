@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "@/_generated/api";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2, ArchiveIcon, Search } from "lucide-react";
+import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2, ArchiveIcon, Search, Bot, Eye, EyeOff, ChevronUp, ChevronDown } from "lucide-react";
 import { useBackupDownload } from "@/hooks/useBackupDownload";
 import { SearchModal } from "@/components/search/SearchModal";
 
@@ -41,6 +41,209 @@ function UsageBar({ used, total, label }: { used: number; total: number; label: 
 const CONVEX_DB_LIMIT = 1 * 1024 * 1024 * 1024;
 const CONVEX_FILE_LIMIT = 1 * 1024 * 1024 * 1024;
 const R2_STORAGE_LIMIT = 10 * 1024 * 1024 * 1024;
+
+function AiSettingsSection() {
+  const aiSettings = useQuery(api.aiSettings.queries.getAiSettings);
+  const saveAiSettings = useMutation(api.aiSettings.mutations.saveAiSettings);
+
+  const [apiKey, setApiKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [models, setModels] = useState<string[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+
+  // Populate from saved settings once loaded
+  useEffect(() => {
+    if (aiSettings === undefined) return; // still loading
+    if (aiSettings) {
+      setApiKey(aiSettings.geminiApiKey ?? "");
+      setModels(aiSettings.geminiModels ?? []);
+    }
+  }, [aiSettings]);
+
+  async function handleFetchModels() {
+    if (!apiKey.trim()) {
+      toast.error("Vui lòng nhập API key trước");
+      return;
+    }
+    setFetchingModels(true);
+    try {
+      const res = await fetch("/api/gemini-list-models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: apiKey.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Lỗi ${res.status}`);
+      const fetched: string[] = data.models ?? [];
+      setAvailableModels(fetched);
+      // Keep existing order for already-selected models, append new ones
+      const newModels = fetched.filter((m) => !models.includes(m));
+      setModels((prev) => [...prev.filter((m) => fetched.includes(m)), ...newModels]);
+      toast.success(`Tìm thấy ${fetched.length} models`);
+    } catch (e: any) {
+      toast.error("Không thể lấy models: " + e.message);
+    } finally {
+      setFetchingModels(false);
+    }
+  }
+
+  function moveUp(index: number) {
+    if (index === 0) return;
+    setModels((prev) => {
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      return next;
+    });
+  }
+
+  function moveDown(index: number) {
+    setModels((prev) => {
+      if (index === prev.length - 1) return prev;
+      const next = [...prev];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      return next;
+    });
+  }
+
+  function toggleModel(model: string) {
+    setModels((prev) =>
+      prev.includes(model) ? prev.filter((m) => m !== model) : [...prev, model]
+    );
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await saveAiSettings({
+        geminiApiKey: apiKey.trim() || undefined,
+        geminiModels: models.length > 0 ? models : undefined,
+      });
+      toast.success("Đã lưu cài đặt AI");
+    } catch (e: any) {
+      toast.error("Lưu thất bại: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const isConfigured = !!(aiSettings?.geminiApiKey);
+
+  return (
+    <div className="mb-6 rounded-xl border bg-card p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold flex items-center gap-2">
+          <Bot className="h-4 w-4 text-muted-foreground" />
+          Trợ lý AI
+        </h2>
+        {aiSettings !== undefined && (
+          <span className={`text-xs px-2 py-0.5 rounded-full ${isConfigured ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`}>
+            {isConfigured ? `Đã cấu hình · ${aiSettings.geminiModels?.length ?? 0} models` : "Chưa cấu hình"}
+          </span>
+        )}
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Nhập Gemini API key của bạn để sử dụng tính năng tạo transcript. Key lưu trên server của bạn, không chia sẻ với bên thứ ba.
+      </p>
+
+      {/* API Key input */}
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium">Gemini API Key</label>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type={showKey ? "text" : "password"}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="AIza..."
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <Button
+            variant="outline"
+            disabled={fetchingModels}
+            onClick={handleFetchModels}
+            className="shrink-0"
+          >
+            {fetchingModels ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Đang kiểm tra...</> : "Kiểm tra & lấy models"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Lấy API key tại <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>
+        </p>
+      </div>
+
+      {/* Models list */}
+      {models.length > 0 && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Thứ tự fallback models</label>
+          <p className="text-xs text-muted-foreground">Model ở trên được dùng trước, tự động chuyển sang model tiếp theo nếu bị rate limit.</p>
+          <div className="space-y-1.5">
+            {models.map((model, i) => (
+              <div key={model} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                <span className="text-xs text-muted-foreground w-5 text-right">{i + 1}.</span>
+                <span className="flex-1 text-sm font-mono">{model}</span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => moveUp(i)}
+                    disabled={i === 0}
+                    className="p-0.5 rounded hover:bg-accent disabled:opacity-30"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => moveDown(i)}
+                    disabled={i === models.length - 1}
+                    className="p-0.5 rounded hover:bg-accent disabled:opacity-30"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => toggleModel(model)}
+                    className="ml-1 text-xs text-destructive hover:underline"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Show available models not yet in list */}
+          {availableModels.filter((m) => !models.includes(m)).length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Models chưa được thêm:</p>
+              {availableModels
+                .filter((m) => !models.includes(m))
+                .map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => toggleModel(m)}
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    <span className="text-xs border rounded px-1">+</span>
+                    <span className="font-mono">{m}</span>
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <Button onClick={handleSave} disabled={saving} className="gap-2">
+        {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Đang lưu...</> : "Lưu cài đặt AI"}
+      </Button>
+    </div>
+  );
+}
 
 export function SettingsPageInner() {
   const router = useRouter();
@@ -220,6 +423,9 @@ export function SettingsPageInner() {
             )}
           </div>
         </div>
+
+        {/* AI Settings */}
+        <AiSettingsSection />
 
         {/* Danger zone */}
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6">
