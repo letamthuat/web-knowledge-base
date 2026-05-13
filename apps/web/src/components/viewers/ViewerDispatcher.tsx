@@ -25,6 +25,7 @@ interface ViewerDispatcherProps {
   downloadUrl: string;
   highlightQuery?: string;
   typography?: TypographyStyle;
+  onTranscribeRunningChange?: (running: boolean) => void;
 }
 
 function ViewerLoading() {
@@ -72,13 +73,13 @@ const PPTXViewer = dynamic(
   { ssr: false, loading: () => <ViewerLoading /> }
 );
 
-export function ViewerDispatcher({ doc, downloadUrl, highlightQuery, typography }: ViewerDispatcherProps) {
+export function ViewerDispatcher({ doc, downloadUrl, highlightQuery, typography, onTranscribeRunningChange }: ViewerDispatcherProps) {
   switch (doc.format) {
     case "pdf":       return <PDFViewer doc={doc} downloadUrl={downloadUrl} />;
     case "epub":      return <EPUBViewer doc={doc} downloadUrl={downloadUrl} />;
     case "markdown":  return <MarkdownViewer doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} typography={typography} />;
     case "image":     return <ImageViewer doc={doc} downloadUrl={downloadUrl} />;
-    case "audio":     return <AudioViewer doc={doc} downloadUrl={downloadUrl} />;
+    case "audio":     return <AudioViewer doc={doc} downloadUrl={downloadUrl} onTranscribeRunningChange={onTranscribeRunningChange} />;
     case "video":     return <VideoViewer doc={doc} downloadUrl={downloadUrl} />;
     case "docx":      return <DOCXViewer doc={doc} downloadUrl={downloadUrl} />;
     case "web_clip":  return <WebClipViewer doc={doc} downloadUrl={downloadUrl} />;

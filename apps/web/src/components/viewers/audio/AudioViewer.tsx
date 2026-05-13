@@ -16,6 +16,7 @@ import { useResizable } from "@/hooks/useResizable";
 interface AudioViewerProps {
   doc: { _id: Id<"documents">; title: string; mimeType?: string; durationMs?: number; fileSizeBytes?: number };
   downloadUrl: string;
+  onTranscribeRunningChange?: (running: boolean) => void;
 }
 
 function formatTime(s: number) {
@@ -26,7 +27,7 @@ function formatTime(s: number) {
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
+export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: AudioViewerProps) {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   // Seed duration from stored metadata so seek bar works immediately even for webm without index
@@ -187,6 +188,7 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
           hasTranscript={segments.length > 0}
           fileSizeBytes={doc.fileSizeBytes}
           durationSeconds={doc.durationMs ? doc.durationMs / 1000 : (duration > 0 ? duration : undefined)}
+          onRunningChange={onTranscribeRunningChange}
         />
       </div>
 

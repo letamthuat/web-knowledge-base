@@ -42,6 +42,17 @@ function ReaderShell({ doc, downloadUrl }: {
   const { noteTabs, activeNoteId, openNoteTab, closeNoteTab, setActiveNoteId } = useNoteTabs();
   const { addNote } = useAllNotes();
 
+  const [transcribeRunning, setTranscribeRunning] = useState(false);
+  const transcribeRunningRef = useRef(false);
+  transcribeRunningRef.current = transcribeRunning;
+
+  function confirmLeave(action: () => void) {
+    if (transcribeRunningRef.current) {
+      if (!window.confirm("Đang tạo transcript, rời trang sẽ mất tiến độ. Bạn có chắc không?")) return;
+    }
+    action();
+  }
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [readingMode, setReadingMode] = useState(false);
@@ -260,11 +271,11 @@ function ReaderShell({ doc, downloadUrl }: {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <button onClick={() => { setDrawerOpen(false); router.push("/library"); }}
+              <button onClick={() => confirmLeave(() => { setDrawerOpen(false); router.push("/library"); })}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
                 <BookOpen className="h-4 w-4" /> Thư viện
               </button>
-              <button onClick={() => { setDrawerOpen(false); router.push("/notes"); }}
+              <button onClick={() => confirmLeave(() => { setDrawerOpen(false); router.push("/notes"); })}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
                 <StickyNote className="h-4 w-4" /> Ghi chú
               </button>
@@ -272,7 +283,7 @@ function ReaderShell({ doc, downloadUrl }: {
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
                 <Search className="h-4 w-4" /> Tìm kiếm
               </button>
-              <button onClick={() => { setDrawerOpen(false); router.push("/settings"); }}
+              <button onClick={() => confirmLeave(() => { setDrawerOpen(false); router.push("/settings"); })}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
                 <Settings className="h-4 w-4" /> Cài đặt
               </button>
@@ -292,11 +303,11 @@ function ReaderShell({ doc, downloadUrl }: {
           </div>
 
           <nav className="hidden md:flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/library")}>Thư viện</Button>
-            <Button variant="ghost" size="sm" onClick={() => router.push("/notes")}>
+            <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/library"))}>Thư viện</Button>
+            <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/notes"))}>
               <StickyNote className="mr-1.5 h-3.5 w-3.5" />Ghi chú
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => router.push("/settings")}>
+            <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/settings"))}>
               <Settings className="mr-1 h-4 w-4" />Cài đặt
             </Button>
           </nav>
@@ -370,6 +381,7 @@ function ReaderShell({ doc, downloadUrl }: {
             downloadUrl={downloadUrl}
             highlightQuery={highlightQuery}
             typography={TEXT_FORMATS.has(doc.format) ? { fontFamily: typography.fontFamily, fontSize: typography.fontSize, lineHeight: typography.lineHeight, colWidthClass: typography.colWidthClass } : undefined}
+            onTranscribeRunningChange={setTranscribeRunning}
           />
         </div>
 
@@ -470,7 +482,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Không tìm thấy tài liệu.</p>
-        <Button variant="outline" onClick={() => router.push("/library")}>Về thư viện</Button>
+        <Button variant="outline" onClick={() => confirmLeave(() => router.push("/library"))}>Về thư viện</Button>
       </div>
     );
   }
@@ -479,7 +491,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden bg-background">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4" style={{ paddingTop: 'var(--safe-top)' }}>
-          <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
+          <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/library"))} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Thư viện
           </Button>
@@ -494,7 +506,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden bg-background">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4" style={{ paddingTop: 'var(--safe-top)' }}>
-          <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
+          <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/library"))} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Thư viện
           </Button>

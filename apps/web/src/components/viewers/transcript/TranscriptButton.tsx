@@ -18,6 +18,7 @@ interface TranscriptButtonProps {
   hasTranscript: boolean;
   fileSizeBytes?: number;
   durationSeconds?: number;
+  onRunningChange?: (running: boolean) => void;
 }
 
 function getStoredProvider(): Provider {
@@ -30,7 +31,7 @@ function getStoredDiarization(): boolean {
   return localStorage.getItem("transcriptDiarization") === "true";
 }
 
-export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes, durationSeconds }: TranscriptButtonProps) {
+export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes, durationSeconds, onRunningChange }: TranscriptButtonProps) {
   const [progress, setProgress] = useState<TranscriptProgress | null>(null);
   const [provider, setProvider] = useState<Provider>(getStoredProvider);
   const [diarization, setDiarization] = useState<boolean>(getStoredDiarization);
@@ -47,6 +48,18 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
   const saveSegments = useMutation(api.transcripts.mutations.saveSegments);
   const getWebmChunks = useAction(api.transcripts.actions.getWebmChunks);
   const getFreshDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
+
+  // Notify parent + block browser navigation when running
+  useEffect(() => {
+    onRunningChange?.(isRunning);
+    if (!isRunning) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "Đang tạo transcript, rời trang sẽ mất tiến độ. Bạn có chắc không?";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isRunning, onRunningChange]);
 
   // Close dropdown on outside click
   useEffect(() => {
