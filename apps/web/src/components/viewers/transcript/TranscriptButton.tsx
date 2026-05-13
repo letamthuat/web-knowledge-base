@@ -27,8 +27,9 @@ function getStoredProvider(): Provider {
 }
 
 function getStoredDiarization(): boolean {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem("transcriptDiarization") === "true";
+  if (typeof window === "undefined") return true;
+  const stored = localStorage.getItem("transcriptDiarization");
+  return stored === null ? true : stored === "true";
 }
 
 export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes, durationSeconds, onRunningChange }: TranscriptButtonProps) {
