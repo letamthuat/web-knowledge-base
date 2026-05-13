@@ -129,8 +129,8 @@ export const getWebmChunks = action({
   handler: async (_ctx, args) => {
     // Target ~5 minutes per chunk. If we know duration+size, compute bytes-per-minute.
     // Cap chunk at 5MB to avoid Gemini token limit issues.
-    const TARGET_CHUNK_SECS = 5 * 60;
-    const MAX_CHUNK_BYTES = 5 * 1024 * 1024;
+    const TARGET_CHUNK_SECS = 3 * 60;
+    const MAX_CHUNK_BYTES = 3 * 1024 * 1024;
     let CHUNK_SIZE = MAX_CHUNK_BYTES;
     if (args.fileSizeBytes && args.durationSeconds && args.durationSeconds > 0) {
       const bytesPerSec = args.fileSizeBytes / args.durationSeconds;

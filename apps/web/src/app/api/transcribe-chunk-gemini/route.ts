@@ -144,21 +144,14 @@ Example format:
     generationConfig: { temperature: 0, maxOutputTokens: 65536 },
   });
 
-  // Try each model in fallback chain starting from startModelIndex, with retries
+  // Try each model in fallback chain (no retry sleep — Vercel 120s limit; client retries on 429/503)
   let rawText = "";
   let lastError = "";
   let succeededModelIndex = -1;
-  const MAX_CHAIN_ATTEMPTS = 3;
   const startIdx = Math.min(startModelIndex ?? 0, GEMINI_MODELS_ACTIVE.length - 1);
 
-  outer: for (let attempt = 0; attempt < MAX_CHAIN_ATTEMPTS; attempt++) {
-    if (attempt > 0) {
-      const waitMs = 20000 * attempt;
-      console.log(`[transcribe-gemini] chunk=${chunkIndex} all models failed, retry chain in ${waitMs / 1000}s (attempt ${attempt + 1})`);
-      await new Promise((r) => setTimeout(r, waitMs));
-    }
-
-    for (let mi = (attempt === 0 ? startIdx : 0); mi < GEMINI_MODELS_ACTIVE.length; mi++) {
+  outer: for (let attempt = 0; attempt < 1; attempt++) {
+    for (let mi = startIdx; mi < GEMINI_MODELS_ACTIVE.length; mi++) {
       const model = GEMINI_MODELS_ACTIVE[mi];
       let geminiRes: Response;
       try {
