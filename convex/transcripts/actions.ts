@@ -124,10 +124,18 @@ export const getWebmChunks = action({
     downloadUrl: v.string(),
     mimeType: v.string(),
     fileSizeBytes: v.optional(v.number()),
+    durationSeconds: v.optional(v.number()),
   },
   handler: async (_ctx, args) => {
-    // 10MB per chunk — safe under Groq 25MB limit, ~10 min audio per chunk
-    const CHUNK_SIZE = 10 * 1024 * 1024;
+    // Target ~5 minutes per chunk. If we know duration+size, compute bytes-per-minute.
+    // Cap chunk at 5MB to avoid Gemini token limit issues.
+    const TARGET_CHUNK_SECS = 5 * 60;
+    const MAX_CHUNK_BYTES = 5 * 1024 * 1024;
+    let CHUNK_SIZE = MAX_CHUNK_BYTES;
+    if (args.fileSizeBytes && args.durationSeconds && args.durationSeconds > 0) {
+      const bytesPerSec = args.fileSizeBytes / args.durationSeconds;
+      CHUNK_SIZE = Math.min(Math.ceil(bytesPerSec * TARGET_CHUNK_SECS), MAX_CHUNK_BYTES);
+    }
 
     // Get file size — prefer from DB, fallback to Range probe
     let totalBytes = args.fileSizeBytes ?? 0;

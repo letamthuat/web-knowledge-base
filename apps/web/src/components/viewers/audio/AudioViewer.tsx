@@ -186,6 +186,7 @@ export function AudioViewer({ doc, downloadUrl }: AudioViewerProps) {
           mimeType={doc.mimeType ?? "audio/mpeg"}
           hasTranscript={segments.length > 0}
           fileSizeBytes={doc.fileSizeBytes}
+          durationSeconds={doc.durationMs ? doc.durationMs / 1000 : (duration > 0 ? duration : undefined)}
         />
       </div>
 

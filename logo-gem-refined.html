@@ -1,0 +1,3165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WKB — Gem Logo · Studio</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 0;
+    min-height: 100vh;
+  }
+  /* ── Tab nav ── */
+  .tab-nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 4px;
+    background: #0a1120;
+    border-bottom: 1px solid #1e293b;
+    padding: 0 32px;
+  }
+  .tab-nav-title {
+    font-size: 0.8rem; font-weight: 700;
+    color: #475569; letter-spacing: 1.5px;
+    text-transform: uppercase; padding: 18px 16px 18px 0;
+    margin-right: 8px; border-right: 1px solid #1e293b;
+  }
+  .tab-btn {
+    padding: 16px 20px; font-size: 0.82rem; font-weight: 600;
+    color: #475569; background: none; border: none;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+    letter-spacing: 0.3px;
+  }
+  .tab-btn:hover { color: #94a3b8; }
+  .tab-btn.active { color: #e2e8f0; border-bottom-color: #3b82f6; }
+  /* ── Tab panels ── */
+  .tab-panel { display: none; padding: 48px 32px 64px; }
+  .tab-panel.active { display: block; }
+  /* ── Page heading ── */
+  .page-heading { text-align: center; margin-bottom: 48px; }
+  .page-heading h2 { font-size: 1.35rem; font-weight: 700; color: #f1f5f9; letter-spacing: -0.3px; margin-bottom: 6px; }
+  .page-heading p { font-size: 0.82rem; color: #475569; letter-spacing: 0.3px; }
+  h1 {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-bottom: 56px;
+    letter-spacing: 0.5px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+    max-width: 1040px;
+    margin: 0 auto;
+  }
+  .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 20px;
+    padding: 32px 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .card:hover {
+    border-color: #475569;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  }
+  .tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #475569;
+    margin-bottom: 28px;
+    align-self: flex-start;
+  }
+  .sizes {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  .size-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .size-item span {
+    font-size: 0.6rem;
+    color: #475569;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .cb {
+    background-image:
+      linear-gradient(45deg, #1e293b 25%, transparent 25%),
+      linear-gradient(-45deg, #1e293b 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #1e293b 75%),
+      linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+    background-color: #0f172a;
+    padding: 3px;
+    border-radius: 6px;
+    display: inline-flex;
+  }
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: #334155;
+    margin-bottom: 16px;
+  }
+  .name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+    align-self: flex-start;
+  }
+  .desc {
+    font-size: 0.8rem;
+    color: #64748b;
+    line-height: 1.6;
+    align-self: flex-start;
+  }
+  /* ── existing card/grid styles unchanged ── */
+</style>
+</head>
+<body>
+
+<!-- ═══ TAB NAV ═══ -->
+<nav class="tab-nav">
+  <div class="tab-nav-title">WKB LOGO</div>
+  <button class="tab-btn active" onclick="switchTab('tab1',this)">🎨 Colour Variants</button>
+  <button class="tab-btn" onclick="switchTab('tab2',this)">💎 Gem Structures</button>
+  <button class="tab-btn" onclick="switchTab('tab3',this)">🧊 Structured Knowledge</button>
+  <button class="tab-btn" onclick="switchTab('tab4',this)">✨ Systemic Knowledge Gem</button>
+</nav>
+
+<script>
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+
+<!-- ═══ TAB 1: Colour Variants ═══ -->
+<div id="tab1" class="tab-panel active">
+<div class="page-heading">
+  <h2>Gem + Book Pages · Colour Variants</h2>
+  <p>Cùng cấu trúc gem, 6 bảng màu khác nhau</p>
+</div>
+<div class="grid">
+
+<!-- ═══════════════════════════════════════════
+     V1 — Classic: Navy bg, bright page faces
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">Variant 1 · Classic</div>
+  <div class="sizes">
+
+    <!-- 80px -->
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v1bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0c1445"/>
+            <stop offset="100%" stop-color="#1d3a8a"/>
+          </linearGradient>
+          <linearGradient id="v1pL" x1="14" y1="15" x2="40" y2="42" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="100%" stop-color="#dbeafe"/>
+          </linearGradient>
+          <linearGradient id="v1pR" x1="66" y1="15" x2="40" y2="42" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#eff6ff"/>
+            <stop offset="100%" stop-color="#bfdbfe"/>
+          </linearGradient>
+          <linearGradient id="v1pav" x1="40" y1="42" x2="40" y2="70" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#0c1445" stop-opacity="0.95"/>
+          </linearGradient>
+          <filter id="v1glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Background -->
+        <rect width="80" height="80" rx="18" fill="url(#v1bg)"/>
+        <!-- Inner subtle border -->
+        <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="white" stroke-opacity="0.08" stroke-width="1" fill="none"/>
+
+        <!-- Pavilion (bottom) -->
+        <polygon points="40,70 12,42 68,42" fill="url(#v1pav)"/>
+
+        <!-- Left page face -->
+        <polygon points="14,18 40,10 40,42 12,42" fill="url(#v1pL)"/>
+        <!-- Right page face -->
+        <polygon points="40,10 66,18 68,42 40,42" fill="url(#v1pR)"/>
+
+        <!-- Subtle inner facet lines on pages -->
+        <line x1="22" y1="26" x2="38" y2="29" stroke="#93c5fd" stroke-width="0.7" stroke-opacity="0.5"/>
+        <line x1="22" y1="31" x2="38" y2="34" stroke="#93c5fd" stroke-width="0.7" stroke-opacity="0.35"/>
+        <line x1="42" y1="29" x2="58" y2="26" stroke="#93c5fd" stroke-width="0.7" stroke-opacity="0.35"/>
+        <line x1="42" y1="34" x2="58" y2="31" stroke="#93c5fd" stroke-width="0.7" stroke-opacity="0.25"/>
+
+        <!-- Spine line (book + gem center crease) -->
+        <line x1="40" y1="10" x2="40" y2="42" stroke="white" stroke-width="1.5" stroke-opacity="0.7" stroke-linecap="round"/>
+
+        <!-- Top crown edge -->
+        <polyline points="14,18 40,10 66,18" fill="none" stroke="white" stroke-width="1.2" stroke-opacity="0.5" stroke-linejoin="round"/>
+
+        <!-- Girdle line (waist of gem) -->
+        <line x1="12" y1="42" x2="68" y2="42" stroke="white" stroke-width="0.8" stroke-opacity="0.2"/>
+
+        <!-- Pavilion edge lines -->
+        <line x1="12" y1="42" x2="40" y2="70" stroke="#60a5fa" stroke-width="0.7" stroke-opacity="0.35"/>
+        <line x1="68" y1="42" x2="40" y2="70" stroke="#1e40af" stroke-width="0.7" stroke-opacity="0.35"/>
+
+        <!-- Sparkle on left page -->
+        <g filter="url(#v1glow)">
+          <path d="M27,19 L27.8,22 L31,22.5 L27.8,23 L27,26 L26.2,23 L23,22.5 L26.2,22 Z" fill="white" opacity="0.9"/>
+        </g>
+      </svg>
+      <span>80px</span>
+    </div>
+
+    <!-- 48px -->
+    <div class="size-item">
+      <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v1bg48" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0c1445"/><stop offset="100%" stop-color="#1d3a8a"/>
+          </linearGradient>
+          <linearGradient id="v1pL48" x1="14" y1="15" x2="40" y2="42" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dbeafe"/>
+          </linearGradient>
+          <linearGradient id="v1pR48" x1="66" y1="15" x2="40" y2="42" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#eff6ff"/><stop offset="100%" stop-color="#bfdbfe"/>
+          </linearGradient>
+          <linearGradient id="v1pav48" x1="40" y1="42" x2="40" y2="70" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.8"/><stop offset="100%" stop-color="#0c1445" stop-opacity="0.95"/>
+          </linearGradient>
+        </defs>
+        <rect width="80" height="80" rx="18" fill="url(#v1bg48)"/>
+        <polygon points="40,70 12,42 68,42" fill="url(#v1pav48)"/>
+        <polygon points="14,18 40,10 40,42 12,42" fill="url(#v1pL48)"/>
+        <polygon points="40,10 66,18 68,42 40,42" fill="url(#v1pR48)"/>
+        <line x1="40" y1="10" x2="40" y2="42" stroke="white" stroke-width="1.5" stroke-opacity="0.7"/>
+        <polyline points="14,18 40,10 66,18" fill="none" stroke="white" stroke-width="1.2" stroke-opacity="0.5"/>
+        <path d="M27,19 L27.8,22 L31,22.5 L27.8,23 L27,26 L26.2,23 L23,22.5 L26.2,22 Z" fill="white" opacity="0.85"/>
+      </svg>
+      <span>48px</span>
+    </div>
+
+    <!-- 32px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="v1bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0c1445"/><stop offset="100%" stop-color="#1d3a8a"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="18" fill="url(#v1bg32)"/>
+          <polygon points="40,70 12,42 68,42" fill="#1e3a8a" opacity="0.9"/>
+          <polygon points="14,18 40,10 40,42 12,42" fill="white" opacity="0.92"/>
+          <polygon points="40,10 66,18 68,42 40,42" fill="#dbeafe" opacity="0.88"/>
+          <line x1="40" y1="10" x2="40" y2="42" stroke="white" stroke-width="2" stroke-opacity="0.8"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+
+    <!-- 16px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="v1bg16" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0c1445"/><stop offset="100%" stop-color="#1d3a8a"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="18" fill="url(#v1bg16)"/>
+          <polygon points="14,18 40,10 40,42 12,42" fill="white" opacity="0.95"/>
+          <polygon points="40,10 66,18 68,42 40,42" fill="#dbeafe" opacity="0.85"/>
+          <line x1="40" y1="10" x2="40" y2="42" stroke="white" stroke-width="3" stroke-opacity="0.9"/>
+        </svg>
+      </div>
+      <span>16px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Classic Deep Navy</div>
+  <div class="desc">Nền navy đậm, hai trang sách trắng sáng, pavilion xanh fade xuống. Truyền thống và dễ nhận ra.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     V2 — Aurora: indigo→teal gradient bg
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">Variant 2 · Aurora</div>
+  <div class="sizes">
+
+    <!-- 80px -->
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v2bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1e1b4b"/>
+            <stop offset="50%" stop-color="#1d4ed8"/>
+            <stop offset="100%" stop-color="#0891b2"/>
+          </linearGradient>
+          <linearGradient id="v2pL" x1="12" y1="12" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="100%" stop-color="#e0f2fe"/>
+          </linearGradient>
+          <linearGradient id="v2pR" x1="68" y1="12" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#f0f9ff"/>
+            <stop offset="100%" stop-color="#bae6fd"/>
+          </linearGradient>
+          <linearGradient id="v2pav" x1="40" y1="44" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#1e1b4b" stop-opacity="0.9"/>
+          </linearGradient>
+          <radialGradient id="v2glow" cx="40" cy="28" r="24" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#a5f3fc" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#a5f3fc" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="v2blur">
+            <feGaussianBlur stdDeviation="2.5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <rect width="80" height="80" rx="19" fill="url(#v2bg)"/>
+        <!-- Glow halo behind pages -->
+        <ellipse cx="40" cy="30" rx="28" ry="16" fill="url(#v2glow)"/>
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="white" stroke-opacity="0.1" stroke-width="1" fill="none"/>
+
+        <!-- Pavilion -->
+        <polygon points="40,72 11,44 69,44" fill="url(#v2pav)"/>
+
+        <!-- Left page -->
+        <polygon points="12,17 40,9 40,44 11,44" fill="url(#v2pL)"/>
+        <!-- Right page -->
+        <polygon points="40,9 68,17 69,44 40,44" fill="url(#v2pR)"/>
+
+        <!-- Page text lines -->
+        <line x1="20" y1="27" x2="37" y2="30" stroke="#0369a1" stroke-width="1" stroke-opacity="0.4"/>
+        <line x1="20" y1="32" x2="37" y2="35" stroke="#0369a1" stroke-width="1" stroke-opacity="0.3"/>
+        <line x1="20" y1="37" x2="32" y2="39.5" stroke="#0369a1" stroke-width="1" stroke-opacity="0.2"/>
+        <line x1="43" y1="30" x2="60" y2="27" stroke="#0369a1" stroke-width="1" stroke-opacity="0.3"/>
+        <line x1="43" y1="35" x2="60" y2="32" stroke="#0369a1" stroke-width="1" stroke-opacity="0.2"/>
+
+        <!-- Spine -->
+        <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="1.8" stroke-opacity="0.75" stroke-linecap="round"/>
+        <!-- Crown edge -->
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="white" stroke-width="1.3" stroke-opacity="0.55" stroke-linejoin="round"/>
+        <!-- Girdle -->
+        <line x1="11" y1="44" x2="69" y2="44" stroke="white" stroke-width="0.7" stroke-opacity="0.18"/>
+        <!-- Pavilion edges -->
+        <line x1="11" y1="44" x2="40" y2="72" stroke="#7dd3fc" stroke-width="0.8" stroke-opacity="0.4"/>
+        <line x1="69" y1="44" x2="40" y2="72" stroke="#0891b2" stroke-width="0.8" stroke-opacity="0.4"/>
+
+        <!-- Sparkle -->
+        <g filter="url(#v2blur)">
+          <path d="M27,18 L28,21.5 L32,22 L28,22.5 L27,26 L26,22.5 L22,22 L26,21.5 Z" fill="white" opacity="0.95"/>
+          <circle cx="27" cy="22" r="1" fill="white"/>
+        </g>
+        <!-- Tiny secondary sparkle -->
+        <circle cx="54" cy="22" r="1.5" fill="white" opacity="0.5"/>
+        <circle cx="54" cy="22" r="0.6" fill="white" opacity="1"/>
+      </svg>
+      <span>80px</span>
+    </div>
+
+    <!-- 48px -->
+    <div class="size-item">
+      <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v2bg48" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1e1b4b"/><stop offset="50%" stop-color="#1d4ed8"/><stop offset="100%" stop-color="#0891b2"/>
+          </linearGradient>
+          <linearGradient id="v2pav48" x1="40" y1="44" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.6"/><stop offset="100%" stop-color="#1e1b4b" stop-opacity="0.9"/>
+          </linearGradient>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#v2bg48)"/>
+        <polygon points="40,72 11,44 69,44" fill="url(#v2pav48)"/>
+        <polygon points="12,17 40,9 40,44 11,44" fill="white" opacity="0.93"/>
+        <polygon points="40,9 68,17 69,44 40,44" fill="#e0f2fe" opacity="0.88"/>
+        <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="1.8" stroke-opacity="0.8"/>
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="white" stroke-width="1.3" stroke-opacity="0.55"/>
+        <path d="M27,18 L28,21.5 L32,22 L28,22.5 L27,26 L26,22.5 L22,22 L26,21.5 Z" fill="white" opacity="0.9"/>
+      </svg>
+      <span>48px</span>
+    </div>
+
+    <!-- 32px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="v2bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0891b2"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="19" fill="url(#v2bg32)"/>
+          <polygon points="40,72 11,44 69,44" fill="#0c4a6e" opacity="0.8"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="white" opacity="0.95"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="#bae6fd" opacity="0.9"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="2" stroke-opacity="0.85"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+
+    <!-- 16px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="v2bg16" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0891b2"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="19" fill="url(#v2bg16)"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="white" opacity="0.97"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="#bae6fd" opacity="0.9"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="3.5" stroke-opacity="0.9"/>
+        </svg>
+      </div>
+      <span>16px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Aurora Indigo–Teal</div>
+  <div class="desc">Gradient 3 tông indigo → xanh → teal. Glow halo sau trang sách. Hiện đại và có chiều sâu.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     V3 — Midnight Gold: dark bg, gold pages
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">Variant 3 · Midnight Gold</div>
+  <div class="sizes">
+
+    <!-- 80px -->
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v3bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0c0a1a"/>
+            <stop offset="100%" stop-color="#1a1033"/>
+          </linearGradient>
+          <linearGradient id="v3pL" x1="12" y1="10" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#fef9c3"/>
+            <stop offset="100%" stop-color="#fde68a"/>
+          </linearGradient>
+          <linearGradient id="v3pR" x1="68" y1="10" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#fde68a"/>
+            <stop offset="100%" stop-color="#f59e0b"/>
+          </linearGradient>
+          <linearGradient id="v3pav" x1="40" y1="44" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#0c0a1a" stop-opacity="0.95"/>
+          </linearGradient>
+          <radialGradient id="v3glow" cx="40" cy="26" r="22" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#fef08a" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#fef08a" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="v3f">
+            <feGaussianBlur stdDeviation="2" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <rect width="80" height="80" rx="19" fill="url(#v3bg)"/>
+        <!-- Stars in background -->
+        <circle cx="15" cy="12" r="0.8" fill="white" opacity="0.4"/>
+        <circle cx="62" cy="8" r="0.6" fill="white" opacity="0.3"/>
+        <circle cx="70" cy="30" r="0.5" fill="white" opacity="0.25"/>
+        <circle cx="10" cy="55" r="0.7" fill="white" opacity="0.2"/>
+        <circle cx="72" cy="62" r="0.6" fill="white" opacity="0.2"/>
+        <!-- Glow -->
+        <ellipse cx="40" cy="30" rx="26" ry="14" fill="url(#v3glow)"/>
+        <!-- Border -->
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="#f59e0b" stroke-opacity="0.15" stroke-width="1" fill="none"/>
+
+        <!-- Pavilion -->
+        <polygon points="40,71 11,44 69,44" fill="url(#v3pav)"/>
+        <!-- Left page -->
+        <polygon points="12,17 40,9 40,44 11,44" fill="url(#v3pL)"/>
+        <!-- Right page -->
+        <polygon points="40,9 68,17 69,44 40,44" fill="url(#v3pR)"/>
+
+        <!-- Text lines left page -->
+        <line x1="20" y1="27" x2="37" y2="30" stroke="#92400e" stroke-width="0.9" stroke-opacity="0.45"/>
+        <line x1="20" y1="32" x2="37" y2="35" stroke="#92400e" stroke-width="0.9" stroke-opacity="0.3"/>
+        <line x1="20" y1="37" x2="31" y2="39" stroke="#92400e" stroke-width="0.9" stroke-opacity="0.2"/>
+        <!-- Text lines right page -->
+        <line x1="43" y1="30" x2="60" y2="27" stroke="#92400e" stroke-width="0.9" stroke-opacity="0.3"/>
+        <line x1="43" y1="35" x2="60" y2="32" stroke="#92400e" stroke-width="0.9" stroke-opacity="0.2"/>
+
+        <!-- Spine -->
+        <line x1="40" y1="9" x2="40" y2="44" stroke="#fef9c3" stroke-width="1.6" stroke-opacity="0.8" stroke-linecap="round"/>
+        <!-- Crown -->
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="#fef9c3" stroke-width="1.2" stroke-opacity="0.6" stroke-linejoin="round"/>
+        <!-- Girdle -->
+        <line x1="11" y1="44" x2="69" y2="44" stroke="#f59e0b" stroke-width="0.8" stroke-opacity="0.25"/>
+        <!-- Pavilion edges -->
+        <line x1="11" y1="44" x2="40" y2="71" stroke="#f59e0b" stroke-width="0.9" stroke-opacity="0.4"/>
+        <line x1="69" y1="44" x2="40" y2="71" stroke="#d97706" stroke-width="0.9" stroke-opacity="0.35"/>
+
+        <!-- Gold sparkle -->
+        <g filter="url(#v3f)">
+          <path d="M27,18 L28.2,22 L32,22.5 L28.2,23 L27,27 L25.8,23 L22,22.5 L25.8,22 Z" fill="#fef9c3" opacity="0.95"/>
+          <circle cx="27" cy="22.5" r="1.2" fill="white"/>
+        </g>
+        <circle cx="54" cy="21" r="1.8" fill="#fde68a" opacity="0.5"/>
+        <circle cx="54" cy="21" r="0.7" fill="#fef9c3" opacity="0.9"/>
+      </svg>
+      <span>80px</span>
+    </div>
+
+    <!-- 48px -->
+    <div class="size-item">
+      <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v3bg48" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0c0a1a"/><stop offset="100%" stop-color="#1a1033"/>
+          </linearGradient>
+          <linearGradient id="v3pav48" x1="40" y1="44" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.5"/><stop offset="100%" stop-color="#0c0a1a" stop-opacity="0.95"/>
+          </linearGradient>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#v3bg48)"/>
+        <polygon points="40,71 11,44 69,44" fill="url(#v3pav48)"/>
+        <polygon points="12,17 40,9 40,44 11,44" fill="#fef9c3" opacity="0.95"/>
+        <polygon points="40,9 68,17 69,44 40,44" fill="#fde68a" opacity="0.88"/>
+        <line x1="40" y1="9" x2="40" y2="44" stroke="#fef9c3" stroke-width="1.6" stroke-opacity="0.85"/>
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="#fef9c3" stroke-width="1.2" stroke-opacity="0.6"/>
+        <path d="M27,18 L28.2,22 L32,22.5 L28.2,23 L27,27 L25.8,23 L22,22.5 L25.8,22 Z" fill="white" opacity="0.9"/>
+      </svg>
+      <span>48px</span>
+    </div>
+
+    <!-- 32px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="v3bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0c0a1a"/><stop offset="100%" stop-color="#1a1033"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="19" fill="url(#v3bg32)"/>
+          <polygon points="40,71 11,44 69,44" fill="#78350f" opacity="0.7"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="#fef9c3" opacity="0.97"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="#fde68a" opacity="0.9"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="2.5" stroke-opacity="0.9"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+
+    <!-- 16px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="80" height="80" rx="19" fill="#0c0a1a"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="#fef9c3" opacity="0.97"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="#fde68a" opacity="0.9"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="3.5" stroke-opacity="0.9"/>
+        </svg>
+      </div>
+      <span>16px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Midnight Gold</div>
+  <div class="desc">Nền tối như bầu trời đêm, trang sách ánh vàng kim. Sang trọng, gợi cảm giác đọc sách lúc đêm khuya.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     V4 — Frosted Glass: light bg, glass effect
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">Variant 4 · Frosted Glass</div>
+  <div class="sizes">
+
+    <!-- 80px -->
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v4bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0ea5e9"/>
+            <stop offset="100%" stop-color="#6366f1"/>
+          </linearGradient>
+          <linearGradient id="v4glass" x1="0" y1="0" x2="0" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="white" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="white" stop-opacity="0.06"/>
+          </linearGradient>
+          <linearGradient id="v4pL" x1="12" y1="12" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="white" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="white" stop-opacity="0.65"/>
+          </linearGradient>
+          <linearGradient id="v4pR" x1="68" y1="12" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="white" stop-opacity="0.7"/>
+            <stop offset="100%" stop-color="white" stop-opacity="0.45"/>
+          </linearGradient>
+          <linearGradient id="v4pav" x1="40" y1="44" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="white" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="white" stop-opacity="0.05"/>
+          </linearGradient>
+          <filter id="v4blur">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.5"/>
+          </filter>
+        </defs>
+
+        <!-- Background gradient -->
+        <rect width="80" height="80" rx="19" fill="url(#v4bg)"/>
+        <!-- Glass overlay -->
+        <rect width="80" height="80" rx="19" fill="url(#v4glass)"/>
+        <!-- Highlight stripe (top-left corner light) -->
+        <path d="M0,30 Q0,0 30,0 L0,0 Z" fill="white" opacity="0.06" clip-path="inset(0 0 0 0 round 19px)"/>
+        <!-- Border shimmer -->
+        <rect x="1" y="1" width="78" height="78" rx="18" stroke="white" stroke-opacity="0.3" stroke-width="1.5" fill="none"/>
+
+        <!-- Frosted pavilion blur -->
+        <polygon points="40,71 11,44 69,44" fill="url(#v4pav)"/>
+
+        <!-- Pages (frosted glass effect) -->
+        <polygon points="12,17 40,9 40,44 11,44" fill="url(#v4pL)"/>
+        <polygon points="40,9 68,17 69,44 40,44" fill="url(#v4pR)"/>
+        <!-- Page border lines -->
+        <polygon points="12,17 40,9 40,44 11,44" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.5"/>
+        <polygon points="40,9 68,17 69,44 40,44" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.4"/>
+
+        <!-- Text lines -->
+        <line x1="20" y1="27" x2="37" y2="30" stroke="white" stroke-width="1" stroke-opacity="0.5"/>
+        <line x1="20" y1="32" x2="37" y2="35" stroke="white" stroke-width="1" stroke-opacity="0.35"/>
+        <line x1="43" y1="30" x2="60" y2="27" stroke="white" stroke-width="1" stroke-opacity="0.35"/>
+        <line x1="43" y1="35" x2="60" y2="32" stroke="white" stroke-width="1" stroke-opacity="0.25"/>
+
+        <!-- Spine -->
+        <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="1.8" stroke-opacity="0.85" stroke-linecap="round"/>
+        <!-- Crown -->
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="white" stroke-width="1.3" stroke-opacity="0.7" stroke-linejoin="round"/>
+        <!-- Girdle -->
+        <line x1="11" y1="44" x2="69" y2="44" stroke="white" stroke-width="0.7" stroke-opacity="0.3"/>
+        <!-- Pavilion edges -->
+        <line x1="11" y1="44" x2="40" y2="71" stroke="white" stroke-width="0.9" stroke-opacity="0.4"/>
+        <line x1="69" y1="44" x2="40" y2="71" stroke="white" stroke-width="0.9" stroke-opacity="0.3"/>
+
+        <!-- Sparkle -->
+        <path d="M27,17 L28,21 L32,21.5 L28,22 L27,26 L26,22 L22,21.5 L26,21 Z" fill="white" opacity="0.95"/>
+        <circle cx="27" cy="21.5" r="1" fill="white"/>
+      </svg>
+      <span>80px</span>
+    </div>
+
+    <!-- 48px -->
+    <div class="size-item">
+      <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v4bg48" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#6366f1"/>
+          </linearGradient>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#v4bg48)"/>
+        <rect x="1" y="1" width="78" height="78" rx="18" stroke="white" stroke-opacity="0.25" stroke-width="1" fill="none"/>
+        <polygon points="40,71 11,44 69,44" fill="white" opacity="0.2"/>
+        <polygon points="12,17 40,9 40,44 11,44" fill="white" opacity="0.82"/>
+        <polygon points="40,9 68,17 69,44 40,44" fill="white" opacity="0.62"/>
+        <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="1.8" stroke-opacity="0.9"/>
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="white" stroke-width="1.3" stroke-opacity="0.7"/>
+        <path d="M27,17 L28,21 L32,21.5 L28,22 L27,26 L26,22 L22,21.5 L26,21 Z" fill="white" opacity="0.9"/>
+      </svg>
+      <span>48px</span>
+    </div>
+
+    <!-- 32px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="v4bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#6366f1"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="19" fill="url(#v4bg32)"/>
+          <polygon points="40,71 11,44 69,44" fill="white" opacity="0.2"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="white" opacity="0.85"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="white" opacity="0.65"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="2.5" stroke-opacity="0.9"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+
+    <!-- 16px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="v4bg16" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#6366f1"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="19" fill="url(#v4bg16)"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="white" opacity="0.88"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="white" opacity="0.68"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="3.5" stroke-opacity="0.95"/>
+        </svg>
+      </div>
+      <span>16px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Frosted Glass</div>
+  <div class="desc">Hiệu ứng kính mờ trên nền gradient sky–indigo. Trong suốt, nhẹ nhàng, rất phù hợp iOS/macOS style.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     V5 — Emerald: green knowledge tree feel
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">Variant 5 · Emerald</div>
+  <div class="sizes">
+
+    <!-- 80px -->
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v5bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#052e16"/>
+            <stop offset="100%" stop-color="#065f46"/>
+          </linearGradient>
+          <linearGradient id="v5pL" x1="12" y1="10" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#d1fae5"/>
+            <stop offset="100%" stop-color="#6ee7b7"/>
+          </linearGradient>
+          <linearGradient id="v5pR" x1="68" y1="10" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#a7f3d0"/>
+            <stop offset="100%" stop-color="#34d399"/>
+          </linearGradient>
+          <linearGradient id="v5pav" x1="40" y1="44" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#059669" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#052e16" stop-opacity="0.95"/>
+          </linearGradient>
+          <radialGradient id="v5glow" cx="40" cy="28" r="22" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#6ee7b7" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#6ee7b7" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="v5f">
+            <feGaussianBlur stdDeviation="2" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <rect width="80" height="80" rx="19" fill="url(#v5bg)"/>
+        <ellipse cx="40" cy="29" rx="26" ry="14" fill="url(#v5glow)"/>
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="#34d399" stroke-opacity="0.15" stroke-width="1" fill="none"/>
+
+        <!-- Pavilion -->
+        <polygon points="40,71 11,44 69,44" fill="url(#v5pav)"/>
+        <!-- Left page -->
+        <polygon points="12,17 40,9 40,44 11,44" fill="url(#v5pL)"/>
+        <!-- Right page -->
+        <polygon points="40,9 68,17 69,44 40,44" fill="url(#v5pR)"/>
+
+        <!-- Lines -->
+        <line x1="20" y1="27" x2="37" y2="30" stroke="#065f46" stroke-width="0.9" stroke-opacity="0.5"/>
+        <line x1="20" y1="32" x2="37" y2="35" stroke="#065f46" stroke-width="0.9" stroke-opacity="0.35"/>
+        <line x1="43" y1="30" x2="60" y2="27" stroke="#065f46" stroke-width="0.9" stroke-opacity="0.35"/>
+        <line x1="43" y1="35" x2="60" y2="32" stroke="#065f46" stroke-width="0.9" stroke-opacity="0.25"/>
+
+        <!-- Spine -->
+        <line x1="40" y1="9" x2="40" y2="44" stroke="#d1fae5" stroke-width="1.6" stroke-opacity="0.8" stroke-linecap="round"/>
+        <!-- Crown -->
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="#d1fae5" stroke-width="1.2" stroke-opacity="0.6" stroke-linejoin="round"/>
+        <!-- Girdle -->
+        <line x1="11" y1="44" x2="69" y2="44" stroke="#34d399" stroke-width="0.7" stroke-opacity="0.25"/>
+        <!-- Pavilion edges -->
+        <line x1="11" y1="44" x2="40" y2="71" stroke="#34d399" stroke-width="0.8" stroke-opacity="0.4"/>
+        <line x1="69" y1="44" x2="40" y2="71" stroke="#059669" stroke-width="0.8" stroke-opacity="0.35"/>
+
+        <!-- Sparkle -->
+        <g filter="url(#v5f)">
+          <path d="M27,18 L28.2,22 L32,22.5 L28.2,23 L27,27 L25.8,23 L22,22.5 L25.8,22 Z" fill="#d1fae5" opacity="0.95"/>
+          <circle cx="27" cy="22.5" r="1.1" fill="white"/>
+        </g>
+        <circle cx="54" cy="21" r="1.6" fill="#6ee7b7" opacity="0.5"/>
+        <circle cx="54" cy="21" r="0.6" fill="white" opacity="0.9"/>
+      </svg>
+      <span>80px</span>
+    </div>
+
+    <!-- 48px -->
+    <div class="size-item">
+      <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v5bg48" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#052e16"/><stop offset="100%" stop-color="#065f46"/>
+          </linearGradient>
+          <linearGradient id="v5pav48" x1="40" y1="44" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#059669" stop-opacity="0.6"/><stop offset="100%" stop-color="#052e16" stop-opacity="0.95"/>
+          </linearGradient>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#v5bg48)"/>
+        <polygon points="40,71 11,44 69,44" fill="url(#v5pav48)"/>
+        <polygon points="12,17 40,9 40,44 11,44" fill="#d1fae5" opacity="0.95"/>
+        <polygon points="40,9 68,17 69,44 40,44" fill="#6ee7b7" opacity="0.88"/>
+        <line x1="40" y1="9" x2="40" y2="44" stroke="#d1fae5" stroke-width="1.6" stroke-opacity="0.85"/>
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="#d1fae5" stroke-width="1.2" stroke-opacity="0.6"/>
+        <path d="M27,18 L28.2,22 L32,22.5 L28.2,23 L27,27 L25.8,23 L22,22.5 L25.8,22 Z" fill="white" opacity="0.85"/>
+      </svg>
+      <span>48px</span>
+    </div>
+
+    <!-- 32px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="80" height="80" rx="19" fill="#052e16"/>
+          <polygon points="40,71 11,44 69,44" fill="#065f46" opacity="0.8"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="#d1fae5" opacity="0.97"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="#6ee7b7" opacity="0.9"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="2.5" stroke-opacity="0.9"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+
+    <!-- 16px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="80" height="80" rx="19" fill="#052e16"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="#d1fae5" opacity="0.97"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="#6ee7b7" opacity="0.9"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="3.5" stroke-opacity="0.9"/>
+        </svg>
+      </div>
+      <span>16px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Emerald Forest</div>
+  <div class="desc">Nền xanh lá đêm, trang sách ngọc bích. Gợi sự tươi mới, tri thức như cây xanh đâm chồi nảy lộc.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     V6 — Rose Gold: warm premium feel
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">Variant 6 · Rose Gold</div>
+  <div class="sizes">
+
+    <!-- 80px -->
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v6bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1c0a14"/>
+            <stop offset="100%" stop-color="#4c1d30"/>
+          </linearGradient>
+          <linearGradient id="v6pL" x1="12" y1="10" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#ffe4e6"/>
+            <stop offset="100%" stop-color="#fda4af"/>
+          </linearGradient>
+          <linearGradient id="v6pR" x1="68" y1="10" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#fecdd3"/>
+            <stop offset="100%" stop-color="#fb7185"/>
+          </linearGradient>
+          <linearGradient id="v6pav" x1="40" y1="44" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#e11d48" stop-opacity="0.45"/>
+            <stop offset="100%" stop-color="#1c0a14" stop-opacity="0.95"/>
+          </linearGradient>
+          <radialGradient id="v6glow" cx="40" cy="27" r="22" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#fda4af" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#fda4af" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="v6f">
+            <feGaussianBlur stdDeviation="2" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <rect width="80" height="80" rx="19" fill="url(#v6bg)"/>
+        <ellipse cx="40" cy="28" rx="26" ry="14" fill="url(#v6glow)"/>
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="#fda4af" stroke-opacity="0.2" stroke-width="1" fill="none"/>
+        <!-- Stars -->
+        <circle cx="14" cy="11" r="0.7" fill="white" opacity="0.35"/>
+        <circle cx="65" cy="9" r="0.5" fill="white" opacity="0.25"/>
+        <circle cx="71" cy="58" r="0.6" fill="white" opacity="0.2"/>
+
+        <polygon points="40,71 11,44 69,44" fill="url(#v6pav)"/>
+        <polygon points="12,17 40,9 40,44 11,44" fill="url(#v6pL)"/>
+        <polygon points="40,9 68,17 69,44 40,44" fill="url(#v6pR)"/>
+
+        <line x1="20" y1="27" x2="37" y2="30" stroke="#9f1239" stroke-width="0.9" stroke-opacity="0.4"/>
+        <line x1="20" y1="32" x2="37" y2="35" stroke="#9f1239" stroke-width="0.9" stroke-opacity="0.28"/>
+        <line x1="43" y1="30" x2="60" y2="27" stroke="#9f1239" stroke-width="0.9" stroke-opacity="0.28"/>
+        <line x1="43" y1="35" x2="60" y2="32" stroke="#9f1239" stroke-width="0.9" stroke-opacity="0.2"/>
+
+        <line x1="40" y1="9" x2="40" y2="44" stroke="#ffe4e6" stroke-width="1.6" stroke-opacity="0.8" stroke-linecap="round"/>
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="#ffe4e6" stroke-width="1.2" stroke-opacity="0.6" stroke-linejoin="round"/>
+        <line x1="11" y1="44" x2="69" y2="44" stroke="#fda4af" stroke-width="0.7" stroke-opacity="0.25"/>
+        <line x1="11" y1="44" x2="40" y2="71" stroke="#fda4af" stroke-width="0.8" stroke-opacity="0.4"/>
+        <line x1="69" y1="44" x2="40" y2="71" stroke="#e11d48" stroke-width="0.8" stroke-opacity="0.35"/>
+
+        <g filter="url(#v6f)">
+          <path d="M27,18 L28.2,22 L32,22.5 L28.2,23 L27,27 L25.8,23 L22,22.5 L25.8,22 Z" fill="#ffe4e6" opacity="0.95"/>
+          <circle cx="27" cy="22.5" r="1.1" fill="white"/>
+        </g>
+        <circle cx="54" cy="21" r="1.6" fill="#fecdd3" opacity="0.5"/>
+        <circle cx="54" cy="21" r="0.6" fill="white" opacity="0.9"/>
+      </svg>
+      <span>80px</span>
+    </div>
+
+    <!-- 48px -->
+    <div class="size-item">
+      <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="v6bg48" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1c0a14"/><stop offset="100%" stop-color="#4c1d30"/>
+          </linearGradient>
+          <linearGradient id="v6pav48" x1="40" y1="44" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#e11d48" stop-opacity="0.45"/><stop offset="100%" stop-color="#1c0a14" stop-opacity="0.95"/>
+          </linearGradient>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#v6bg48)"/>
+        <polygon points="40,71 11,44 69,44" fill="url(#v6pav48)"/>
+        <polygon points="12,17 40,9 40,44 11,44" fill="#ffe4e6" opacity="0.95"/>
+        <polygon points="40,9 68,17 69,44 40,44" fill="#fda4af" opacity="0.88"/>
+        <line x1="40" y1="9" x2="40" y2="44" stroke="#ffe4e6" stroke-width="1.6" stroke-opacity="0.85"/>
+        <polyline points="12,17 40,9 68,17" fill="none" stroke="#ffe4e6" stroke-width="1.2" stroke-opacity="0.6"/>
+        <path d="M27,18 L28.2,22 L32,22.5 L28.2,23 L27,27 L25.8,23 L22,22.5 L25.8,22 Z" fill="white" opacity="0.85"/>
+      </svg>
+      <span>48px</span>
+    </div>
+
+    <!-- 32px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="80" height="80" rx="19" fill="#1c0a14"/>
+          <polygon points="40,71 11,44 69,44" fill="#4c1d30" opacity="0.8"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="#ffe4e6" opacity="0.97"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="#fda4af" opacity="0.9"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="2.5" stroke-opacity="0.9"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+
+    <!-- 16px -->
+    <div class="size-item">
+      <div class="cb">
+        <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="80" height="80" rx="19" fill="#1c0a14"/>
+          <polygon points="12,17 40,9 40,44 11,44" fill="#ffe4e6" opacity="0.97"/>
+          <polygon points="40,9 68,17 69,44 40,44" fill="#fda4af" opacity="0.9"/>
+          <line x1="40" y1="9" x2="40" y2="44" stroke="white" stroke-width="3.5" stroke-opacity="0.9"/>
+        </svg>
+      </div>
+      <span>16px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Rose Gold Night</div>
+  <div class="desc">Nền burgundy tối, trang sách hồng rose gold. Sang trọng, nữ tính, khác biệt trong đám đông app đọc sách.</div>
+</div>
+
+</div><!-- /grid tab1 -->
+</div><!-- /tab1 -->
+
+
+<!-- ═══ TAB 2: Gem Structures ═══ -->
+<div id="tab2" class="tab-panel">
+<div class="page-heading">
+  <h2>Gem + Book Pages · Structural Variants</h2>
+  <p>Thay đổi hình dạng gem, cách cắt facet, cách tích hợp sách — không chỉ đổi màu</p>
+</div>
+<div class="grid">
+
+
+<!-- ═══════════════════════════════════════════
+     G1 — Brilliant Cut: nhiều facet như kim cương thật
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">G1 · Brilliant Cut</div>
+  <div class="sizes">
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g1bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0f1729"/><stop offset="100%" stop-color="#1e3a8a"/>
+          </linearGradient>
+          <filter id="g1glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#g1bg)"/>
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="white" stroke-opacity="0.08" stroke-width="1" fill="none"/>
+
+        <!-- Crown: table (top flat face) = book pages -->
+        <!-- Left page of book = left half of table -->
+        <polygon points="40,10 22,20 28,34 40,34" fill="white" opacity="0.92"/>
+        <!-- Right page of book = right half of table -->
+        <polygon points="40,10 58,20 52,34 40,34" fill="#dbeafe" opacity="0.88"/>
+        <!-- Spine of book = center line of table -->
+        <line x1="40" y1="10" x2="40" y2="34" stroke="white" stroke-width="1.6" stroke-opacity="0.8"/>
+
+        <!-- Crown bezel facets (surrounding the table) -->
+        <polygon points="22,20 10,30 28,34" fill="white" opacity="0.28"/>
+        <polygon points="10,30 28,34 16,46" fill="white" opacity="0.18"/>
+        <polygon points="58,20 70,30 52,34" fill="white" opacity="0.18"/>
+        <polygon points="70,30 52,34 64,46" fill="white" opacity="0.25"/>
+        <polygon points="22,20 10,30 40,10" fill="white" opacity="0.12"/>
+        <polygon points="58,20 70,30 40,10" fill="white" opacity="0.08"/>
+
+        <!-- Girdle (waist line) -->
+        <polygon points="16,46 28,34 52,34 64,46 40,40" fill="none" stroke="white" stroke-width="0.7" stroke-opacity="0.2"/>
+
+        <!-- Pavilion facets -->
+        <polygon points="16,46 40,40 40,70" fill="white" opacity="0.22"/>
+        <polygon points="64,46 40,40 40,70" fill="white" opacity="0.38"/>
+        <polygon points="16,46 28,34 40,40" fill="white" opacity="0.12"/>
+        <polygon points="64,46 52,34 40,40" fill="white" opacity="0.18"/>
+        <polygon points="10,30 16,46 40,40 28,34" fill="white" opacity="0.08"/>
+        <polygon points="70,30 64,46 40,40 52,34" fill="white" opacity="0.12"/>
+
+        <!-- Culet (bottom point) highlight -->
+        <circle cx="40" cy="70" r="1.5" fill="white" opacity="0.6"/>
+
+        <!-- Book text lines on pages -->
+        <line x1="25" y1="24" x2="38" y2="24.5" stroke="#93c5fd" stroke-width="0.7" stroke-opacity="0.55"/>
+        <line x1="25" y1="27" x2="38" y2="27.5" stroke="#93c5fd" stroke-width="0.7" stroke-opacity="0.4"/>
+        <line x1="25" y1="30" x2="34" y2="30.5" stroke="#93c5fd" stroke-width="0.7" stroke-opacity="0.3"/>
+        <line x1="42" y1="24.5" x2="55" y2="24" stroke="#93c5fd" stroke-width="0.7" stroke-opacity="0.4"/>
+        <line x1="42" y1="27.5" x2="55" y2="27" stroke="#93c5fd" stroke-width="0.7" stroke-opacity="0.3"/>
+
+        <!-- Crown edge -->
+        <polyline points="22,20 40,10 58,20" fill="none" stroke="white" stroke-width="1.2" stroke-opacity="0.6"/>
+
+        <!-- Sparkle -->
+        <g filter="url(#g1glow)">
+          <path d="M27,13 L27.7,16 L31,16.5 L27.7,17 L27,20 L26.3,17 L23,16.5 L26.3,16 Z" fill="white" opacity="0.95"/>
+        </g>
+      </svg>
+      <span>80px</span>
+    </div>
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="g1bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0f1729"/><stop offset="100%" stop-color="#1e3a8a"/></linearGradient></defs>
+          <rect width="80" height="80" rx="19" fill="url(#g1bg32)"/>
+          <polygon points="40,10 22,20 28,34 40,34" fill="white" opacity="0.93"/>
+          <polygon points="40,10 58,20 52,34 40,34" fill="#dbeafe" opacity="0.85"/>
+          <polygon points="22,20 10,30 28,34" fill="white" opacity="0.25"/>
+          <polygon points="58,20 70,30 52,34" fill="white" opacity="0.18"/>
+          <polygon points="16,46 40,40 40,70" fill="white" opacity="0.22"/>
+          <polygon points="64,46 40,40 40,70" fill="white" opacity="0.35"/>
+          <line x1="40" y1="10" x2="40" y2="34" stroke="white" stroke-width="2" stroke-opacity="0.85"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Brilliant Cut</div>
+  <div class="desc">Cắt kim cương thật sự — crown bezel facets bao quanh mặt bàn (table), pavilion 6 mặt. Mặt bàn = 2 trang sách mở. Phức tạp và xa hoa nhất.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     G2 — Hexagonal Gem: 6 cạnh, sách nằm trong
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">G2 · Hexagonal</div>
+  <div class="sizes">
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g2bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0c4a6e"/>
+          </linearGradient>
+          <linearGradient id="g2pL" x1="18" y1="18" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dbeafe"/>
+          </linearGradient>
+          <linearGradient id="g2pR" x1="62" y1="18" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#eff6ff"/><stop offset="100%" stop-color="#93c5fd"/>
+          </linearGradient>
+          <filter id="g2glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#g2bg)"/>
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="white" stroke-opacity="0.08" stroke-width="1" fill="none"/>
+
+        <!-- Hexagon outline: 6 vertices -->
+        <!-- top(40,8) top-right(64,22) bot-right(64,52) bot(40,66) bot-left(16,52) top-left(16,22) -->
+
+        <!-- Top-left facet -->
+        <polygon points="16,22 40,8 40,37" fill="white" opacity="0.14"/>
+        <!-- Top-right facet -->
+        <polygon points="40,8 64,22 40,37" fill="white" opacity="0.08"/>
+
+        <!-- Left page (left half of hex interior) -->
+        <polygon points="16,22 40,8 40,37 16,52" fill="url(#g2pL)"/>
+        <!-- Right page (right half) -->
+        <polygon points="40,8 64,22 64,52 40,37" fill="url(#g2pR)"/>
+
+        <!-- Bottom pavilion -->
+        <polygon points="16,52 40,37 64,52 40,66" fill="white" opacity="0.18"/>
+        <!-- Bottom-left facet shade -->
+        <polygon points="16,52 40,66 40,37" fill="white" opacity="0.1"/>
+        <!-- Bottom-right facet shade -->
+        <polygon points="64,52 40,66 40,37" fill="white" opacity="0.22"/>
+
+        <!-- Hex outline -->
+        <polygon points="40,8 64,22 64,52 40,66 16,52 16,22" fill="none" stroke="white" stroke-width="1" stroke-opacity="0.35"/>
+
+        <!-- Spine -->
+        <line x1="40" y1="8" x2="40" y2="66" stroke="white" stroke-width="1.5" stroke-opacity="0.6"/>
+        <!-- Mid girdle line -->
+        <line x1="16" y1="37" x2="64" y2="37" stroke="white" stroke-width="0.7" stroke-opacity="0.2"/>
+
+        <!-- Book text lines -->
+        <line x1="22" y1="27" x2="37" y2="26" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.55"/>
+        <line x1="22" y1="31" x2="37" y2="30" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.4"/>
+        <line x1="22" y1="35" x2="35" y2="34" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.3"/>
+        <line x1="43" y1="26" x2="58" y2="27" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.35"/>
+        <line x1="43" y1="30" x2="58" y2="31" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.25"/>
+
+        <!-- Sparkle -->
+        <g filter="url(#g2glow)">
+          <path d="M26,15 L27,18.5 L30.5,19 L27,19.5 L26,23 L25,19.5 L21.5,19 L25,18.5 Z" fill="white" opacity="0.9"/>
+          <circle cx="26" cy="19" r="1" fill="white"/>
+        </g>
+        <circle cx="55" cy="18" r="1.4" fill="white" opacity="0.45"/>
+        <circle cx="55" cy="18" r="0.5" fill="white" opacity="0.9"/>
+      </svg>
+      <span>80px</span>
+    </div>
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="g2bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0c4a6e"/></linearGradient></defs>
+          <rect width="80" height="80" rx="19" fill="url(#g2bg32)"/>
+          <polygon points="16,22 40,8 40,37 16,52" fill="white" opacity="0.9"/>
+          <polygon points="40,8 64,22 64,52 40,37" fill="#dbeafe" opacity="0.82"/>
+          <polygon points="16,52 40,37 64,52 40,66" fill="white" opacity="0.2"/>
+          <polygon points="40,8 64,22 64,52 40,66 16,52 16,22" fill="none" stroke="white" stroke-width="1.2" stroke-opacity="0.35"/>
+          <line x1="40" y1="8" x2="40" y2="66" stroke="white" stroke-width="2" stroke-opacity="0.75"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Hexagonal Gem</div>
+  <div class="desc">Hình lục giác — gem dạng sapphire/aquamarine. Sách nằm trong 2 nửa hexagon. Đường viền rõ, trông như con dấu chuyên nghiệp.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     G3 — Shield / Heraldic: như huy hiệu
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">G3 · Shield Gem</div>
+  <div class="sizes">
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g3bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#1e3a8a"/>
+          </linearGradient>
+          <linearGradient id="g3shL" x1="14" y1="10" x2="40" y2="68" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#bfdbfe"/>
+          </linearGradient>
+          <linearGradient id="g3shR" x1="66" y1="10" x2="40" y2="68" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#dbeafe"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0.7"/>
+          </linearGradient>
+          <filter id="g3glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#g3bg)"/>
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="white" stroke-opacity="0.08" stroke-width="1" fill="none"/>
+
+        <!-- Shield shape: top-left(14,12) top-right(66,12) right-shoulder(70,42) bottom-point(40,72) left-shoulder(10,42) -->
+        <!-- Divided vertically: left = left page, right = right page -->
+        <!-- Left page half -->
+        <polygon points="14,12 40,12 40,72 10,42" fill="url(#g3shL)"/>
+        <!-- Right page half -->
+        <polygon points="40,12 66,12 70,42 40,72" fill="url(#g3shR)"/>
+
+        <!-- Shield outline -->
+        <polygon points="14,12 66,12 70,42 40,72 10,42" fill="none" stroke="white" stroke-width="1.5" stroke-opacity="0.5" stroke-linejoin="round"/>
+
+        <!-- Spine -->
+        <line x1="40" y1="12" x2="40" y2="72" stroke="white" stroke-width="1.8" stroke-opacity="0.75"/>
+
+        <!-- Top shoulder edge -->
+        <line x1="14" y1="12" x2="66" y2="12" stroke="white" stroke-width="1.2" stroke-opacity="0.5"/>
+
+        <!-- Book lines — left page -->
+        <line x1="20" y1="28" x2="37" y2="28" stroke="#1e40af" stroke-width="1" stroke-opacity="0.45"/>
+        <line x1="20" y1="33" x2="37" y2="33" stroke="#1e40af" stroke-width="1" stroke-opacity="0.35"/>
+        <line x1="20" y1="38" x2="37" y2="38" stroke="#1e40af" stroke-width="1" stroke-opacity="0.25"/>
+        <line x1="20" y1="43" x2="33" y2="43" stroke="#1e40af" stroke-width="1" stroke-opacity="0.2"/>
+        <!-- Right page -->
+        <line x1="43" y1="28" x2="60" y2="28" stroke="#1e40af" stroke-width="1" stroke-opacity="0.35"/>
+        <line x1="43" y1="33" x2="60" y2="33" stroke="#1e40af" stroke-width="1" stroke-opacity="0.25"/>
+        <line x1="43" y1="38" x2="58" y2="38" stroke="#1e40af" stroke-width="1" stroke-opacity="0.18"/>
+
+        <!-- Corner decorations (heraldic) -->
+        <rect x="14" y="12" width="8" height="1.5" rx="0.75" fill="white" opacity="0.6"/>
+        <rect x="58" y="12" width="8" height="1.5" rx="0.75" fill="white" opacity="0.6"/>
+        <rect x="14" y="12" width="1.5" height="8" rx="0.75" fill="white" opacity="0.6"/>
+        <rect x="64.5" y="12" width="1.5" height="8" rx="0.75" fill="white" opacity="0.6"/>
+
+        <!-- Sparkle -->
+        <g filter="url(#g3glow)">
+          <path d="M25,17 L26,20.5 L29.5,21 L26,21.5 L25,25 L24,21.5 L20.5,21 L24,20.5 Z" fill="white" opacity="0.9"/>
+        </g>
+        <!-- Bottom point glow -->
+        <circle cx="40" cy="72" r="2.5" fill="#3b82f6" opacity="0.5"/>
+        <circle cx="40" cy="72" r="1" fill="white" opacity="0.8"/>
+      </svg>
+      <span>80px</span>
+    </div>
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="g3bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#1e3a8a"/></linearGradient></defs>
+          <rect width="80" height="80" rx="19" fill="url(#g3bg32)"/>
+          <polygon points="14,12 40,12 40,72 10,42" fill="white" opacity="0.92"/>
+          <polygon points="40,12 66,12 70,42 40,72" fill="#bfdbfe" opacity="0.82"/>
+          <polygon points="14,12 66,12 70,42 40,72 10,42" fill="none" stroke="white" stroke-width="1.5" stroke-opacity="0.5"/>
+          <line x1="40" y1="12" x2="40" y2="72" stroke="white" stroke-width="2.5" stroke-opacity="0.85"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Shield / Heraldic Gem</div>
+  <div class="desc">Hình khiên huy hiệu — gem dạng shield cổ điển. Chia đôi thành 2 trang sách, có góc khung trang trí. Vừa tri thức, vừa uy quyền.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     G4 — Floating Pages: gem mỏng, sách mở nổi lên
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">G4 · Floating Pages</div>
+  <div class="sizes">
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g4bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0f1729"/><stop offset="100%" stop-color="#1e1b4b"/>
+          </linearGradient>
+          <linearGradient id="g4gem" x1="40" y1="46" x2="40" y2="70" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.7"/>
+            <stop offset="100%" stop-color="#0f1729" stop-opacity="0.9"/>
+          </linearGradient>
+          <radialGradient id="g4glow" cx="40" cy="28" r="30" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#818cf8" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#818cf8" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="g4shadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#3b82f6" flood-opacity="0.4"/>
+          </filter>
+          <filter id="g4gf"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#g4bg)"/>
+        <ellipse cx="40" cy="42" rx="28" ry="12" fill="url(#g4glow)"/>
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="white" stroke-opacity="0.07" stroke-width="1" fill="none"/>
+
+        <!-- Thin flat gem bottom (pavilion only, flat marquise shape) -->
+        <polygon points="14,46 40,70 66,46 40,42" fill="url(#g4gem)"/>
+        <!-- Gem girdle line -->
+        <line x1="14" y1="46" x2="66" y2="46" stroke="white" stroke-width="0.8" stroke-opacity="0.25"/>
+        <!-- Pavilion center crease -->
+        <line x1="40" y1="46" x2="40" y2="70" stroke="#60a5fa" stroke-width="0.8" stroke-opacity="0.35"/>
+
+        <!-- FLOATING OPEN BOOK above gem — bigger, dominant -->
+        <g filter="url(#g4shadow)">
+          <!-- Left page -->
+          <polygon points="14,42 40,32 40,46 14,46" fill="white" opacity="0.94"/>
+          <!-- Right page -->
+          <polygon points="40,32 66,42 66,46 40,46" fill="#dbeafe" opacity="0.88"/>
+          <!-- Spine -->
+          <line x1="40" y1="32" x2="40" y2="46" stroke="white" stroke-width="2" stroke-opacity="0.8"/>
+          <!-- Top crown edge -->
+          <polyline points="14,42 40,32 66,42" fill="none" stroke="white" stroke-width="1.5" stroke-opacity="0.6"/>
+        </g>
+
+        <!-- Book text lines -->
+        <line x1="20" y1="37" x2="37" y2="37" stroke="#93c5fd" stroke-width="0.9" stroke-opacity="0.5"/>
+        <line x1="20" y1="40" x2="37" y2="40" stroke="#93c5fd" stroke-width="0.9" stroke-opacity="0.35"/>
+        <line x1="20" y1="43" x2="32" y2="43" stroke="#93c5fd" stroke-width="0.9" stroke-opacity="0.25"/>
+        <line x1="43" y1="37" x2="60" y2="37" stroke="#93c5fd" stroke-width="0.9" stroke-opacity="0.4"/>
+        <line x1="43" y1="40" x2="60" y2="40" stroke="#93c5fd" stroke-width="0.9" stroke-opacity="0.28"/>
+
+        <!-- Sparkle above book -->
+        <g filter="url(#g4gf)">
+          <path d="M27,24 L27.8,27.5 L31.5,28 L27.8,28.5 L27,32 L26.2,28.5 L22.5,28 L26.2,27.5 Z" fill="white" opacity="0.9"/>
+        </g>
+        <!-- Secondary dots -->
+        <circle cx="54" cy="26" r="1.5" fill="white" opacity="0.45"/>
+        <circle cx="54" cy="26" r="0.5" fill="white" opacity="0.9"/>
+        <circle cx="40" cy="18" r="1" fill="white" opacity="0.35"/>
+      </svg>
+      <span>80px</span>
+    </div>
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="g4bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0f1729"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient></defs>
+          <rect width="80" height="80" rx="19" fill="url(#g4bg32)"/>
+          <polygon points="14,46 40,70 66,46 40,42" fill="#1d4ed8" opacity="0.8"/>
+          <polygon points="14,42 40,32 40,46 14,46" fill="white" opacity="0.95"/>
+          <polygon points="40,32 66,42 66,46 40,46" fill="#dbeafe" opacity="0.88"/>
+          <line x1="40" y1="32" x2="40" y2="46" stroke="white" stroke-width="2.5" stroke-opacity="0.85"/>
+          <polyline points="14,42 40,32 66,42" fill="none" stroke="white" stroke-width="1.5" stroke-opacity="0.65"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Floating Book on Gem</div>
+  <div class="desc">Sách mở nổi phía trên gem mỏng dẹt (marquise cut). Drop shadow xanh tạo hiệu ứng floating. Sách là nhân vật chính, gem là bệ đỡ.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     G5 — Layered Stack: gem 3D nhìn từ góc nghiêng
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">G5 · 3D Isometric</div>
+  <div class="sizes">
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g5bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0c0f1a"/><stop offset="100%" stop-color="#0f1e3d"/>
+          </linearGradient>
+          <linearGradient id="g5top" x1="16" y1="20" x2="64" y2="44" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dbeafe"/>
+          </linearGradient>
+          <linearGradient id="g5left" x1="16" y1="44" x2="16" y2="68" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1d4ed8" stop-opacity="0.7"/><stop offset="100%" stop-color="#0c1445" stop-opacity="0.9"/>
+          </linearGradient>
+          <linearGradient id="g5right" x1="64" y1="44" x2="64" y2="68" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.5"/><stop offset="100%" stop-color="#1e3a8a" stop-opacity="0.9"/>
+          </linearGradient>
+          <filter id="g5glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#g5bg)"/>
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="white" stroke-opacity="0.07" stroke-width="1" fill="none"/>
+
+        <!-- Isometric gem: rhombus top face, two side faces going down -->
+        <!-- Top face (rhombus) = the book pages -->
+        <!-- Rhombus: left(16,44) top(40,22) right(64,44) bottom(40,66) — but we use top portion as book -->
+
+        <!-- Top face of gem (isometric diamond top) -->
+        <!-- Left page: left(16,44) top(40,22) center(40,44) -->
+        <polygon points="16,44 40,22 40,44" fill="url(#g5top)" opacity="0.95"/>
+        <!-- Right page: top(40,22) right(64,44) center(40,44) -->
+        <polygon points="40,22 64,44 40,44" fill="white" opacity="0.72"/>
+
+        <!-- Left face of gem going down -->
+        <polygon points="16,44 40,44 40,66 16,62" fill="url(#g5left)"/>
+        <!-- Right face of gem going down -->
+        <polygon points="64,44 40,44 40,66 64,62" fill="url(#g5right)"/>
+
+        <!-- Spine on top face -->
+        <line x1="40" y1="22" x2="40" y2="66" stroke="white" stroke-width="1.5" stroke-opacity="0.65"/>
+
+        <!-- Top face outline -->
+        <polygon points="16,44 40,22 64,44 40,44" fill="none" stroke="white" stroke-width="1" stroke-opacity="0.5"/>
+
+        <!-- Book text lines on left page (isometric perspective) -->
+        <line x1="22" y1="37" x2="38" y2="32" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.5"/>
+        <line x1="22" y1="40" x2="38" y2="35" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.38"/>
+        <line x1="22" y1="43" x2="34" y2="38.5" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.28"/>
+        <!-- Right page lines -->
+        <line x1="42" y1="32" x2="58" y2="37" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.35"/>
+        <line x1="42" y1="35" x2="58" y2="40" stroke="#93c5fd" stroke-width="0.8" stroke-opacity="0.25"/>
+
+        <!-- Edge lines on side faces -->
+        <line x1="16" y1="44" x2="16" y2="62" stroke="white" stroke-width="0.8" stroke-opacity="0.3"/>
+        <line x1="64" y1="44" x2="64" y2="62" stroke="white" stroke-width="0.8" stroke-opacity="0.25"/>
+        <line x1="16" y1="62" x2="40" y2="66" stroke="white" stroke-width="0.8" stroke-opacity="0.3"/>
+        <line x1="64" y1="62" x2="40" y2="66" stroke="white" stroke-width="0.8" stroke-opacity="0.25"/>
+
+        <!-- Sparkle -->
+        <g filter="url(#g5glow)">
+          <path d="M26,29 L27,32.5 L30.5,33 L27,33.5 L26,37 L25,33.5 L21.5,33 L25,32.5 Z" fill="white" opacity="0.9"/>
+        </g>
+        <!-- Bottom gem tip glow -->
+        <circle cx="40" cy="66" r="2.5" fill="#3b82f6" opacity="0.5"/>
+        <circle cx="40" cy="66" r="1" fill="white" opacity="0.7"/>
+      </svg>
+      <span>80px</span>
+    </div>
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="g5bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0c0f1a"/><stop offset="100%" stop-color="#0f1e3d"/></linearGradient></defs>
+          <rect width="80" height="80" rx="19" fill="url(#g5bg32)"/>
+          <polygon points="16,44 40,22 40,44" fill="white" opacity="0.95"/>
+          <polygon points="40,22 64,44 40,44" fill="white" opacity="0.7"/>
+          <polygon points="16,44 40,44 40,66 16,62" fill="#1d4ed8" opacity="0.7"/>
+          <polygon points="64,44 40,44 40,66 64,62" fill="#3b82f6" opacity="0.5"/>
+          <line x1="40" y1="22" x2="40" y2="66" stroke="white" stroke-width="2" stroke-opacity="0.7"/>
+          <polygon points="16,44 40,22 64,44 40,44" fill="none" stroke="white" stroke-width="1.2" stroke-opacity="0.5"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">3D Isometric Gem</div>
+  <div class="desc">Nhìn gem theo góc isometric — thấy rõ 3 mặt (top + 2 cạnh). Mặt trên = 2 trang sách mở. Chiều sâu 3D tạo cảm giác khối vật lý thật.</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     G6 — Negative Space Gem: sách cắt ra từ gem đặc
+     ═══════════════════════════════════════════ -->
+<div class="card">
+  <div class="tag">G6 · Negative Space</div>
+  <div class="sizes">
+    <div class="size-item">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g6bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#1d4ed8"/>
+          </linearGradient>
+          <!-- Clip path = full diamond shape -->
+          <clipPath id="g6diamond">
+            <polygon points="40,8 68,38 40,68 12,38"/>
+          </clipPath>
+        </defs>
+        <rect width="80" height="80" rx="19" fill="url(#g6bg)"/>
+        <rect x="1.5" y="1.5" width="77" height="77" rx="17.5" stroke="white" stroke-opacity="0.15" stroke-width="1" fill="none"/>
+
+        <!-- Solid diamond filled white -->
+        <polygon points="40,8 68,38 40,68 12,38" fill="white" opacity="0.92"/>
+
+        <!-- Negative space: dark shapes cut into the white diamond to reveal the book -->
+        <!-- Dark triangle top-left (leaves white left page) -->
+        <polygon points="12,38 40,8 40,38" fill="url(#g6bg)" clip-path="url(#g6diamond)" opacity="0.0"/>
+
+        <!-- The book as negative dark space: two dark regions flanking a white spine -->
+        <!-- Dark area LEFT of spine (makes the left page shape = white negative) -->
+        <!-- We invert: fill the diamond areas that AREN'T the book pages with dark overlay -->
+
+        <!-- Top-left corner dark triangle -->
+        <polygon points="12,38 22,20 40,38" fill="#1e1b4b" clip-path="url(#g6diamond)"/>
+        <!-- Top-right corner dark triangle -->
+        <polygon points="68,38 58,20 40,38" fill="#1d4ed8" opacity="0.85" clip-path="url(#g6diamond)"/>
+        <!-- Bottom dark pavilion -->
+        <polygon points="12,38 68,38 40,68" fill="#1e1b4b" opacity="0.88" clip-path="url(#g6diamond)"/>
+
+        <!-- The white book pages remain:
+             Left page: 22,20 → 40,10 → 40,38 → (left edge of top region)
+             Right page: 40,10 → 58,20 → 40,38 -->
+        <!-- These are the white areas NOT covered by the dark overlays -->
+
+        <!-- Spine line in the book area -->
+        <line x1="40" y1="10" x2="40" y2="38" stroke="#1e1b4b" stroke-width="1.5" stroke-opacity="0.5"/>
+
+        <!-- Crown edge -->
+        <polyline points="22,20 40,10 58,20" fill="none" stroke="#1e1b4b" stroke-width="1" stroke-opacity="0.3"/>
+
+        <!-- Diamond outline -->
+        <polygon points="40,8 68,38 40,68 12,38" fill="none" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+
+        <!-- Text lines on left white page (dark marks) -->
+        <line x1="27" y1="26" x2="38" y2="24" stroke="#1e1b4b" stroke-width="0.9" stroke-opacity="0.4"/>
+        <line x1="27" y1="30" x2="38" y2="28" stroke="#1e1b4b" stroke-width="0.9" stroke-opacity="0.3"/>
+        <!-- Right white page -->
+        <line x1="42" y1="24" x2="53" y2="26" stroke="#1e3a8a" stroke-width="0.9" stroke-opacity="0.3"/>
+        <line x1="42" y1="28" x2="53" y2="30" stroke="#1e3a8a" stroke-width="0.9" stroke-opacity="0.2"/>
+
+        <!-- Bottom gem tip point -->
+        <circle cx="40" cy="68" r="2" fill="white" opacity="0.6"/>
+        <circle cx="40" cy="68" r="0.8" fill="white" opacity="1"/>
+      </svg>
+      <span>80px</span>
+    </div>
+    <div class="size-item">
+      <div class="cb">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="g6bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient>
+            <clipPath id="g6d32"><polygon points="40,8 68,38 40,68 12,38"/></clipPath>
+          </defs>
+          <rect width="80" height="80" rx="19" fill="url(#g6bg32)"/>
+          <polygon points="40,8 68,38 40,68 12,38" fill="white" opacity="0.93"/>
+          <polygon points="12,38 22,20 40,38" fill="#1e1b4b" clip-path="url(#g6d32)"/>
+          <polygon points="68,38 58,20 40,38" fill="#1d4ed8" opacity="0.85" clip-path="url(#g6d32)"/>
+          <polygon points="12,38 68,38 40,68" fill="#1e1b4b" opacity="0.88" clip-path="url(#g6d32)"/>
+          <line x1="40" y1="10" x2="40" y2="38" stroke="#1e1b4b" stroke-width="2" stroke-opacity="0.5"/>
+        </svg>
+      </div>
+      <span>32px</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="name">Negative Space Gem</div>
+  <div class="desc">Gem hình thoi đặc trắng, sách hiện ra qua không gian âm (negative space). Kỹ thuật như logo FedEx — nhìn lần đầu thấy gem, nhìn kỹ thấy sách.</div>
+</div>
+
+
+</div><!-- /grid tab2 -->
+</div><!-- /tab2 -->
+
+
+<!-- ═══ TAB 3: Structured Knowledge ═══ -->
+<div id="tab3" class="tab-panel">
+<div class="page-heading">
+  <h2>Tri thức được hệ thống hóa</h2>
+  <p>Hexagon · Cube · Data layers · Negative space — Navy #1A365D × Teal #00B5AD</p>
+</div>
+
+<style>
+/* ── Tab 3 specific ── */
+.t3-section { max-width: 1040px; margin: 0 auto 56px; }
+.t3-section-title {
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 2.5px;
+  text-transform: uppercase; color: #475569;
+  margin-bottom: 20px; padding-bottom: 10px;
+  border-bottom: 1px solid #1e293b;
+}
+.t3-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}
+/* Horizontal layout preview */
+.t3-horizontal {
+  background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+  padding: 28px 32px; display: flex; align-items: center; gap: 20px;
+}
+.t3-horizontal-dark {
+  background: #f8fafc; border: 1px solid #e2e8f0;
+}
+.t3-wordmark-bold { font-size: 18px; font-weight: 700; color: #1A365D; letter-spacing: -0.5px; font-family: 'Segoe UI', system-ui, sans-serif; }
+.t3-wordmark-light { font-size: 18px; font-weight: 400; color: #00B5AD; letter-spacing: -0.5px; font-family: 'Segoe UI', system-ui, sans-serif; }
+.t3-wordmark-bold-inv { color: #e0f2fe; }
+.t3-wordmark-light-inv { color: #2dd4bf; }
+.t3-label { font-size: 0.7rem; color: #475569; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-top: 12px; }
+</style>
+
+<!-- ── SECTION 1: Icon variants ── -->
+<div class="t3-section">
+  <div class="t3-section-title">01 · Standalone Icon — Favicon / App Icon</div>
+  <div class="t3-grid">
+
+    <!-- I1: Hexagon với 3 data layers negative space -->
+    <div class="card">
+      <div class="tag">I1 · Hexagon Data Layers</div>
+      <div class="sizes">
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="i1bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#0d2137"/>
+                <stop offset="100%" stop-color="#1A365D"/>
+              </linearGradient>
+              <linearGradient id="i1teal" x1="16" y1="16" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#00B5AD"/>
+                <stop offset="100%" stop-color="#0891b2"/>
+              </linearGradient>
+            </defs>
+            <!-- Rounded square bg -->
+            <rect width="80" height="80" rx="18" fill="url(#i1bg)"/>
+            <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#00B5AD" stroke-opacity="0.2" stroke-width="1" fill="none"/>
+
+            <!-- Hexagon: flat-top, centered at 40,40, radius 30 -->
+            <!-- Vertices: (40,10)(66,25)(66,55)(40,70)(14,55)(14,25) -->
+            <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="#1A365D"/>
+            <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="url(#i1teal)" opacity="0.12"/>
+            <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.6"/>
+
+            <!-- 3 horizontal layer cuts (negative space) via thick teal lines with gap = dark bg -->
+            <!-- Layer 1 line-cut at y≈28 -->
+            <line x1="22" y1="28" x2="58" y2="28" stroke="#0d2137" stroke-width="4" stroke-linecap="round"/>
+            <line x1="22" y1="28" x2="58" y2="28" stroke="#00B5AD" stroke-width="1.5" stroke-linecap="round" opacity="0.9"/>
+            <!-- Layer 2 line-cut at y≈40 (center) -->
+            <line x1="16" y1="40" x2="64" y2="40" stroke="#0d2137" stroke-width="4" stroke-linecap="round"/>
+            <line x1="16" y1="40" x2="64" y2="40" stroke="#00B5AD" stroke-width="1.5" stroke-linecap="round" opacity="0.9"/>
+            <!-- Layer 3 line-cut at y≈52 -->
+            <line x1="22" y1="52" x2="58" y2="52" stroke="#0d2137" stroke-width="4" stroke-linecap="round"/>
+            <line x1="22" y1="52" x2="58" y2="52" stroke="#00B5AD" stroke-width="1.5" stroke-linecap="round" opacity="0.9"/>
+
+            <!-- Top layer (above cut 1) — lighter fill = open document tab -->
+            <polygon points="40,10 66,25 58,25 22,25 14,25" fill="#00B5AD" opacity="0.2" clip-path="none"/>
+
+            <!-- Teal accent dot bottom right -->
+            <circle cx="58" cy="60" r="4" fill="#00B5AD" opacity="0.35"/>
+            <circle cx="58" cy="60" r="2" fill="#00B5AD" opacity="0.8"/>
+          </svg>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="i1bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0d2137"/><stop offset="100%" stop-color="#1A365D"/>
+                </linearGradient>
+              </defs>
+              <rect width="80" height="80" rx="18" fill="url(#i1bg32)"/>
+              <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="#1A365D"/>
+              <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="none" stroke="#00B5AD" stroke-width="2" stroke-opacity="0.7"/>
+              <line x1="22" y1="28" x2="58" y2="28" stroke="#0d2137" stroke-width="5" stroke-linecap="round"/>
+              <line x1="22" y1="28" x2="58" y2="28" stroke="#00B5AD" stroke-width="2" stroke-linecap="round"/>
+              <line x1="16" y1="40" x2="64" y2="40" stroke="#0d2137" stroke-width="5" stroke-linecap="round"/>
+              <line x1="16" y1="40" x2="64" y2="40" stroke="#00B5AD" stroke-width="2" stroke-linecap="round"/>
+              <line x1="22" y1="52" x2="58" y2="52" stroke="#0d2137" stroke-width="5" stroke-linecap="round"/>
+              <line x1="22" y1="52" x2="58" y2="52" stroke="#00B5AD" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="80" height="80" rx="18" fill="#1A365D"/>
+              <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="none" stroke="#00B5AD" stroke-width="2.5"/>
+              <line x1="22" y1="28" x2="58" y2="28" stroke="#1A365D" stroke-width="6"/>
+              <line x1="22" y1="28" x2="58" y2="28" stroke="#00B5AD" stroke-width="2.5"/>
+              <line x1="16" y1="40" x2="64" y2="40" stroke="#1A365D" stroke-width="6"/>
+              <line x1="16" y1="40" x2="64" y2="40" stroke="#00B5AD" stroke-width="2.5"/>
+              <line x1="22" y1="52" x2="58" y2="52" stroke="#1A365D" stroke-width="6"/>
+              <line x1="22" y1="52" x2="58" y2="52" stroke="#00B5AD" stroke-width="2.5"/>
+            </svg>
+          </div>
+          <span>16px</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="name">Hexagon · 3 Data Layers</div>
+      <div class="desc">Lục giác navy, 3 đường cắt teal chia thành 3 layer tài liệu. Nhìn ngang = data layers. Nhìn nghiêng = trang sách mở ra.</div>
+    </div>
+
+
+    <!-- I2: Isometric Cube với 3 tab docs -->
+    <div class="card">
+      <div class="tag">I2 · Cube + Doc Tabs</div>
+      <div class="sizes">
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="i2top" x1="14" y1="14" x2="66" y2="38" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e0f7f6"/>
+                <stop offset="100%" stop-color="#00B5AD" stop-opacity="0.85"/>
+              </linearGradient>
+              <linearGradient id="i2left" x1="14" y1="38" x2="14" y2="68" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#1A365D"/>
+                <stop offset="100%" stop-color="#0d2137"/>
+              </linearGradient>
+              <linearGradient id="i2right" x1="66" y1="38" x2="66" y2="68" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#234e7a"/>
+                <stop offset="100%" stop-color="#1A365D"/>
+              </linearGradient>
+              <linearGradient id="i2bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#06111f"/>
+                <stop offset="100%" stop-color="#0d1f35"/>
+              </linearGradient>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#i2bg)"/>
+            <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#00B5AD" stroke-opacity="0.15" stroke-width="1" fill="none"/>
+
+            <!-- Isometric cube: top(40,14) left(14,29) right(66,29) bottom-left(14,59) bottom-right(66,59) center-bottom(40,74) -->
+            <!-- Top face -->
+            <polygon points="40,14 66,29 40,44 14,29" fill="url(#i2top)"/>
+            <!-- Left face -->
+            <polygon points="14,29 40,44 40,74 14,59" fill="url(#i2left)"/>
+            <!-- Right face -->
+            <polygon points="66,29 40,44 40,74 66,59" fill="url(#i2right)"/>
+
+            <!-- Cube edges -->
+            <polyline points="40,14 66,29 40,44 14,29 40,14" fill="none" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.6" stroke-linejoin="round"/>
+            <line x1="40" y1="44" x2="40" y2="74" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.4"/>
+            <line x1="14" y1="29" x2="14" y2="59" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.35"/>
+            <line x1="66" y1="29" x2="66" y2="59" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.35"/>
+            <line x1="14" y1="59" x2="40" y2="74" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.3"/>
+            <line x1="66" y1="59" x2="40" y2="74" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.3"/>
+
+            <!-- Doc tabs on top face (3 tab notches negative space) -->
+            <!-- Tab 1 -->
+            <rect x="20" y="21" width="12" height="5" rx="2.5" fill="#0d1f35"/>
+            <rect x="20" y="21" width="12" height="5" rx="2.5" fill="none" stroke="#00B5AD" stroke-width="0.8" stroke-opacity="0.7"/>
+            <!-- Tab 2 -->
+            <rect x="34" y="17" width="12" height="5" rx="2.5" fill="#0d1f35"/>
+            <rect x="34" y="17" width="12" height="5" rx="2.5" fill="none" stroke="#00B5AD" stroke-width="0.8" stroke-opacity="0.7"/>
+            <!-- Tab 3 -->
+            <rect x="48" y="21" width="12" height="5" rx="2.5" fill="#0d1f35"/>
+            <rect x="48" y="21" width="12" height="5" rx="2.5" fill="none" stroke="#00B5AD" stroke-width="0.8" stroke-opacity="0.7"/>
+
+            <!-- Data flow lines on left face -->
+            <line x1="20" y1="47" x2="38" y2="54" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.5" stroke-linecap="round"/>
+            <line x1="20" y1="52" x2="38" y2="59" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.35" stroke-linecap="round"/>
+            <line x1="20" y1="57" x2="32" y2="62" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.25" stroke-linecap="round"/>
+
+            <!-- Teal glow on top edge -->
+            <line x1="14" y1="29" x2="66" y2="29" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.5"/>
+          </svg>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="i2top32" x1="14" y1="14" x2="66" y2="38" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.8"/>
+                </linearGradient>
+              </defs>
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <polygon points="40,14 66,29 40,44 14,29" fill="url(#i2top32)"/>
+              <polygon points="14,29 40,44 40,74 14,59" fill="#1A365D"/>
+              <polygon points="66,29 40,44 40,74 66,59" fill="#234e7a"/>
+              <polyline points="40,14 66,29 40,44 14,29 40,14" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.7"/>
+              <line x1="40" y1="44" x2="40" y2="74" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.4"/>
+              <line x1="14" y1="29" x2="14" y2="59" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.4"/>
+              <line x1="66" y1="29" x2="66" y2="59" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.4"/>
+              <line x1="14" y1="59" x2="40" y2="74" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.35"/>
+              <line x1="66" y1="59" x2="40" y2="74" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.35"/>
+            </svg>
+          </div>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <polygon points="40,14 66,29 40,44 14,29" fill="#00B5AD" opacity="0.7"/>
+              <polygon points="14,29 40,44 40,74 14,59" fill="#1A365D"/>
+              <polygon points="66,29 40,44 40,74 66,59" fill="#234e7a"/>
+              <polyline points="40,14 66,29 40,44 14,29 40,14" fill="none" stroke="#00B5AD" stroke-width="2"/>
+              <line x1="40" y1="44" x2="40" y2="74" stroke="#00B5AD" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <span>16px</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="name">Isometric Cube + Doc Tabs</div>
+      <div class="desc">Khối lập phương isometric navy. Mặt trên teal = mặt làm việc. 3 tab nhỏ = 3 tài liệu đang mở. Lines trên mặt trái = data flows hội tụ.</div>
+    </div>
+
+
+    <!-- I3: Stacked layers converging (data flows) -->
+    <div class="card">
+      <div class="tag">I3 · Converging Layers</div>
+      <div class="sizes">
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="i3bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#06111f"/><stop offset="100%" stop-color="#0d1f35"/>
+              </linearGradient>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#i3bg)"/>
+            <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#00B5AD" stroke-opacity="0.15" stroke-width="1" fill="none"/>
+
+            <!-- 3 stacked layers, each layer = a document, converging to center-bottom point -->
+            <!-- Layer 3 (back, lightest) -->
+            <path d="M10,18 L70,18 L70,30 Q70,34 66,34 L14,34 Q10,34 10,30 Z" fill="#1A365D" opacity="0.5"/>
+            <path d="M10,18 L70,18 L70,30 Q70,34 66,34 L14,34 Q10,34 10,30 Z" fill="none" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.3"/>
+            <!-- Doc lines layer 3 -->
+            <line x1="16" y1="23" x2="50" y2="23" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.3" stroke-linecap="round"/>
+            <line x1="16" y1="27" x2="40" y2="27" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.2" stroke-linecap="round"/>
+
+            <!-- Layer 2 (middle) -->
+            <path d="M12,36 L68,36 L68,48 Q68,52 64,52 L16,52 Q12,52 12,48 Z" fill="#1A365D" opacity="0.75"/>
+            <path d="M12,36 L68,36 L68,48 Q68,52 64,52 L16,52 Q12,52 12,48 Z" fill="none" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.5"/>
+            <!-- Doc lines layer 2 -->
+            <line x1="18" y1="41" x2="54" y2="41" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.5" stroke-linecap="round"/>
+            <line x1="18" y1="45" x2="44" y2="45" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.35" stroke-linecap="round"/>
+
+            <!-- Layer 1 (front, brightest) -->
+            <path d="M14,54 L66,54 L66,66 Q66,70 62,70 L18,70 Q14,70 14,66 Z" fill="#1A365D"/>
+            <path d="M14,54 L66,54 L66,66 Q66,70 62,70 L18,70 Q14,70 14,66 Z" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.8"/>
+            <!-- Doc lines layer 1 -->
+            <line x1="20" y1="59" x2="58" y2="59" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.7" stroke-linecap="round"/>
+            <line x1="20" y1="63" x2="46" y2="63" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.5" stroke-linecap="round"/>
+
+            <!-- Convergence arrows (data flows) on right side -->
+            <line x1="74" y1="24" x2="74" y2="62" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.35" stroke-dasharray="2,3"/>
+            <!-- Arrow head -->
+            <path d="M71,59 L74,65 L77,59" fill="none" stroke="#00B5AD" stroke-width="1.2" stroke-opacity="0.5" stroke-linejoin="round"/>
+
+            <!-- Tab notches on left (doc tabs) -->
+            <rect x="8" y="16" width="14" height="4" rx="2" fill="#00B5AD" opacity="0.5"/>
+            <rect x="8" y="34" width="18" height="4" rx="2" fill="#00B5AD" opacity="0.65"/>
+            <rect x="8" y="52" width="22" height="4" rx="2" fill="#00B5AD" opacity="0.9"/>
+          </svg>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <path d="M10,18 L70,18 L70,30 Q70,34 66,34 L14,34 Q10,34 10,30 Z" fill="#1A365D" opacity="0.5"/>
+              <path d="M10,18 L70,18 L70,30 Q70,34 66,34 L14,34 Q10,34 10,30 Z" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.35"/>
+              <path d="M12,36 L68,36 L68,48 Q68,52 64,52 L16,52 Q12,52 12,48 Z" fill="#1A365D" opacity="0.75"/>
+              <path d="M12,36 L68,36 L68,48 Q68,52 64,52 L16,52 Q12,52 12,48 Z" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.55"/>
+              <path d="M14,54 L66,54 L66,66 Q66,70 62,70 L18,70 Q14,70 14,66 Z" fill="#1A365D"/>
+              <path d="M14,54 L66,54 L66,66 Q66,70 62,70 L18,70 Q14,70 14,66 Z" fill="none" stroke="#00B5AD" stroke-width="2" stroke-opacity="0.85"/>
+              <rect x="8" y="16" width="10" height="4" rx="2" fill="#00B5AD" opacity="0.5"/>
+              <rect x="8" y="34" width="13" height="4" rx="2" fill="#00B5AD" opacity="0.65"/>
+              <rect x="8" y="52" width="16" height="4" rx="2" fill="#00B5AD" opacity="0.9"/>
+            </svg>
+          </div>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <rect x="10" y="16" width="60" height="14" rx="4" fill="#1A365D" opacity="0.6"/>
+              <rect x="10" y="16" width="60" height="14" rx="4" fill="none" stroke="#00B5AD" stroke-width="2"/>
+              <rect x="10" y="34" width="60" height="14" rx="4" fill="#1A365D" opacity="0.8"/>
+              <rect x="10" y="34" width="60" height="14" rx="4" fill="none" stroke="#00B5AD" stroke-width="2.5"/>
+              <rect x="10" y="52" width="60" height="14" rx="4" fill="#1A365D"/>
+              <rect x="10" y="52" width="60" height="14" rx="4" fill="none" stroke="#00B5AD" stroke-width="3"/>
+            </svg>
+          </div>
+          <span>16px</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="name">Converging Data Layers</div>
+      <div class="desc">3 lớp tài liệu bo góc xếp chồng, mỗi lớp sáng dần ra phía trước. Tab notch trái = document tabs. Mũi tên phải = data converging.</div>
+    </div>
+
+
+    <!-- I4: Hexagon negative space — sách cắt ra từ hex đặc -->
+    <div class="card">
+      <div class="tag">I4 · Hex Negative Book</div>
+      <div class="sizes">
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="i4bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#06111f"/><stop offset="100%" stop-color="#0d1f35"/>
+              </linearGradient>
+              <linearGradient id="i4hex" x1="14" y1="10" x2="66" y2="70" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#1A365D"/>
+                <stop offset="60%" stop-color="#1e4a80"/>
+                <stop offset="100%" stop-color="#00B5AD" stop-opacity="0.6"/>
+              </linearGradient>
+              <clipPath id="i4clip">
+                <polygon points="40,10 66,25 66,55 40,70 14,55 14,25"/>
+              </clipPath>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#i4bg)"/>
+            <!-- Hex filled -->
+            <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="url(#i4hex)"/>
+            <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.5"/>
+
+            <!-- Negative space: cut open book shape out of hex -->
+            <!-- Book = two page shapes + spine gap, all clipped to hex -->
+            <!-- Left page negative -->
+            <polygon points="18,30 40,20 40,52 18,44" fill="#06111f" clip-path="url(#i4clip)"/>
+            <!-- Right page negative -->
+            <polygon points="40,20 62,30 62,44 40,52" fill="#06111f" clip-path="url(#i4clip)" opacity="0.85"/>
+            <!-- Spine (thin strip stays hex color) -->
+            <rect x="38.5" y="20" width="3" height="32" fill="url(#i4hex)" clip-path="url(#i4clip)"/>
+
+            <!-- Book crown edge (teal line) -->
+            <polyline points="18,30 40,20 62,30" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.7" clip-path="url(#i4clip)"/>
+            <!-- Book bottom edge -->
+            <line x1="18" y1="44" x2="62" y2="44" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.4" clip-path="url(#i4clip)"/>
+
+            <!-- Teal bottom accent on hex -->
+            <polygon points="40,54 14,55 40,70 66,55" fill="#00B5AD" opacity="0.15" clip-path="url(#i4clip)"/>
+            <line x1="14" y1="55" x2="66" y2="55" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.5"/>
+          </svg>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <clipPath id="i4clip32"><polygon points="40,10 66,25 66,55 40,70 14,55 14,25"/></clipPath>
+              </defs>
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="#1A365D"/>
+              <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="none" stroke="#00B5AD" stroke-width="2" stroke-opacity="0.6"/>
+              <polygon points="18,30 40,20 40,52 18,44" fill="#06111f" clip-path="url(#i4clip32)"/>
+              <polygon points="40,20 62,30 62,44 40,52" fill="#06111f" opacity="0.85" clip-path="url(#i4clip32)"/>
+              <rect x="38.5" y="20" width="3" height="32" fill="#1A365D" clip-path="url(#i4clip32)"/>
+              <polyline points="18,30 40,20 62,30" fill="none" stroke="#00B5AD" stroke-width="2" stroke-opacity="0.8" clip-path="url(#i4clip32)"/>
+            </svg>
+          </div>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <clipPath id="i4clip16"><polygon points="40,10 66,25 66,55 40,70 14,55 14,25"/></clipPath>
+              </defs>
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="#1A365D"/>
+              <polygon points="40,10 66,25 66,55 40,70 14,55 14,25" fill="none" stroke="#00B5AD" stroke-width="3"/>
+              <polygon points="18,30 40,20 40,52 18,44" fill="#06111f" clip-path="url(#i4clip16)"/>
+              <polygon points="40,20 62,30 62,44 40,52" fill="#06111f" clip-path="url(#i4clip16)"/>
+              <rect x="38" y="20" width="4" height="32" fill="#1A365D" clip-path="url(#i4clip16)"/>
+            </svg>
+          </div>
+          <span>16px</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="name">Hexagon · Negative Space Book</div>
+      <div class="desc">Lục giác navy đặc, sách mở được cắt ra bằng không gian âm. Nhìn vào thấy hex trước, rồi mới thấy sách — kỹ thuật dual-reading như FedEx.</div>
+    </div>
+
+
+    <!-- I5: Rounded cube - soft UI depth -->
+    <div class="card">
+      <div class="tag">I5 · Soft Cube · UI Depth</div>
+      <div class="sizes">
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="i5bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#06111f"/><stop offset="100%" stop-color="#0d1f35"/>
+              </linearGradient>
+              <linearGradient id="i5top" x1="14" y1="12" x2="66" y2="38" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#cffafe"/>
+                <stop offset="100%" stop-color="#00B5AD"/>
+              </linearGradient>
+              <linearGradient id="i5left" x1="14" y1="38" x2="40" y2="68" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#1A365D"/>
+                <stop offset="100%" stop-color="#0d2137"/>
+              </linearGradient>
+              <linearGradient id="i5right" x1="66" y1="38" x2="40" y2="68" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#2563a8"/>
+                <stop offset="100%" stop-color="#1A365D"/>
+              </linearGradient>
+              <filter id="i5shadow">
+                <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#00B5AD" flood-opacity="0.25"/>
+              </filter>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#i5bg)"/>
+
+            <!-- Soft cube with rounded edges (simulated via path) -->
+            <g filter="url(#i5shadow)">
+              <!-- Top face: rhombus with very slight curve -->
+              <path d="M40,13 L65,27 Q67,28 66,30 L40,44 L14,30 Q13,28 15,27 Z" fill="url(#i5top)"/>
+              <!-- Left face -->
+              <path d="M14,30 L40,44 L40,70 Q40,72 38,71 L14,57 Q12,56 12,54 L12,32 Q12,30 14,30 Z" fill="url(#i5left)"/>
+              <!-- Right face -->
+              <path d="M66,30 L40,44 L40,70 Q40,72 42,71 L66,57 Q68,56 68,54 L68,32 Q68,30 66,30 Z" fill="url(#i5right)"/>
+            </g>
+
+            <!-- Edge highlights -->
+            <path d="M40,13 L65,27 Q67,28 66,30 L40,44 L14,30 Q13,28 15,27 Z" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.35"/>
+            <line x1="40" y1="44" x2="40" y2="70" stroke="white" stroke-width="0.8" stroke-opacity="0.2"/>
+            <line x1="14" y1="30" x2="12" y2="54" stroke="white" stroke-width="0.7" stroke-opacity="0.15"/>
+            <line x1="66" y1="30" x2="68" y2="54" stroke="white" stroke-width="0.7" stroke-opacity="0.15"/>
+
+            <!-- Doc tabs on top face (3 rounded tab shapes) -->
+            <rect x="18" y="22" width="10" height="4.5" rx="2.5" fill="#06111f" opacity="0.6"/>
+            <rect x="18" y="22" width="10" height="4.5" rx="2.5" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.6"/>
+            <rect x="31" y="17" width="10" height="4.5" rx="2.5" fill="#06111f" opacity="0.6"/>
+            <rect x="31" y="17" width="10" height="4.5" rx="2.5" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.6"/>
+            <rect x="44" y="22" width="10" height="4.5" rx="2.5" fill="#06111f" opacity="0.6"/>
+            <rect x="44" y="22" width="10" height="4.5" rx="2.5" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.6"/>
+
+            <!-- Data flow dots on left face -->
+            <circle cx="22" cy="50" r="2" fill="#00B5AD" opacity="0.7"/>
+            <circle cx="28" cy="55" r="1.5" fill="#00B5AD" opacity="0.5"/>
+            <circle cx="34" cy="60" r="1" fill="#00B5AD" opacity="0.35"/>
+
+            <!-- Teal shimmer on top left corner -->
+            <circle cx="18" cy="30" r="3" fill="#00B5AD" opacity="0.25"/>
+            <circle cx="18" cy="30" r="1.2" fill="#00B5AD" opacity="0.7"/>
+          </svg>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="i5top32" x1="14" y1="12" x2="66" y2="38" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#cffafe"/><stop offset="100%" stop-color="#00B5AD"/>
+                </linearGradient>
+              </defs>
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <path d="M40,13 L65,27 Q67,28 66,30 L40,44 L14,30 Q13,28 15,27 Z" fill="url(#i5top32)"/>
+              <path d="M14,30 L40,44 L40,70 Q40,72 38,71 L14,57 Q12,56 12,54 L12,32 Q12,30 14,30 Z" fill="#1A365D"/>
+              <path d="M66,30 L40,44 L40,70 Q40,72 42,71 L66,57 Q68,56 68,54 L68,32 Q68,30 66,30 Z" fill="#2563a8"/>
+              <path d="M40,13 L65,27 Q67,28 66,30 L40,44 L14,30 Q13,28 15,27 Z" fill="none" stroke="white" stroke-width="1" stroke-opacity="0.4"/>
+              <line x1="40" y1="44" x2="40" y2="70" stroke="white" stroke-width="1" stroke-opacity="0.25"/>
+            </svg>
+          </div>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <path d="M40,13 L65,27 L40,44 L15,27 Z" fill="#00B5AD"/>
+              <path d="M15,27 L40,44 L40,70 L15,57 Z" fill="#1A365D"/>
+              <path d="M65,27 L40,44 L40,70 L65,57 Z" fill="#2563a8"/>
+              <path d="M40,13 L65,27 L40,44 L15,27 Z" fill="none" stroke="white" stroke-width="2"/>
+            </svg>
+          </div>
+          <span>16px</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="name">Soft Cube · UI Depth</div>
+      <div class="desc">Cube bo góc nhẹ, drop shadow teal tạo chiều sâu UI. Mặt trên cyan-to-teal = workspace. 3 tab rounded = documents. Dot pattern = data points.</div>
+    </div>
+
+  </div><!-- /t3-grid icons -->
+</div><!-- /section 1 -->
+
+
+<!-- ── SECTION 2: Horizontal Layout (nav bar) ── -->
+<div class="t3-section">
+  <div class="t3-section-title">02 · Horizontal Layout — Navigation Bar</div>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1040px;">
+
+    <!-- Dark mode horizontal -->
+    <div>
+      <p class="t3-label" style="margin-bottom:12px;">Dark mode</p>
+      <div class="t3-horizontal">
+        <!-- Icon: I2 cube small -->
+        <svg width="36" height="36" viewBox="0 0 80 80" fill="none">
+          <defs>
+            <linearGradient id="nav1top" x1="14" y1="14" x2="66" y2="38" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#cffafe"/><stop offset="100%" stop-color="#00B5AD"/>
+            </linearGradient>
+          </defs>
+          <path d="M40,13 L65,27 Q67,28 66,30 L40,44 L14,30 Q13,28 15,27 Z" fill="url(#nav1top)"/>
+          <path d="M14,30 L40,44 L40,70 Q40,72 38,71 L14,57 Q12,56 12,54 L12,32 Q12,30 14,30 Z" fill="#1A365D"/>
+          <path d="M66,30 L40,44 L40,70 Q40,72 42,71 L66,57 Q68,56 68,54 L68,32 Q68,30 66,30 Z" fill="#2563a8"/>
+        </svg>
+        <div style="line-height:1">
+          <span class="t3-wordmark-bold t3-wordmark-bold-inv">Knowledge</span><span class="t3-wordmark-light t3-wordmark-light-inv">Base</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Light mode horizontal -->
+    <div>
+      <p class="t3-label" style="margin-bottom:12px;">Light mode</p>
+      <div class="t3-horizontal t3-horizontal-dark">
+        <svg width="36" height="36" viewBox="0 0 80 80" fill="none">
+          <defs>
+            <linearGradient id="nav2top" x1="14" y1="14" x2="66" y2="38" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#cffafe"/><stop offset="100%" stop-color="#00B5AD"/>
+            </linearGradient>
+          </defs>
+          <path d="M40,13 L65,27 Q67,28 66,30 L40,44 L14,30 Q13,28 15,27 Z" fill="url(#nav2top)"/>
+          <path d="M14,30 L40,44 L40,70 Q40,72 38,71 L14,57 Q12,56 12,54 L12,32 Q12,30 14,30 Z" fill="#1A365D"/>
+          <path d="M66,30 L40,44 L40,70 Q40,72 42,71 L66,57 Q68,56 68,54 L68,32 Q68,30 66,30 Z" fill="#2563a8"/>
+        </svg>
+        <div style="line-height:1">
+          <span class="t3-wordmark-bold">Knowledge</span><span class="t3-wordmark-light">Base</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Icon only row -->
+    <div style="grid-column: 1/-1;">
+      <p class="t3-label" style="margin-bottom:12px;">Standalone icon — favicon · PWA · avatar</p>
+      <div style="display:flex; gap:20px; align-items:flex-end; flex-wrap:wrap;">
+        <!-- 512 mockup (80px render) -->
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+            <rect width="80" height="80" rx="18" fill="#06111f"/>
+            <defs><linearGradient id="standalone512" x1="14" y1="14" x2="66" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#cffafe"/><stop offset="100%" stop-color="#00B5AD"/></linearGradient></defs>
+            <path d="M40,13 L65,27 Q67,28 66,30 L40,44 L14,30 Q13,28 15,27 Z" fill="url(#standalone512)"/>
+            <path d="M14,30 L40,44 L40,70 Q40,72 38,71 L14,57 Q12,56 12,54 L12,32 Q12,30 14,30 Z" fill="#1A365D"/>
+            <path d="M66,30 L40,44 L40,70 Q40,72 42,71 L66,57 Q68,56 68,54 L68,32 Q68,30 66,30 Z" fill="#2563a8"/>
+            <rect x="20" y="21" width="9" height="4" rx="2" fill="#06111f" opacity="0.7"/>
+            <rect x="20" y="21" width="9" height="4" rx="2" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.5"/>
+            <rect x="32" y="16" width="9" height="4" rx="2" fill="#06111f" opacity="0.7"/>
+            <rect x="32" y="16" width="9" height="4" rx="2" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.5"/>
+            <rect x="44" y="21" width="9" height="4" rx="2" fill="#06111f" opacity="0.7"/>
+            <rect x="44" y="21" width="9" height="4" rx="2" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.5"/>
+          </svg>
+          <span style="font-size:0.6rem;color:#475569;margin-top:6px;display:block;text-align:center">512px (App Icon)</span>
+        </div>
+        <!-- 192 PWA -->
+        <div class="size-item">
+          <svg width="48" height="48" viewBox="0 0 80 80" fill="none">
+            <rect width="80" height="80" rx="18" fill="#06111f"/>
+            <defs><linearGradient id="standalone192" x1="14" y1="14" x2="66" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#cffafe"/><stop offset="100%" stop-color="#00B5AD"/></linearGradient></defs>
+            <path d="M40,13 L65,27 Q67,28 66,30 L40,44 L14,30 Q13,28 15,27 Z" fill="url(#standalone192)"/>
+            <path d="M14,30 L40,44 L40,70 Q40,72 38,71 L14,57 Q12,56 12,54 L12,32 Q12,30 14,30 Z" fill="#1A365D"/>
+            <path d="M66,30 L40,44 L40,70 Q40,72 42,71 L66,57 Q68,56 68,54 L68,32 Q68,30 66,30 Z" fill="#2563a8"/>
+          </svg>
+          <span style="font-size:0.6rem;color:#475569;margin-top:6px;display:block;text-align:center">192px (PWA)</span>
+        </div>
+        <!-- 32 favicon -->
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none">
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <defs><linearGradient id="standalone32" x1="14" y1="14" x2="66" y2="38" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#cffafe"/><stop offset="100%" stop-color="#00B5AD"/></linearGradient></defs>
+              <path d="M40,13 L65,27 Q67,28 66,30 L40,44 L14,30 Q13,28 15,27 Z" fill="url(#standalone32)"/>
+              <path d="M14,30 L40,44 L40,70 Q40,72 38,71 L14,57 Q12,56 12,54 L12,32 Q12,30 14,30 Z" fill="#1A365D"/>
+              <path d="M66,30 L40,44 L40,70 Q40,72 42,71 L66,57 Q68,56 68,54 L68,32 Q68,30 66,30 Z" fill="#2563a8"/>
+            </svg>
+          </div>
+          <span style="font-size:0.6rem;color:#475569;margin-top:6px;display:block;text-align:center">32px (Favicon)</span>
+        </div>
+        <!-- 16 favicon tiny -->
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none">
+              <rect width="80" height="80" rx="18" fill="#06111f"/>
+              <path d="M40,13 L65,27 L40,44 L15,27 Z" fill="#00B5AD"/>
+              <path d="M15,27 L40,44 L40,70 L15,57 Z" fill="#1A365D"/>
+              <path d="M65,27 L40,44 L40,70 L65,57 Z" fill="#2563a8"/>
+            </svg>
+          </div>
+          <span style="font-size:0.6rem;color:#475569;margin-top:6px;display:block;text-align:center">16px (Favicon)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /section 2 -->
+
+</div><!-- /grid tab3 outer -->
+</div><!-- /tab3 -->
+
+
+<!-- ═══ TAB 4: Systemic Knowledge Gem ═══ -->
+<div id="tab4" class="tab-panel">
+<div class="page-heading">
+  <h2>Viên Ngọc Tri Thức Hệ Thống</h2>
+  <p>Brilliant Cut · Sự Tinh Anh Được Cấu Trúc Hóa · Navy #1A365D × Teal #00B5AD</p>
+</div>
+
+<style>
+.t4-section { max-width: 1040px; margin: 0 auto 56px; }
+.t4-section-title {
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 2.5px;
+  text-transform: uppercase; color: #475569;
+  margin-bottom: 20px; padding-bottom: 10px;
+  border-bottom: 1px solid #1e293b;
+}
+.t4-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+.t4-horizontal {
+  background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+  padding: 28px 32px; display: flex; align-items: center; gap: 16px;
+}
+.t4-horizontal-light { background: #f8fafc; border-color: #e2e8f0; }
+.wm-bold  { font-size: 18px; font-weight: 700; color: #e0f2fe; letter-spacing: -0.5px; font-family: 'Segoe UI', system-ui, sans-serif; }
+.wm-thin  { font-size: 18px; font-weight: 400; color: #00B5AD; letter-spacing: -0.5px; font-family: 'Segoe UI', system-ui, sans-serif; }
+.wm-bold-l { color: #1A365D; }
+.wm-thin-l { color: #00897B; }
+</style>
+
+<!-- ── SECTION 1: Brilliant Cut variants ── -->
+<div class="t4-section">
+  <div class="t4-section-title">01 · Brilliant Cut — Nhìn từ trên xuống (Top-Down View)</div>
+  <div class="t4-grid">
+
+    <!-- B1: Pure Brilliant Cut — top-down, book pages emerge from facets -->
+    <div class="card">
+      <div class="tag">B1 · Classic Brilliant Cut</div>
+      <div class="sizes">
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="b1bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#060d18"/><stop offset="100%" stop-color="#0d1f35"/>
+              </linearGradient>
+              <!-- Table face gradient (book pages inside) -->
+              <linearGradient id="b1tableL" x1="28" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dbeafe"/>
+              </linearGradient>
+              <linearGradient id="b1tableR" x1="52" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.7"/>
+              </linearGradient>
+              <!-- Prism facet gradient -->
+              <linearGradient id="b1prism" x1="0" y1="0" x2="80" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0%"   stop-color="#818cf8" stop-opacity="0.5"/>
+                <stop offset="33%"  stop-color="#00B5AD" stop-opacity="0.4"/>
+                <stop offset="66%"  stop-color="#34d399" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.2"/>
+              </linearGradient>
+              <!-- Outer star facets -->
+              <linearGradient id="b1star" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#1A365D"/><stop offset="100%" stop-color="#234e7a"/>
+              </linearGradient>
+              <filter id="b1glow">
+                <feGaussianBlur stdDeviation="2.5" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <filter id="b1nodeglow">
+                <feGaussianBlur stdDeviation="1.5" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#b1bg)"/>
+            <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#00B5AD" stroke-opacity="0.2" stroke-width="1" fill="none"/>
+
+            <!--
+              Brilliant Cut top-down (simplified 8-fold symmetry):
+              Outer octagon vertices (r=36): 0°=top
+              N(40,4) NE(65,15) E(76,40) SE(65,65) S(40,76) SW(15,65) W(4,40) NW(15,15)
+
+              Star facets (8 kite shapes from outer edge to girdle circle r=26):
+              Girdle pts: Gn(40,14) Gne(57,23) Ge(66,40) Gse(57,57) Gs(40,66) Gsw(23,57) Gw(14,40) Gnw(23,23)
+
+              Upper girdle facets (16 small triangles between star points and table)
+              Table octagon (r=16): Tn(40,24) Tne(51,29) Te(56,40) Tse(51,51) Ts(40,56) Tsw(29,51) Tw(24,40) Tnw(29,29)
+            -->
+
+            <!-- === STAR FACETS (8 kites, outer → girdle, alternating shade) === -->
+            <!-- N star: N(40,4)→Gnw(23,23)→Tn(40,24)→Gne(57,23) -->
+            <polygon points="40,4 23,23 40,24 57,23" fill="url(#b1star)" opacity="0.9"/>
+            <!-- NE star: NE(65,15)→Gne(57,23)→Tne(51,29)→Ge(66,40) — prism facet -->
+            <polygon points="65,15 57,23 51,29 66,40" fill="url(#b1prism)"/>
+            <!-- E star: E(76,40)→Ge(66,40)→Te(56,40)→Gse(57,57) -->
+            <polygon points="76,40 66,40 56,40 57,57" fill="url(#b1star)" opacity="0.8"/>
+            <!-- SE star: SE(65,65)→Gse(57,57)→Tse(51,51)→Gs(40,66) — prism facet -->
+            <polygon points="65,65 57,57 51,51 40,66" fill="url(#b1prism)" opacity="0.8"/>
+            <!-- S star: S(40,76)→Gs(40,66)→Ts(40,56)→Gsw(23,57) -->
+            <polygon points="40,76 40,66 40,56 23,57" fill="url(#b1star)" opacity="0.9"/>
+            <!-- SW star: SW(15,65)→Gsw(23,57)→Tsw(29,51)→Gw(14,40) — prism -->
+            <polygon points="15,65 23,57 29,51 14,40" fill="url(#b1prism)" opacity="0.6"/>
+            <!-- W star: W(4,40)→Gw(14,40)→Tw(24,40)→Gnw(23,23) -->
+            <polygon points="4,40 14,40 24,40 23,23" fill="url(#b1star)" opacity="0.85"/>
+            <!-- NW star: NW(15,15)→Gnw(23,23)→Tnw(29,29)→Gn — prism -->
+            <polygon points="15,15 23,23 29,29 14,40" fill="url(#b1prism)" opacity="0.5"/>
+
+            <!-- === UPPER GIRDLE FACETS (between star tips and table, 8 triangles) === -->
+            <polygon points="23,23 40,24 29,29" fill="white" opacity="0.12"/>
+            <polygon points="57,23 40,24 51,29" fill="white" opacity="0.08"/>
+            <polygon points="66,40 56,40 51,29" fill="white" opacity="0.1"/>
+            <polygon points="66,40 56,40 57,57" fill="white" opacity="0.06"/>
+            <polygon points="57,57 40,56 51,51" fill="white" opacity="0.1"/>
+            <polygon points="23,57 40,56 29,51" fill="white" opacity="0.07"/>
+            <polygon points="14,40 24,40 29,51" fill="white" opacity="0.1"/>
+            <polygon points="14,40 24,40 23,23" fill="white" opacity="0.08"/>
+
+            <!-- === TABLE FACE (centre octagon) = BOOK PAGES === -->
+            <!-- Left page of book (left half of table) -->
+            <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#b1tableL)"/>
+            <!-- Right page (right half) -->
+            <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#b1tableR)"/>
+            <!-- Book spine: vertical center line through table -->
+            <line x1="40" y1="24" x2="40" y2="56" stroke="white" stroke-width="1.2" stroke-opacity="0.8"/>
+            <!-- Book top edge (crown of open pages) -->
+            <polyline points="29,29 40,24 51,29" fill="none" stroke="white" stroke-width="0.9" stroke-opacity="0.6"/>
+            <!-- Subtle text lines on left page -->
+            <line x1="28" y1="35" x2="39" y2="33" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.4"/>
+            <line x1="27" y1="39" x2="39" y2="37" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.3"/>
+            <line x1="27" y1="43" x2="39" y2="43" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.25"/>
+            <!-- Right page text lines -->
+            <line x1="41" y1="33" x2="52" y2="35" stroke="#00897B" stroke-width="0.7" stroke-opacity="0.3"/>
+            <line x1="41" y1="37" x2="53" y2="39" stroke="#00897B" stroke-width="0.7" stroke-opacity="0.22"/>
+
+            <!-- === EDGE LINES (facet structure) === -->
+            <!-- Outer octagon outline -->
+            <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="0.9" stroke-opacity="0.4"/>
+            <!-- Girdle circle approx (star tips to table) -->
+            <polygon points="23,23 57,23 66,40 57,57 40,66 23,57 14,40 23,23" fill="none" stroke="#00B5AD" stroke-width="0.7" stroke-opacity="0.3"/>
+            <!-- Table outline -->
+            <polygon points="40,24 51,29 56,40 51,51 40,56 29,51 24,40 29,29" fill="none" stroke="white" stroke-width="0.9" stroke-opacity="0.5"/>
+            <!-- Star to table edge lines -->
+            <line x1="40,4" y1="" x2="" y2=""/>
+            <line x1="40" y1="4"  x2="40" y2="24" stroke="#00B5AD" stroke-width="0.7" stroke-opacity="0.4"/>
+            <line x1="65" y1="15" x2="51" y2="29" stroke="#00B5AD" stroke-width="0.7" stroke-opacity="0.35"/>
+            <line x1="76" y1="40" x2="56" y2="40" stroke="#00B5AD" stroke-width="0.7" stroke-opacity="0.35"/>
+            <line x1="65" y1="65" x2="51" y2="51" stroke="#00B5AD" stroke-width="0.7" stroke-opacity="0.35"/>
+            <line x1="40" y1="76" x2="40" y2="56" stroke="#00B5AD" stroke-width="0.7" stroke-opacity="0.4"/>
+            <line x1="15" y1="65" x2="29" y2="51" stroke="#00B5AD" stroke-width="0.7" stroke-opacity="0.35"/>
+            <line x1="4"  y1="40" x2="24" y2="40" stroke="#00B5AD" stroke-width="0.7" stroke-opacity="0.35"/>
+            <line x1="15" y1="15" x2="29" y2="29" stroke="#00B5AD" stroke-width="0.7" stroke-opacity="0.35"/>
+
+            <!-- === NODE DOTS at facet intersections === -->
+            <g filter="url(#b1nodeglow)">
+              <!-- Outer vertices -->
+              <circle cx="40" cy="4"  r="1.8" fill="#00B5AD" opacity="0.9"/>
+              <circle cx="65" cy="15" r="1.5" fill="#00B5AD" opacity="0.7"/>
+              <circle cx="76" cy="40" r="1.8" fill="#00B5AD" opacity="0.9"/>
+              <circle cx="65" cy="65" r="1.5" fill="#00B5AD" opacity="0.7"/>
+              <circle cx="40" cy="76" r="1.8" fill="#00B5AD" opacity="0.9"/>
+              <circle cx="15" cy="65" r="1.5" fill="#00B5AD" opacity="0.7"/>
+              <circle cx="4"  cy="40" r="1.8" fill="#00B5AD" opacity="0.9"/>
+              <circle cx="15" cy="15" r="1.5" fill="#00B5AD" opacity="0.7"/>
+              <!-- Girdle pts -->
+              <circle cx="40" cy="14" r="1.2" fill="white" opacity="0.7"/>
+              <circle cx="57" cy="23" r="1.2" fill="white" opacity="0.6"/>
+              <circle cx="66" cy="40" r="1.2" fill="white" opacity="0.7"/>
+              <circle cx="57" cy="57" r="1.2" fill="white" opacity="0.6"/>
+              <circle cx="40" cy="66" r="1.2" fill="white" opacity="0.7"/>
+              <circle cx="23" cy="57" r="1.2" fill="white" opacity="0.6"/>
+              <circle cx="14" cy="40" r="1.2" fill="white" opacity="0.7"/>
+              <circle cx="23" cy="23" r="1.2" fill="white" opacity="0.6"/>
+              <!-- Table corners -->
+              <circle cx="40" cy="24" r="1"   fill="white" opacity="0.85"/>
+              <circle cx="51" cy="29" r="0.9" fill="white" opacity="0.7"/>
+              <circle cx="56" cy="40" r="1"   fill="white" opacity="0.85"/>
+              <circle cx="51" cy="51" r="0.9" fill="white" opacity="0.7"/>
+              <circle cx="40" cy="56" r="1"   fill="white" opacity="0.85"/>
+              <circle cx="29" cy="51" r="0.9" fill="white" opacity="0.7"/>
+              <circle cx="24" cy="40" r="1"   fill="white" opacity="0.85"/>
+              <circle cx="29" cy="29" r="0.9" fill="white" opacity="0.7"/>
+            </g>
+
+            <!-- Sparkle on top node -->
+            <g filter="url(#b1glow)">
+              <path d="M40,4 L40.8,7 L44,7.5 L40.8,8 L40,11 L39.2,8 L36,7.5 L39.2,7 Z" fill="white" opacity="0.95"/>
+            </g>
+          </svg>
+          <span>80px</span>
+        </div>
+
+        <div class="size-item">
+          <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="b1bg48" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#060d18"/><stop offset="100%" stop-color="#0d1f35"/>
+              </linearGradient>
+              <linearGradient id="b1tL48" x1="28" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dbeafe"/>
+              </linearGradient>
+              <linearGradient id="b1tR48" x1="52" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.7"/>
+              </linearGradient>
+              <linearGradient id="b1pr48" x1="0" y1="0" x2="80" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#818cf8" stop-opacity="0.5"/>
+                <stop offset="50%" stop-color="#00B5AD" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.2"/>
+              </linearGradient>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#b1bg48)"/>
+            <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="#1A365D" opacity="0.6"/>
+            <polygon points="40,4 23,23 40,24 57,23" fill="#1A365D" opacity="0.9"/>
+            <polygon points="65,15 57,23 51,29 66,40" fill="url(#b1pr48)"/>
+            <polygon points="65,65 57,57 51,51 40,66" fill="url(#b1pr48)" opacity="0.8"/>
+            <polygon points="15,15 23,23 29,29 14,40" fill="url(#b1pr48)" opacity="0.5"/>
+            <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#b1tL48)"/>
+            <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#b1tR48)"/>
+            <polygon points="40,24 51,29 56,40 51,51 40,56 29,51 24,40 29,29" fill="none" stroke="white" stroke-width="1" stroke-opacity="0.5"/>
+            <line x1="40" y1="24" x2="40" y2="56" stroke="white" stroke-width="1.2" stroke-opacity="0.8"/>
+            <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.5"/>
+            <circle cx="40" cy="4"  r="2" fill="#00B5AD" opacity="0.9"/>
+            <circle cx="76" cy="40" r="2" fill="#00B5AD" opacity="0.9"/>
+            <circle cx="40" cy="76" r="2" fill="#00B5AD" opacity="0.9"/>
+            <circle cx="4"  cy="40" r="2" fill="#00B5AD" opacity="0.9"/>
+            <circle cx="65" cy="15" r="1.5" fill="#00B5AD" opacity="0.7"/>
+            <circle cx="65" cy="65" r="1.5" fill="#00B5AD" opacity="0.7"/>
+            <circle cx="15" cy="65" r="1.5" fill="#00B5AD" opacity="0.7"/>
+            <circle cx="15" cy="15" r="1.5" fill="#00B5AD" opacity="0.7"/>
+          </svg>
+          <span>48px</span>
+        </div>
+
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="b1bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#060d18"/><stop offset="100%" stop-color="#0d1f35"/>
+                </linearGradient>
+                <linearGradient id="b1tL32" x1="28" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dbeafe"/>
+                </linearGradient>
+                <linearGradient id="b1tR32" x1="52" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.7"/>
+                </linearGradient>
+              </defs>
+              <rect width="80" height="80" rx="18" fill="url(#b1bg32)"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="#1A365D"/>
+              <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#b1tL32)"/>
+              <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#b1tR32)"/>
+              <polygon points="40,24 51,29 56,40 51,51 40,56 29,51 24,40 29,29" fill="none" stroke="white" stroke-width="1.2" stroke-opacity="0.55"/>
+              <line x1="40" y1="24" x2="40" y2="56" stroke="white" stroke-width="1.5" stroke-opacity="0.85"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.6"/>
+              <circle cx="40" cy="4"  r="2.5" fill="#00B5AD"/>
+              <circle cx="76" cy="40" r="2.5" fill="#00B5AD"/>
+              <circle cx="40" cy="76" r="2.5" fill="#00B5AD"/>
+              <circle cx="4"  cy="40" r="2.5" fill="#00B5AD"/>
+            </svg>
+          </div>
+          <span>32px</span>
+        </div>
+
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="80" height="80" rx="18" fill="#060d18"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="#1A365D"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="2.5"/>
+              <polygon points="40,24 51,29 56,40 51,51 40,56 29,51 24,40 29,29" fill="white" opacity="0.9"/>
+              <line x1="40" y1="24" x2="40" y2="56" stroke="#060d18" stroke-width="2"/>
+            </svg>
+          </div>
+          <span>16px</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="name">Classic Brilliant Cut</div>
+      <div class="desc">Đá quý brilliant cut nhìn từ trên — 8 star facets, 8 upper girdle, table octagon trung tâm = 2 trang sách. Node dots teal tại mọi giao điểm facet. Prism gradient trên 4 mặt xen kẽ.</div>
+    </div>
+
+
+    <!-- B1-LIGHT: Classic Brilliant Cut — Light theme, navy chủ đạo -->
+    <div class="card" style="background:#f0f4f8; border-color:#cbd5e1;">
+      <div class="tag" style="color:#64748b;">B1 · Classic Brilliant Cut · Light Theme</div>
+      <div class="sizes">
+
+        <!-- 80px -->
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- Nền trắng ngà sáng -->
+              <linearGradient id="lbg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e8f0fb"/>
+                <stop offset="100%" stop-color="#ddeaf8"/>
+              </linearGradient>
+              <!-- Star facets: navy đậm các mức -->
+              <linearGradient id="lstar1" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#1A365D"/>
+                <stop offset="100%" stop-color="#1e4478"/>
+              </linearGradient>
+              <linearGradient id="lstar2" x1="0" y1="80" x2="80" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#234e7a"/>
+                <stop offset="100%" stop-color="#2d6499"/>
+              </linearGradient>
+              <!-- Prism facets: teal accent nhẹ trên nền sáng -->
+              <linearGradient id="lprism" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%"   stop-color="#00B5AD" stop-opacity="0.18"/>
+                <stop offset="50%"  stop-color="#0891b2" stop-opacity="0.14"/>
+                <stop offset="100%" stop-color="#6366f1" stop-opacity="0.1"/>
+              </linearGradient>
+              <!-- Table left page: trắng sáng tinh -->
+              <linearGradient id="ltableL" x1="24" y1="24" x2="40" y2="56" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#f0f9ff"/>
+              </linearGradient>
+              <!-- Table right page: teal cực nhẹ -->
+              <linearGradient id="ltableR" x1="56" y1="24" x2="40" y2="56" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e0f7f6"/>
+                <stop offset="100%" stop-color="#ccf3f1"/>
+              </linearGradient>
+              <!-- Upper girdle: navy mờ -->
+              <filter id="lglow">
+                <feGaussianBlur stdDeviation="2" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <filter id="lnodeglow">
+                <feGaussianBlur stdDeviation="1.2" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+
+            <!-- Nền sáng -->
+            <rect width="80" height="80" rx="18" fill="url(#lbg)"/>
+            <!-- Subtle navy border -->
+            <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#1A365D" stroke-opacity="0.12" stroke-width="1.5" fill="none"/>
+
+            <!-- === STAR FACETS — navy đậm xen kẽ 2 tone === -->
+            <!-- N star -->
+            <polygon points="40,4 23,23 40,24 57,23" fill="url(#lstar1)" opacity="0.92"/>
+            <!-- NE star — prism (teal nhẹ trên nền sáng) -->
+            <polygon points="65,15 57,23 51,29 66,40" fill="url(#lprism)"/>
+            <polygon points="65,15 57,23 51,29 66,40" fill="url(#lstar2)" opacity="0.55"/>
+            <!-- E star -->
+            <polygon points="76,40 66,40 56,40 57,57" fill="url(#lstar1)" opacity="0.82"/>
+            <!-- SE star — prism -->
+            <polygon points="65,65 57,57 51,51 40,66" fill="url(#lprism)"/>
+            <polygon points="65,65 57,57 51,51 40,66" fill="url(#lstar2)" opacity="0.45"/>
+            <!-- S star -->
+            <polygon points="40,76 40,66 40,56 23,57" fill="url(#lstar1)" opacity="0.9"/>
+            <!-- SW star — prism -->
+            <polygon points="15,65 23,57 29,51 14,40" fill="url(#lprism)"/>
+            <polygon points="15,65 23,57 29,51 14,40" fill="url(#lstar2)" opacity="0.4"/>
+            <!-- W star -->
+            <polygon points="4,40 14,40 24,40 23,23" fill="url(#lstar1)" opacity="0.86"/>
+            <!-- NW star — prism -->
+            <polygon points="15,15 23,23 29,29 14,40" fill="url(#lprism)"/>
+            <polygon points="15,15 23,23 29,29 14,40" fill="url(#lstar2)" opacity="0.38"/>
+
+            <!-- === UPPER GIRDLE FACETS — navy rất mờ === -->
+            <polygon points="23,23 40,24 29,29" fill="#1A365D" opacity="0.08"/>
+            <polygon points="57,23 40,24 51,29" fill="#1A365D" opacity="0.06"/>
+            <polygon points="66,40 56,40 51,29" fill="#1A365D" opacity="0.07"/>
+            <polygon points="66,40 56,40 57,57" fill="#1A365D" opacity="0.05"/>
+            <polygon points="57,57 40,56 51,51" fill="#1A365D" opacity="0.08"/>
+            <polygon points="23,57 40,56 29,51" fill="#1A365D" opacity="0.06"/>
+            <polygon points="14,40 24,40 29,51" fill="#1A365D" opacity="0.07"/>
+            <polygon points="14,40 24,40 23,23" fill="#1A365D" opacity="0.06"/>
+
+            <!-- === TABLE = BOOK PAGES (sáng, nổi bật trên nền navy) === -->
+            <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#ltableL)"/>
+            <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#ltableR)"/>
+            <!-- Table drop shadow (navy mờ phía dưới để tạo độ nổi) -->
+            <polygon points="40,24 51,29 56,40 51,51 40,56 29,51 24,40 29,29" fill="none" stroke="#1A365D" stroke-width="1" stroke-opacity="0.18"/>
+
+            <!-- Book spine -->
+            <line x1="40" y1="24" x2="40" y2="56" stroke="#1A365D" stroke-width="1.3" stroke-opacity="0.45"/>
+            <!-- Book top crown -->
+            <polyline points="29,29 40,24 51,29" fill="none" stroke="#1A365D" stroke-width="0.9" stroke-opacity="0.35"/>
+            <!-- Text lines left page -->
+            <line x1="28" y1="35" x2="39" y2="33" stroke="#1A365D" stroke-width="0.9" stroke-opacity="0.3"/>
+            <line x1="27" y1="39" x2="39" y2="37" stroke="#1A365D" stroke-width="0.9" stroke-opacity="0.22"/>
+            <line x1="27" y1="43" x2="39" y2="43" stroke="#1A365D" stroke-width="0.9" stroke-opacity="0.16"/>
+            <!-- Right page text lines -->
+            <line x1="41" y1="33" x2="52" y2="35" stroke="#007570" stroke-width="0.9" stroke-opacity="0.28"/>
+            <line x1="41" y1="37" x2="53" y2="39" stroke="#007570" stroke-width="0.9" stroke-opacity="0.2"/>
+
+            <!-- === EDGE LINES === -->
+            <!-- Outer octagon -->
+            <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#1A365D" stroke-width="1" stroke-opacity="0.35"/>
+            <!-- Girdle ring -->
+            <polygon points="23,23 57,23 66,40 57,57 40,66 23,57 14,40 23,23" fill="none" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.2"/>
+            <!-- Star→table spokes -->
+            <line x1="40" y1="4"  x2="40" y2="24" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.3"/>
+            <line x1="65" y1="15" x2="51" y2="29" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.25"/>
+            <line x1="76" y1="40" x2="56" y2="40" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.25"/>
+            <line x1="65" y1="65" x2="51" y2="51" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.25"/>
+            <line x1="40" y1="76" x2="40" y2="56" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.3"/>
+            <line x1="15" y1="65" x2="29" y2="51" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.25"/>
+            <line x1="4"  y1="40" x2="24" y2="40" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.25"/>
+            <line x1="15" y1="15" x2="29" y2="29" stroke="#1A365D" stroke-width="0.7" stroke-opacity="0.25"/>
+
+            <!-- === NODE DOTS — teal đậm trên nền sáng === -->
+            <g filter="url(#lnodeglow)">
+              <!-- Outer (teal, nổi bật) -->
+              <circle cx="40" cy="4"  r="2.2" fill="#00B5AD"/>
+              <circle cx="65" cy="15" r="1.8" fill="#00B5AD" opacity="0.85"/>
+              <circle cx="76" cy="40" r="2.2" fill="#00B5AD"/>
+              <circle cx="65" cy="65" r="1.8" fill="#00B5AD" opacity="0.85"/>
+              <circle cx="40" cy="76" r="2.2" fill="#00B5AD"/>
+              <circle cx="15" cy="65" r="1.8" fill="#00B5AD" opacity="0.85"/>
+              <circle cx="4"  cy="40" r="2.2" fill="#00B5AD"/>
+              <circle cx="15" cy="15" r="1.8" fill="#00B5AD" opacity="0.85"/>
+              <!-- Girdle (navy nhỏ) -->
+              <circle cx="40" cy="14" r="1.3" fill="#1A365D" opacity="0.5"/>
+              <circle cx="57" cy="23" r="1.3" fill="#1A365D" opacity="0.4"/>
+              <circle cx="66" cy="40" r="1.3" fill="#1A365D" opacity="0.5"/>
+              <circle cx="57" cy="57" r="1.3" fill="#1A365D" opacity="0.4"/>
+              <circle cx="40" cy="66" r="1.3" fill="#1A365D" opacity="0.5"/>
+              <circle cx="23" cy="57" r="1.3" fill="#1A365D" opacity="0.4"/>
+              <circle cx="14" cy="40" r="1.3" fill="#1A365D" opacity="0.5"/>
+              <circle cx="23" cy="23" r="1.3" fill="#1A365D" opacity="0.4"/>
+              <!-- Table corners (teal nhỏ) -->
+              <circle cx="40" cy="24" r="1.1" fill="#00B5AD" opacity="0.7"/>
+              <circle cx="51" cy="29" r="0.9" fill="#00B5AD" opacity="0.55"/>
+              <circle cx="56" cy="40" r="1.1" fill="#00B5AD" opacity="0.7"/>
+              <circle cx="51" cy="51" r="0.9" fill="#00B5AD" opacity="0.55"/>
+              <circle cx="40" cy="56" r="1.1" fill="#00B5AD" opacity="0.7"/>
+              <circle cx="29" cy="51" r="0.9" fill="#00B5AD" opacity="0.55"/>
+              <circle cx="24" cy="40" r="1.1" fill="#00B5AD" opacity="0.7"/>
+              <circle cx="29" cy="29" r="0.9" fill="#00B5AD" opacity="0.55"/>
+            </g>
+
+            <!-- Sparkle đỉnh — teal -->
+            <g filter="url(#lglow)">
+              <path d="M40,4 L40.8,7 L44,7.5 L40.8,8 L40,11 L39.2,8 L36,7.5 L39.2,7 Z" fill="#00B5AD" opacity="0.9"/>
+            </g>
+          </svg>
+          <span>80px</span>
+        </div>
+
+        <!-- 48px -->
+        <div class="size-item">
+          <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="lbg48" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e8f0fb"/><stop offset="100%" stop-color="#ddeaf8"/>
+              </linearGradient>
+              <linearGradient id="ltL48" x1="24" y1="24" x2="40" y2="56" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#f0f9ff"/>
+              </linearGradient>
+              <linearGradient id="ltR48" x1="56" y1="24" x2="40" y2="56" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#ccf3f1"/>
+              </linearGradient>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#lbg48)"/>
+            <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#1A365D" stroke-opacity="0.12" stroke-width="1.5" fill="none"/>
+            <polygon points="40,4 23,23 40,24 57,23"   fill="#1A365D" opacity="0.9"/>
+            <polygon points="76,40 66,40 56,40 57,57"  fill="#1A365D" opacity="0.82"/>
+            <polygon points="40,76 40,66 40,56 23,57"  fill="#1A365D" opacity="0.9"/>
+            <polygon points="4,40 14,40 24,40 23,23"   fill="#1A365D" opacity="0.86"/>
+            <polygon points="65,15 57,23 51,29 66,40"  fill="#1A365D" opacity="0.55"/>
+            <polygon points="65,65 57,57 51,51 40,66"  fill="#1A365D" opacity="0.48"/>
+            <polygon points="15,65 23,57 29,51 14,40"  fill="#1A365D" opacity="0.42"/>
+            <polygon points="15,15 23,23 29,29 14,40"  fill="#1A365D" opacity="0.38"/>
+            <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#ltL48)"/>
+            <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#ltR48)"/>
+            <polygon points="40,24 51,29 56,40 51,51 40,56 29,51 24,40 29,29" fill="none" stroke="#1A365D" stroke-width="1" stroke-opacity="0.18"/>
+            <line x1="40" y1="24" x2="40" y2="56" stroke="#1A365D" stroke-width="1.3" stroke-opacity="0.4"/>
+            <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#1A365D" stroke-width="1" stroke-opacity="0.35"/>
+            <circle cx="40" cy="4"  r="2.2" fill="#00B5AD"/>
+            <circle cx="76" cy="40" r="2.2" fill="#00B5AD"/>
+            <circle cx="40" cy="76" r="2.2" fill="#00B5AD"/>
+            <circle cx="4"  cy="40" r="2.2" fill="#00B5AD"/>
+            <circle cx="65" cy="15" r="1.7" fill="#00B5AD" opacity="0.85"/>
+            <circle cx="65" cy="65" r="1.7" fill="#00B5AD" opacity="0.85"/>
+            <circle cx="15" cy="65" r="1.7" fill="#00B5AD" opacity="0.85"/>
+            <circle cx="15" cy="15" r="1.7" fill="#00B5AD" opacity="0.85"/>
+          </svg>
+          <span>48px</span>
+        </div>
+
+        <!-- 32px -->
+        <div class="size-item">
+          <div class="cb" style="background-color:#e8f0fb;">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="lbg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#e8f0fb"/><stop offset="100%" stop-color="#ddeaf8"/>
+                </linearGradient>
+              </defs>
+              <rect width="80" height="80" rx="18" fill="url(#lbg32)"/>
+              <polygon points="40,4 23,23 40,24 57,23"   fill="#1A365D" opacity="0.9"/>
+              <polygon points="76,40 66,40 56,40 57,57"  fill="#1A365D" opacity="0.82"/>
+              <polygon points="40,76 40,66 40,56 23,57"  fill="#1A365D" opacity="0.9"/>
+              <polygon points="4,40 14,40 24,40 23,23"   fill="#1A365D" opacity="0.86"/>
+              <polygon points="65,15 57,23 51,29 66,40"  fill="#1A365D" opacity="0.52"/>
+              <polygon points="65,65 57,57 51,51 40,66"  fill="#1A365D" opacity="0.45"/>
+              <polygon points="15,65 23,57 29,51 14,40"  fill="#1A365D" opacity="0.4"/>
+              <polygon points="15,15 23,23 29,29 14,40"  fill="#1A365D" opacity="0.36"/>
+              <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="white" opacity="0.95"/>
+              <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="#e0f7f6" opacity="0.9"/>
+              <line x1="40" y1="24" x2="40" y2="56" stroke="#1A365D" stroke-width="1.5" stroke-opacity="0.4"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#1A365D" stroke-width="1.5" stroke-opacity="0.35"/>
+              <circle cx="40" cy="4"  r="2.5" fill="#00B5AD"/>
+              <circle cx="76" cy="40" r="2.5" fill="#00B5AD"/>
+              <circle cx="40" cy="76" r="2.5" fill="#00B5AD"/>
+              <circle cx="4"  cy="40" r="2.5" fill="#00B5AD"/>
+            </svg>
+          </div>
+          <span>32px</span>
+        </div>
+
+        <!-- 16px -->
+        <div class="size-item">
+          <div class="cb" style="background-color:#e8f0fb;">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none">
+              <rect width="80" height="80" rx="18" fill="#ddeaf8"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="#1A365D"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#1A365D" stroke-width="1" stroke-opacity="0.3"/>
+              <polygon points="40,24 51,29 56,40 51,51 40,56 29,51 24,40 29,29" fill="white" opacity="0.95"/>
+              <line x1="40" y1="24" x2="40" y2="56" stroke="#ddeaf8" stroke-width="2.5"/>
+              <circle cx="40" cy="4"  r="3" fill="#00B5AD"/>
+              <circle cx="76" cy="40" r="3" fill="#00B5AD"/>
+              <circle cx="40" cy="76" r="3" fill="#00B5AD"/>
+              <circle cx="4"  cy="40" r="3" fill="#00B5AD"/>
+            </svg>
+          </div>
+          <span>16px</span>
+        </div>
+
+      </div>
+      <div class="divider" style="border-color:#cbd5e1;"></div>
+      <div class="name" style="color:#0f172a;">Classic Brilliant Cut · Light Theme</div>
+      <div class="desc" style="color:#475569;">Cùng cấu trúc B1 — nền xanh lam nhạt, star facets navy đậm, table = 2 trang sách trắng/teal, node dots teal nổi bật trên nền sáng. Phù hợp light mode UI.</div>
+    </div>
+
+
+    <!-- B2: Elongated / Marquise Cut — nằm ngang, sách mở rộng -->
+    <div class="card">
+      <div class="tag">B2 · Marquise Cut (Horizontal)</div>
+      <div class="sizes">
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="b2bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#060d18"/><stop offset="100%" stop-color="#0d1f35"/>
+              </linearGradient>
+              <linearGradient id="b2tL" x1="16" y1="30" x2="40" y2="50" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dbeafe"/>
+              </linearGradient>
+              <linearGradient id="b2tR" x1="64" y1="30" x2="40" y2="50" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.75"/>
+              </linearGradient>
+              <linearGradient id="b2pr" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%"  stop-color="#818cf8" stop-opacity="0.4"/>
+                <stop offset="50%" stop-color="#00B5AD" stop-opacity="0.35"/>
+                <stop offset="100%" stop-color="#34d399" stop-opacity="0.25"/>
+              </linearGradient>
+              <filter id="b2ng">
+                <feGaussianBlur stdDeviation="1.5" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#b2bg)"/>
+            <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#00B5AD" stroke-opacity="0.15" stroke-width="1" fill="none"/>
+
+            <!--
+              Marquise (boat) cut: elongated horizontal oval, pointed ends
+              Left tip: (6,40), Right tip: (74,40)
+              Top girdle: (20,24) (40,18) (60,24)
+              Bottom girdle: (20,56) (40,62) (60,56)
+              Table: (20,32) (40,28) (60,32) (60,48) (40,52) (20,48)
+            -->
+
+            <!-- Outer star facets top -->
+            <polygon points="6,40 20,24 20,32 " fill="url(#b2pr)" opacity="0.7"/>
+            <polygon points="6,40 20,24 20,32" fill="url(#b2pr)" opacity="0.7"/>
+            <polygon points="20,24 40,18 40,28 20,32" fill="#1A365D" opacity="0.8"/>
+            <polygon points="40,18 60,24 60,32 40,28" fill="url(#b2pr)" opacity="0.6"/>
+            <polygon points="60,24 74,40 60,32" fill="#1A365D" opacity="0.75"/>
+
+            <!-- Outer star facets bottom -->
+            <polygon points="6,40 20,56 20,48" fill="#1A365D" opacity="0.75"/>
+            <polygon points="20,56 40,62 40,52 20,48" fill="url(#b2pr)" opacity="0.5"/>
+            <polygon points="40,62 60,56 60,48 40,52" fill="#1A365D" opacity="0.8"/>
+            <polygon points="60,56 74,40 60,48" fill="url(#b2pr)" opacity="0.65"/>
+
+            <!-- Upper girdle facets -->
+            <polygon points="6,40 20,24 20,32 6,40" fill="white" opacity="0.08"/>
+            <polygon points="60,32 74,40 60,24" fill="white" opacity="0.06"/>
+
+            <!-- TABLE FACE = BOOK PAGES -->
+            <!-- Left page -->
+            <polygon points="20,32 40,28 40,52 20,48 6,40" fill="url(#b2tL)"/>
+            <!-- Right page -->
+            <polygon points="40,28 60,32 74,40 60,48 40,52" fill="url(#b2tR)"/>
+            <!-- Spine (vertical centre) -->
+            <line x1="40" y1="28" x2="40" y2="52" stroke="white" stroke-width="1.5" stroke-opacity="0.85"/>
+            <!-- Top crown of pages -->
+            <polyline points="20,32 40,28 60,32" fill="none" stroke="white" stroke-width="1" stroke-opacity="0.6"/>
+            <!-- Bottom edge -->
+            <polyline points="20,48 40,52 60,48" fill="none" stroke="white" stroke-width="0.8" stroke-opacity="0.4"/>
+
+            <!-- Book text lines left -->
+            <line x1="14" y1="37" x2="38" y2="36" stroke="#1A365D" stroke-width="0.8" stroke-opacity="0.4"/>
+            <line x1="14" y1="40" x2="38" y2="40" stroke="#1A365D" stroke-width="0.8" stroke-opacity="0.3"/>
+            <line x1="14" y1="43" x2="38" y2="44" stroke="#1A365D" stroke-width="0.8" stroke-opacity="0.2"/>
+            <!-- Right -->
+            <line x1="42" y1="36" x2="66" y2="37" stroke="#00897B" stroke-width="0.8" stroke-opacity="0.3"/>
+            <line x1="42" y1="40" x2="66" y2="40" stroke="#00897B" stroke-width="0.8" stroke-opacity="0.22"/>
+
+            <!-- Outer marquise outline -->
+            <path d="M6,40 Q13,24 20,24 L40,18 L60,24 Q67,24 74,40 Q67,56 60,56 L40,62 L20,56 Q13,56 6,40 Z" fill="none" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.45"/>
+            <!-- Table outline -->
+            <polygon points="20,32 40,28 60,32 60,48 40,52 20,48" fill="none" stroke="white" stroke-width="0.9" stroke-opacity="0.5"/>
+
+            <!-- Node dots -->
+            <g filter="url(#b2ng)">
+              <circle cx="6"  cy="40" r="2.2" fill="#00B5AD" opacity="0.95"/>
+              <circle cx="74" cy="40" r="2.2" fill="#00B5AD" opacity="0.95"/>
+              <circle cx="40" cy="18" r="1.8" fill="#00B5AD" opacity="0.85"/>
+              <circle cx="40" cy="62" r="1.8" fill="#00B5AD" opacity="0.85"/>
+              <circle cx="20" cy="24" r="1.3" fill="white" opacity="0.7"/>
+              <circle cx="60" cy="24" r="1.3" fill="white" opacity="0.7"/>
+              <circle cx="20" cy="56" r="1.3" fill="white" opacity="0.7"/>
+              <circle cx="60" cy="56" r="1.3" fill="white" opacity="0.7"/>
+              <!-- Table corners -->
+              <circle cx="40" cy="28" r="1.1" fill="white" opacity="0.85"/>
+              <circle cx="40" cy="52" r="1.1" fill="white" opacity="0.85"/>
+              <circle cx="20" cy="32" r="0.9" fill="white" opacity="0.65"/>
+              <circle cx="60" cy="32" r="0.9" fill="white" opacity="0.65"/>
+              <circle cx="20" cy="48" r="0.9" fill="white" opacity="0.65"/>
+              <circle cx="60" cy="48" r="0.9" fill="white" opacity="0.65"/>
+            </g>
+          </svg>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="b2bg32" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#060d18"/><stop offset="100%" stop-color="#0d1f35"/>
+                </linearGradient>
+              </defs>
+              <rect width="80" height="80" rx="18" fill="url(#b2bg32)"/>
+              <polygon points="20,32 40,28 60,32 74,40 60,48 40,52 20,48 6,40" fill="#1A365D"/>
+              <polygon points="20,32 40,28 40,52 20,48 6,40" fill="white" opacity="0.88"/>
+              <polygon points="40,28 60,32 74,40 60,48 40,52" fill="#e0f7f6" opacity="0.82"/>
+              <line x1="40" y1="28" x2="40" y2="52" stroke="white" stroke-width="2" stroke-opacity="0.9"/>
+              <path d="M6,40 Q13,24 20,24 L40,18 L60,24 Q67,24 74,40 Q67,56 60,56 L40,62 L20,56 Q13,56 6,40 Z" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.6"/>
+              <circle cx="6"  cy="40" r="2.5" fill="#00B5AD"/>
+              <circle cx="74" cy="40" r="2.5" fill="#00B5AD"/>
+              <circle cx="40" cy="18" r="2" fill="#00B5AD" opacity="0.9"/>
+              <circle cx="40" cy="62" r="2" fill="#00B5AD" opacity="0.9"/>
+            </svg>
+          </div>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none">
+              <rect width="80" height="80" rx="18" fill="#060d18"/>
+              <path d="M6,40 Q13,24 20,24 L40,18 L60,24 Q67,24 74,40 Q67,56 60,56 L40,62 L20,56 Q13,56 6,40 Z" fill="#1A365D"/>
+              <polygon points="20,32 40,28 40,52 20,48 6,40" fill="white" opacity="0.9"/>
+              <polygon points="40,28 60,32 74,40 60,48 40,52" fill="#00B5AD" opacity="0.7"/>
+              <line x1="40" y1="28" x2="40" y2="52" stroke="white" stroke-width="3"/>
+              <circle cx="6"  cy="40" r="3" fill="#00B5AD"/>
+              <circle cx="74" cy="40" r="3" fill="#00B5AD"/>
+            </svg>
+          </div>
+          <span>16px</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="name">Marquise Cut (Horizontal)</div>
+      <div class="desc">Cắt marquise oval nằm ngang — sách mở trải rộng theo chiều ngang. Hai đầu nhọn teal = điểm dữ liệu hội tụ. Phù hợp làm logo horizontal wordmark.</div>
+    </div>
+
+
+    <!-- B3: Pear Cut — asymmetric, elegant -->
+    <div class="card">
+      <div class="tag">B3 · Pear Cut (Asymmetric)</div>
+      <div class="sizes">
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="b3bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#060d18"/><stop offset="100%" stop-color="#0d1f35"/>
+              </linearGradient>
+              <linearGradient id="b3tL" x1="22" y1="22" x2="40" y2="56" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dbeafe"/>
+              </linearGradient>
+              <linearGradient id="b3tR" x1="58" y1="22" x2="40" y2="56" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.7"/>
+              </linearGradient>
+              <linearGradient id="b3pr" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%"  stop-color="#818cf8" stop-opacity="0.45"/>
+                <stop offset="100%" stop-color="#00B5AD" stop-opacity="0.3"/>
+              </linearGradient>
+              <filter id="b3ng">
+                <feGaussianBlur stdDeviation="1.5" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#b3bg)"/>
+            <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#00B5AD" stroke-opacity="0.15" stroke-width="1" fill="none"/>
+
+            <!--
+              Pear cut: top = pointed, bottom = rounded arc
+              Tip: (40, 6)
+              Upper-left shoulder: (18, 24), Upper-right shoulder: (62, 24)
+              Girdle mid-left: (12, 44), Girdle mid-right: (68, 44)
+              Bottom arc: (20, 62) (40, 70) (60, 62)
+              Table: (30,22) (40,16) (50,22) (52,44) (40,50) (28,44)
+            -->
+
+            <!-- Top star facets -->
+            <polygon points="40,6 18,24 30,22 40,16" fill="#1A365D" opacity="0.9"/>
+            <polygon points="40,6 62,24 50,22 40,16" fill="url(#b3pr)" opacity="0.8"/>
+
+            <!-- Side star facets -->
+            <polygon points="18,24 12,44 28,44 30,22" fill="url(#b3pr)" opacity="0.6"/>
+            <polygon points="62,24 68,44 52,44 50,22" fill="#1A365D" opacity="0.8"/>
+
+            <!-- Bottom rounded facets -->
+            <polygon points="12,44 20,62 40,50 28,44" fill="url(#b3pr)" opacity="0.5"/>
+            <polygon points="68,44 60,62 40,50 52,44" fill="#1A365D" opacity="0.75"/>
+            <polygon points="20,62 40,70 40,50" fill="url(#b3pr)" opacity="0.4"/>
+            <polygon points="40,70 60,62 40,50" fill="#1A365D" opacity="0.7"/>
+
+            <!-- TABLE = BOOK PAGES -->
+            <polygon points="30,22 40,16 50,22 52,44 40,50 28,44" fill="#1A365D" opacity="0.3"/>
+            <!-- Left page -->
+            <polygon points="30,22 40,16 40,50 28,44" fill="url(#b3tL)"/>
+            <!-- Right page -->
+            <polygon points="40,16 50,22 52,44 40,50" fill="url(#b3tR)"/>
+            <!-- Spine -->
+            <line x1="40" y1="16" x2="40" y2="50" stroke="white" stroke-width="1.5" stroke-opacity="0.85"/>
+            <!-- Top crown -->
+            <polyline points="30,22 40,16 50,22" fill="none" stroke="white" stroke-width="1" stroke-opacity="0.65"/>
+            <!-- Table outline -->
+            <polygon points="30,22 40,16 50,22 52,44 40,50 28,44" fill="none" stroke="white" stroke-width="0.9" stroke-opacity="0.5"/>
+
+            <!-- Text lines left page -->
+            <line x1="31" y1="30" x2="39" y2="29" stroke="#1A365D" stroke-width="0.8" stroke-opacity="0.45"/>
+            <line x1="30" y1="35" x2="39" y2="34" stroke="#1A365D" stroke-width="0.8" stroke-opacity="0.32"/>
+            <line x1="30" y1="40" x2="39" y2="40" stroke="#1A365D" stroke-width="0.8" stroke-opacity="0.22"/>
+            <!-- Right page -->
+            <line x1="41" y1="29" x2="49" y2="30" stroke="#00897B" stroke-width="0.8" stroke-opacity="0.35"/>
+            <line x1="41" y1="34" x2="50" y2="35" stroke="#00897B" stroke-width="0.8" stroke-opacity="0.25"/>
+
+            <!-- Outline -->
+            <path d="M40,6 L62,24 Q70,34 68,44 Q66,56 60,62 Q50,70 40,70 Q30,70 20,62 Q14,56 12,44 Q10,34 18,24 Z" fill="none" stroke="#00B5AD" stroke-width="1" stroke-opacity="0.5"/>
+
+            <!-- Node dots -->
+            <g filter="url(#b3ng)">
+              <circle cx="40" cy="6"  r="2.2" fill="#00B5AD" opacity="0.95"/>
+              <circle cx="18" cy="24" r="1.5" fill="white" opacity="0.7"/>
+              <circle cx="62" cy="24" r="1.5" fill="white" opacity="0.7"/>
+              <circle cx="12" cy="44" r="1.8" fill="#00B5AD" opacity="0.8"/>
+              <circle cx="68" cy="44" r="1.8" fill="#00B5AD" opacity="0.8"/>
+              <circle cx="40" cy="70" r="2"   fill="#00B5AD" opacity="0.9"/>
+              <circle cx="40" cy="16" r="1.2" fill="white" opacity="0.85"/>
+              <circle cx="30" cy="22" r="0.9" fill="white" opacity="0.7"/>
+              <circle cx="50" cy="22" r="0.9" fill="white" opacity="0.7"/>
+              <circle cx="28" cy="44" r="0.9" fill="white" opacity="0.65"/>
+              <circle cx="52" cy="44" r="0.9" fill="white" opacity="0.65"/>
+              <circle cx="40" cy="50" r="1"   fill="white" opacity="0.75"/>
+            </g>
+
+            <!-- Sparkle at tip -->
+            <path d="M40,6 L40.7,9 L43.5,9.5 L40.7,10 L40,13 L39.3,10 L36.5,9.5 L39.3,9 Z" fill="white" opacity="0.9"/>
+          </svg>
+          <span>80px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none">
+              <rect width="80" height="80" rx="18" fill="#060d18"/>
+              <path d="M40,6 L62,24 Q70,34 68,44 Q66,56 60,62 Q50,70 40,70 Q30,70 20,62 Q14,56 12,44 Q10,34 18,24 Z" fill="#1A365D"/>
+              <polygon points="30,22 40,16 40,50 28,44" fill="white" opacity="0.9"/>
+              <polygon points="40,16 50,22 52,44 40,50" fill="#e0f7f6" opacity="0.82"/>
+              <line x1="40" y1="16" x2="40" y2="50" stroke="white" stroke-width="2" stroke-opacity="0.9"/>
+              <path d="M40,6 L62,24 Q70,34 68,44 Q66,56 60,62 Q50,70 40,70 Q30,70 20,62 Q14,56 12,44 Q10,34 18,24 Z" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.65"/>
+              <circle cx="40" cy="6"  r="2.5" fill="#00B5AD"/>
+              <circle cx="40" cy="70" r="2.2" fill="#00B5AD" opacity="0.9"/>
+              <circle cx="12" cy="44" r="1.8" fill="#00B5AD" opacity="0.8"/>
+              <circle cx="68" cy="44" r="1.8" fill="#00B5AD" opacity="0.8"/>
+            </svg>
+          </div>
+          <span>32px</span>
+        </div>
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none">
+              <rect width="80" height="80" rx="18" fill="#060d18"/>
+              <path d="M40,6 L62,24 Q70,34 68,44 Q66,56 60,62 Q50,70 40,70 Q30,70 20,62 Q14,56 12,44 Q10,34 18,24 Z" fill="#1A365D"/>
+              <path d="M40,6 L62,24 Q70,34 68,44 Q66,56 60,62 Q50,70 40,70 Q30,70 20,62 Q14,56 12,44 Q10,34 18,24 Z" fill="none" stroke="#00B5AD" stroke-width="2.5"/>
+              <polygon points="30,22 40,16 40,50 28,44" fill="white" opacity="0.92"/>
+              <polygon points="40,16 50,22 52,44 40,50" fill="#00B5AD" opacity="0.7"/>
+              <line x1="40" y1="16" x2="40" y2="50" stroke="white" stroke-width="3"/>
+              <circle cx="40" cy="6" r="3.5" fill="#00B5AD"/>
+            </svg>
+          </div>
+          <span>16px</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="name">Pear Cut (Asymmetric)</div>
+      <div class="desc">Hình lê — nhọn ở trên, tròn ở dưới. Bất đối xứng tạo cảm giác chuyển động. Node teal tại đỉnh = điểm tri thức. Sách mở trong table facet trung tâm.</div>
+    </div>
+
+  </div><!-- /t4-grid -->
+</div><!-- /section 1 -->
+
+
+<!-- ── SECTION 2: Full brand identity ── -->
+<div class="t4-section">
+  <div class="t4-section-title">02 · Brand Identity — Horizontal + Standalone + Dark/Light</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:1040px;">
+
+    <!-- Dark mode navbar -->
+    <div>
+      <p style="font-size:0.65rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#475569;margin-bottom:12px;">Dark mode — Navigation Bar</p>
+      <div class="t4-horizontal">
+        <!-- Brilliant cut small icon -->
+        <svg width="34" height="34" viewBox="0 0 80 80" fill="none">
+          <defs>
+            <linearGradient id="navb_top" x1="28" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#dbeafe"/>
+            </linearGradient>
+            <linearGradient id="navb_tr" x1="52" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.7"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="18" fill="#060d18"/>
+          <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="#1A365D"/>
+          <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#navb_top)"/>
+          <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#navb_tr)"/>
+          <line x1="40" y1="24" x2="40" y2="56" stroke="white" stroke-width="1.5" stroke-opacity="0.85"/>
+          <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.6"/>
+          <circle cx="40" cy="4"  r="2" fill="#00B5AD"/>
+          <circle cx="76" cy="40" r="2" fill="#00B5AD"/>
+          <circle cx="40" cy="76" r="2" fill="#00B5AD"/>
+          <circle cx="4"  cy="40" r="2" fill="#00B5AD"/>
+        </svg>
+        <div style="line-height:1.1">
+          <div><span class="wm-bold">Knowledge</span><span class="wm-thin">Base</span></div>
+          <div style="font-size:0.65rem;color:#475569;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">The Systemic Knowledge Gem</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Light mode navbar -->
+    <div>
+      <p style="font-size:0.65rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#475569;margin-bottom:12px;">Light mode — Navigation Bar</p>
+      <div class="t4-horizontal t4-horizontal-light">
+        <svg width="34" height="34" viewBox="0 0 80 80" fill="none">
+          <defs>
+            <linearGradient id="navl_top" x1="28" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#dbeafe"/>
+            </linearGradient>
+            <linearGradient id="navl_tr" x1="52" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.7"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="18" fill="#060d18"/>
+          <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="#1A365D"/>
+          <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#navl_top)"/>
+          <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#navl_tr)"/>
+          <line x1="40" y1="24" x2="40" y2="56" stroke="white" stroke-width="1.5" stroke-opacity="0.85"/>
+          <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.6"/>
+          <circle cx="40" cy="4"  r="2" fill="#00B5AD"/>
+          <circle cx="76" cy="40" r="2" fill="#00B5AD"/>
+          <circle cx="40" cy="76" r="2" fill="#00B5AD"/>
+          <circle cx="4"  cy="40" r="2" fill="#00B5AD"/>
+        </svg>
+        <div style="line-height:1.1">
+          <div><span class="wm-bold wm-bold-l">Knowledge</span><span class="wm-thin wm-thin-l">Base</span></div>
+          <div style="font-size:0.65rem;color:#94a3b8;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">The Systemic Knowledge Gem</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Standalone sizes -->
+    <div style="grid-column:1/-1;">
+      <p style="font-size:0.65rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#475569;margin-bottom:16px;">Standalone Icon — Favicon · PWA · App Store</p>
+      <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;">
+
+        <!-- 512 App icon -->
+        <div class="size-item">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+            <defs>
+              <linearGradient id="sa512bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#060d18"/><stop offset="100%" stop-color="#0d1f35"/>
+              </linearGradient>
+              <linearGradient id="sa512tL" x1="28" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dbeafe"/>
+              </linearGradient>
+              <linearGradient id="sa512tR" x1="52" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.7"/>
+              </linearGradient>
+              <linearGradient id="sa512pr" x1="0" y1="0" x2="80" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#818cf8" stop-opacity="0.5"/>
+                <stop offset="50%" stop-color="#00B5AD" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.2"/>
+              </linearGradient>
+            </defs>
+            <rect width="80" height="80" rx="18" fill="url(#sa512bg)"/>
+            <polygon points="40,4 23,23 40,24 57,23" fill="#1A365D" opacity="0.9"/>
+            <polygon points="65,15 57,23 51,29 66,40" fill="url(#sa512pr)"/>
+            <polygon points="76,40 66,40 56,40 57,57" fill="#1A365D" opacity="0.8"/>
+            <polygon points="65,65 57,57 51,51 40,66" fill="url(#sa512pr)" opacity="0.8"/>
+            <polygon points="40,76 40,66 40,56 23,57" fill="#1A365D" opacity="0.9"/>
+            <polygon points="15,65 23,57 29,51 14,40" fill="url(#sa512pr)" opacity="0.6"/>
+            <polygon points="4,40 14,40 24,40 23,23" fill="#1A365D" opacity="0.85"/>
+            <polygon points="15,15 23,23 29,29 14,40" fill="url(#sa512pr)" opacity="0.5"/>
+            <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#sa512tL)"/>
+            <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#sa512tR)"/>
+            <polygon points="40,24 51,29 56,40 51,51 40,56 29,51 24,40 29,29" fill="none" stroke="white" stroke-width="0.9" stroke-opacity="0.5"/>
+            <line x1="40" y1="24" x2="40" y2="56" stroke="white" stroke-width="1.2" stroke-opacity="0.85"/>
+            <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="0.9" stroke-opacity="0.5"/>
+            <circle cx="40" cy="4"  r="2" fill="#00B5AD" opacity="0.95"/>
+            <circle cx="65" cy="15" r="1.5" fill="#00B5AD" opacity="0.7"/>
+            <circle cx="76" cy="40" r="2" fill="#00B5AD" opacity="0.95"/>
+            <circle cx="65" cy="65" r="1.5" fill="#00B5AD" opacity="0.7"/>
+            <circle cx="40" cy="76" r="2" fill="#00B5AD" opacity="0.95"/>
+            <circle cx="15" cy="65" r="1.5" fill="#00B5AD" opacity="0.7"/>
+            <circle cx="4"  cy="40" r="2" fill="#00B5AD" opacity="0.95"/>
+            <circle cx="15" cy="15" r="1.5" fill="#00B5AD" opacity="0.7"/>
+          </svg>
+          <span style="font-size:0.6rem;color:#475569;display:block;text-align:center;margin-top:6px;">512px · App Icon</span>
+        </div>
+
+        <!-- 192 PWA -->
+        <div class="size-item">
+          <svg width="48" height="48" viewBox="0 0 80 80" fill="none">
+            <rect width="80" height="80" rx="18" fill="#060d18"/>
+            <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="#1A365D"/>
+            <defs>
+              <linearGradient id="pwa192tL" x1="28" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#dbeafe"/></linearGradient>
+              <linearGradient id="pwa192tR" x1="52" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#e0f7f6"/><stop offset="100%" stop-color="#00B5AD" stop-opacity="0.7"/></linearGradient>
+            </defs>
+            <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#pwa192tL)"/>
+            <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#pwa192tR)"/>
+            <line x1="40" y1="24" x2="40" y2="56" stroke="white" stroke-width="1.5" stroke-opacity="0.85"/>
+            <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="1.5" stroke-opacity="0.6"/>
+            <circle cx="40" cy="4" r="2.2" fill="#00B5AD"/>
+            <circle cx="76" cy="40" r="2.2" fill="#00B5AD"/>
+            <circle cx="40" cy="76" r="2.2" fill="#00B5AD"/>
+            <circle cx="4"  cy="40" r="2.2" fill="#00B5AD"/>
+          </svg>
+          <span style="font-size:0.6rem;color:#475569;display:block;text-align:center;margin-top:6px;">192px · PWA</span>
+        </div>
+
+        <!-- 32 favicon -->
+        <div class="size-item">
+          <div class="cb">
+            <svg width="32" height="32" viewBox="0 0 80 80" fill="none">
+              <rect width="80" height="80" rx="18" fill="#060d18"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="#1A365D"/>
+              <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="white" opacity="0.9"/>
+              <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="#e0f7f6" opacity="0.82"/>
+              <line x1="40" y1="24" x2="40" y2="56" stroke="white" stroke-width="2" stroke-opacity="0.9"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="2"/>
+              <circle cx="40" cy="4"  r="2.5" fill="#00B5AD"/>
+              <circle cx="76" cy="40" r="2.5" fill="#00B5AD"/>
+              <circle cx="40" cy="76" r="2.5" fill="#00B5AD"/>
+              <circle cx="4"  cy="40" r="2.5" fill="#00B5AD"/>
+            </svg>
+          </div>
+          <span style="font-size:0.6rem;color:#475569;display:block;text-align:center;margin-top:6px;">32px · Favicon</span>
+        </div>
+
+        <!-- 16 favicon -->
+        <div class="size-item">
+          <div class="cb">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none">
+              <rect width="80" height="80" rx="18" fill="#060d18"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="#1A365D"/>
+              <polygon points="40,4 65,15 76,40 65,65 40,76 15,65 4,40 15,15" fill="none" stroke="#00B5AD" stroke-width="3"/>
+              <polygon points="40,24 51,29 56,40 51,51 40,56 29,51 24,40 29,29" fill="white" opacity="0.9"/>
+              <line x1="40" y1="24" x2="40" y2="56" stroke="#060d18" stroke-width="2.5"/>
+            </svg>
+          </div>
+          <span style="font-size:0.6rem;color:#475569;display:block;text-align:center;margin-top:6px;">16px · Favicon</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div><!-- /section 2 -->
+
+</div><!-- /tab4 -->
+
+</body>
+</html>

@@ -232,7 +232,15 @@ function AiSettingsSection() {
               </button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">Kéo thả để sắp xếp. Tích chọn nhiều rồi xóa cùng lúc.</p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-muted-foreground">Kéo thả để sắp xếp. Tích chọn nhiều rồi xóa cùng lúc.</p>
+            <button
+              onClick={() => setSelected(selected.size === models.length ? new Set() : new Set(models))}
+              className="text-xs text-muted-foreground hover:underline shrink-0"
+            >
+              {selected.size === models.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+            </button>
+          </div>
           <div className="space-y-1.5">
             {models.map((model, i) => (
               <div

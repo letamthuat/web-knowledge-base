@@ -19,6 +19,20 @@ interface Segment {
   speaker?: string;
 }
 
+function deduplicateHallucinations(segs: Segment[]): Segment[] {
+  if (segs.length === 0) return segs;
+  const norm = (t: string) => t.toLowerCase().replace(/\s+/g, " ").trim();
+  const result: Segment[] = [];
+  let streak = 0;
+  for (let i = 0; i < segs.length; i++) {
+    const cur = norm(segs[i].text);
+    const prev = i > 0 ? norm(segs[i - 1].text) : null;
+    streak = cur === prev ? streak + 1 : 1;
+    if (streak <= 2) result.push(segs[i]);
+  }
+  return result;
+}
+
 // POST: { downloadUrl, byteStart, byteEnd, headerBytes?, mimeType, chunkIndex, timeOffsetSeconds, language?, diarization?, geminiApiKey?, geminiModels? }
 // Fetches audio range from R2, sends to Gemini Flash as base64 inline, returns segments + language.
 export async function POST(req: NextRequest) {
@@ -109,11 +123,11 @@ export async function POST(req: NextRequest) {
 
   const prompt = diarization
     ? `Transcribe this audio clip. Detected language: ${lang}.
-Identify different speakers as SPEAKER_1, SPEAKER_2, etc.
+Identify different speakers. Try to infer each speaker's real name and organization from the conversation context (e.g. if someone is addressed as "anh Dũng", "chị Mai", or a company name is mentioned). Use the format "Organization | Name" if organization is known (e.g. "SmartLog | Anh Dũng"), or just the name if no organization is mentioned (e.g. "Anh Sủng"). If the name cannot be determined at all, fall back to SPEAKER_1, SPEAKER_2, etc. Keep speaker labels consistent throughout.
 Output MUST be a valid JSON array only — no markdown fences, no explanation, no extra text before or after.
 Use decimal seconds (not MM:SS format) for start and end.
 Example format:
-[{"start":0.0,"end":5.2,"speaker":"SPEAKER_1","text":"..."},{"start":5.5,"end":9.1,"speaker":"SPEAKER_2","text":"..."}]`
+[{"start":0.0,"end":5.2,"speaker":"SmartLog | Người nói 1","text":"..."},{"start":5.5,"end":9.1,"speaker":"QPL | Anh Sủng","text":"..."},{"start":9.2,"end":12.0,"speaker":"SPEAKER_3","text":"..."}]`
     : `Transcribe this audio clip. Detected language: ${lang}.
 Output MUST be a valid JSON array only — no markdown fences, no explanation, no extra text before or after.
 Use decimal seconds (not MM:SS format) for start and end.
@@ -127,7 +141,7 @@ Example format:
         { text: prompt },
       ],
     }],
-    generationConfig: { temperature: 0 },
+    generationConfig: { temperature: 0, maxOutputTokens: 65536 },
   });
 
   // Try each model in fallback chain starting from startModelIndex, with retries
@@ -183,7 +197,7 @@ Example format:
   if (succeededModelIndex === -1) {
     return NextResponse.json({ error: `All models failed after retries. Last: ${lastError}` }, { status: 502 });
   }
-  console.log(`[transcribe-gemini] chunk=${chunkIndex} rawText preview: ${rawText.slice(0, 200)}`);
+  console.log(`[transcribe-gemini] chunk=${chunkIndex} rawText length=${rawText.length} first300: ${JSON.stringify(rawText.slice(0, 300))}`);
 
   // Parse JSON from Gemini response
   let segments: Segment[] = [];
@@ -210,11 +224,13 @@ Example format:
       .replace(/^json\s*/i, "")
       .trim();
 
+    console.log(`[transcribe-gemini] chunk=${chunkIndex} cleaned[0]=${JSON.stringify(cleaned.slice(0, 100))}`);
+
     // If Gemini wrapped everything in a single {"text":"...json..."} object, unwrap it
     if (cleaned.startsWith("{")) {
       try {
         const obj = JSON.parse(cleaned) as Record<string, unknown>;
-        if (typeof obj.text === "string") cleaned = obj.text;
+        if (typeof obj.text === "string") { cleaned = obj.text; console.log(`[transcribe-gemini] chunk=${chunkIndex} unwrapped single-object`); }
       } catch { /* not a single object, continue */ }
     }
 
@@ -223,14 +239,20 @@ Example format:
     if (arrayMatch) cleaned = arrayMatch[0];
 
     let parsed = JSON.parse(cleaned) as Record<string, unknown>[];
+    console.log(`[transcribe-gemini] chunk=${chunkIndex} parsed array length=${Array.isArray(parsed) ? parsed.length : "NOT_ARRAY"} first_text_preview=${JSON.stringify(String(parsed?.[0]?.text ?? "").slice(0, 80))}`);
 
     // If Gemini returned array with 1 element whose text is itself a JSON array, unwrap it
     if (Array.isArray(parsed) && parsed.length === 1 && typeof parsed[0].text === "string") {
       const inner = (parsed[0].text as string).trim();
-      if (inner.startsWith("[")) {
+      console.log(`[transcribe-gemini] chunk=${chunkIndex} single-element array, inner starts with: ${JSON.stringify(inner.slice(0, 50))}`);
+      const innerArrayMatch = inner.match(/^\[[\s\S]*\]$/);
+      if (innerArrayMatch) {
         try {
-          const innerParsed = JSON.parse(inner) as Record<string, unknown>[];
-          if (Array.isArray(innerParsed) && innerParsed.length > 1) parsed = innerParsed;
+          const innerParsed = JSON.parse(innerArrayMatch[0]) as Record<string, unknown>[];
+          if (Array.isArray(innerParsed) && innerParsed.length > 0) {
+            parsed = innerParsed;
+            console.log(`[transcribe-gemini] chunk=${chunkIndex} unwrapped inner array, length=${innerParsed.length}`);
+          }
         } catch { /* not a nested array, keep original */ }
       }
     }
@@ -259,19 +281,29 @@ Example format:
           const isFillerLoop = dur <= 0.5 && /^[ừưm\.…,\s]+$/i.test(s.text);
           return !isFillerLoop;
         });
+
+      // Drop hallucination runs: if any phrase repeats ≥5 times consecutively, drop all but 2
+      segments = deduplicateHallucinations(segments);
     }
   } catch {
     console.warn(`[transcribe-gemini] chunk=${chunkIndex} JSON parse failed. rawText: ${rawText.slice(0, 300)}`);
-    // Fallback: one segment spanning estimated chunk duration
-    const estimatedDurationSec = part.byteLength / (128 * 1024 / 8);
-    const plainText = rawText.replace(/```/g, "").replace(/^json\s*/i, "").replace(/box_2d[\s\S]*$/m, "").trim();
-    segments = plainText ? [{
-      start: timeOffsetSeconds,
-      end: timeOffsetSeconds + estimatedDurationSec,
-      text: plainText,
-    }] : [];
+    // Fallback: try to salvage complete objects from truncated JSON
+    console.warn(`[transcribe-gemini] chunk=${chunkIndex} JSON parse failed, attempting partial recovery. rawText length=${rawText.length}`);
+    try {
+      const partialMatches = rawText.matchAll(/\{\s*"start"\s*:\s*([\d.]+)\s*,\s*"end"\s*:\s*([\d.]+)[^}]*"text"\s*:\s*"((?:[^"\\]|\\.)*)"\s*(?:,\s*"speaker"\s*:\s*"([^"]*)")?\s*\}/g);
+      for (const m of partialMatches) {
+        const st = parseFloat(m[1]);
+        const en = parseFloat(m[2]);
+        const txt = m[3].replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16))).replace(/\\n/g, " ").replace(/\\"/g, '"').trim();
+        if (!isNaN(st) && !isNaN(en) && txt) {
+          segments.push({ start: st + timeOffsetSeconds, end: en + timeOffsetSeconds, text: txt, ...(m[4] ? { speaker: m[4] } : {}) });
+        }
+      }
+    } catch { /* partial recovery failed, return empty */ }
+    console.warn(`[transcribe-gemini] chunk=${chunkIndex} partial recovery got ${segments.length} segments`);
   }
 
-  // Try to detect language from Gemini (not explicit in response — keep passed lang)
-  return NextResponse.json({ segments, language: detectedLanguage, modelIndex: succeededModelIndex });
+  // Estimate chunk duration from byte size (128kbps opus)
+  const chunkDurationSeconds = part.byteLength / (128 * 1024 / 8);
+  return NextResponse.json({ segments, language: detectedLanguage, modelIndex: succeededModelIndex, chunkDurationSeconds });
 }

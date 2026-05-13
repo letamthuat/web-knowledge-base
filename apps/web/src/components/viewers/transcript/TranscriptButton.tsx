@@ -5,7 +5,7 @@ import { useMutation, useAction, useQuery } from "convex/react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Captions, Loader2, RefreshCw, ChevronDown, Check } from "lucide-react";
+import { Captions, Loader2, RefreshCw, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { TranscriptProgress } from "@/lib/transcriptService";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ interface TranscriptButtonProps {
   mimeType: string;
   hasTranscript: boolean;
   fileSizeBytes?: number;
+  durationSeconds?: number;
 }
 
 function getStoredProvider(): Provider {
@@ -29,11 +30,12 @@ function getStoredDiarization(): boolean {
   return localStorage.getItem("transcriptDiarization") === "true";
 }
 
-export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes }: TranscriptButtonProps) {
+export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes, durationSeconds }: TranscriptButtonProps) {
   const [progress, setProgress] = useState<TranscriptProgress | null>(null);
   const [provider, setProvider] = useState<Provider>(getStoredProvider);
   const [diarization, setDiarization] = useState<boolean>(getStoredDiarization);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [quotaDialog, setQuotaDialog] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isRunning = progress !== null && progress.phase !== "done" && progress.phase !== "error";
@@ -85,7 +87,7 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
     geminiApiKey?: string;
     geminiModels?: string[];
     startModelIndex?: number;
-  }): Promise<{ segments: { start: number; end: number; text: string; speaker?: string }[]; language: string; modelIndex?: number }> {
+  }): Promise<{ segments: { start: number; end: number; text: string; speaker?: string }[]; language: string; modelIndex?: number; chunkDurationSeconds?: number }> {
     const route = provider === "gemini" ? "/api/transcribe-chunk-gemini" : "/api/transcribe-chunk";
     const MAX_RETRIES = 5;
 
@@ -147,53 +149,76 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
       setProgress({ phase: "loading", message: "Đang phân tích file âm thanh..." });
 
       const freshUrl = await getFreshDownloadUrl({ docId });
-      const webmInfo = await getWebmChunks({ downloadUrl: freshUrl, mimeType, fileSizeBytes });
+      const webmInfo = await getWebmChunks({ downloadUrl: freshUrl, mimeType, fileSizeBytes, durationSeconds });
       const { chunks, headerBytes } = webmInfo;
 
       const allSegments: { start: number; end: number; text: string; speaker?: string }[] = [];
       let detectedLanguage = "vi";
-      let timeOffsetSeconds = 0;
       let currentModelIndex = 0;
+      const BATCH_SIZE = provider === "gemini" ? 3 : 1;
+      const segmentsByChunk: (typeof allSegments)[] = new Array(chunks.length).fill(null).map(() => []);
+      const durationByChunk: number[] = new Array(chunks.length).fill(0);
 
-      for (let i = 0; i < chunks.length; i++) {
+      for (let batchStart = 0; batchStart < chunks.length; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, chunks.length);
+        const batchIndices = Array.from({ length: batchEnd - batchStart }, (_, k) => batchStart + k);
+
         setProgress({
           phase: "transcribing",
-          chunkIndex: i + 1,
+          chunkIndex: batchEnd,
           totalChunks: chunks.length,
-          message: `Đang nhận dạng giọng nói... (${i + 1}/${chunks.length})`,
+          message: `Đang nhận dạng giọng nói... (${batchEnd}/${chunks.length})`,
         });
 
-        if (i > 0) await new Promise((r) => setTimeout(r, provider === "gemini" ? 4000 : 15000));
+        if (batchStart > 0) await new Promise((r) => setTimeout(r, provider === "gemini" ? 1000 : 15000));
 
-        const chunkUrl = await getFreshDownloadUrl({ docId });
+        // Pre-fetch URLs for all chunks in batch in parallel
+        const batchUrls = await Promise.all(batchIndices.map(() => getFreshDownloadUrl({ docId })));
 
-        const result = await transcribeChunkViaApi({
-          downloadUrl: chunkUrl,
-          mimeType,
-          byteStart: chunks[i].byteStart,
-          byteEnd: chunks[i].byteEnd,
-          headerBytes,
-          chunkIndex: i,
-          timeOffsetSeconds,
-          language: undefined,
-          diarization: provider === "gemini" ? diarization : false,
-          ...(provider === "gemini" && aiSettings?.geminiApiKey
-            ? { geminiApiKey: aiSettings.geminiApiKey }
-            : {}),
-          ...(provider === "gemini" && aiSettings?.geminiModels?.length
-            ? { geminiModels: aiSettings.geminiModels }
-            : {}),
-          ...(provider === "gemini" ? { startModelIndex: currentModelIndex } : {}),
-        });
+        // Compute timeOffset for each chunk based on byte position
+        // (accurate because we use chunkDurationSeconds from route)
+        const batchResults = await Promise.all(batchIndices.map((i, k) => {
+          const byteOffset = chunks[i].byteStart;
+          // Estimate time offset from byte position using overall bitrate
+          const timeOffsetEst = durationSeconds && fileSizeBytes
+            ? (byteOffset / fileSizeBytes) * durationSeconds
+            : 0;
 
-        if (provider === "gemini" && typeof result.modelIndex === "number") {
-          currentModelIndex = result.modelIndex;
+          return transcribeChunkViaApi({
+            downloadUrl: batchUrls[k],
+            mimeType,
+            byteStart: chunks[i].byteStart,
+            byteEnd: chunks[i].byteEnd,
+            headerBytes,
+            chunkIndex: i,
+            timeOffsetSeconds: timeOffsetEst,
+            language: undefined,
+            diarization: provider === "gemini" ? diarization : false,
+            ...(provider === "gemini" && aiSettings?.geminiApiKey
+              ? { geminiApiKey: aiSettings.geminiApiKey }
+              : {}),
+            ...(provider === "gemini" && aiSettings?.geminiModels?.length
+              ? { geminiModels: aiSettings.geminiModels }
+              : {}),
+            ...(provider === "gemini" ? { startModelIndex: currentModelIndex } : {}),
+          });
+        }));
+
+        for (let k = 0; k < batchIndices.length; k++) {
+          const i = batchIndices[k];
+          const result = batchResults[k];
+          if (provider === "gemini" && typeof result.modelIndex === "number") {
+            currentModelIndex = result.modelIndex;
+          }
+          segmentsByChunk[i] = result.segments;
+          durationByChunk[i] = result.chunkDurationSeconds ?? 0;
+          detectedLanguage = result.language;
         }
-        allSegments.push(...result.segments);
-        detectedLanguage = result.language;
-        if (result.segments.length > 0) {
-          timeOffsetSeconds = result.segments[result.segments.length - 1].end;
-        }
+      }
+
+      // Flatten segments in order
+      for (const segs of segmentsByChunk) {
+        allSegments.push(...segs);
       }
 
       await saveSegments({ transcriptId, segments: allSegments, language: detectedLanguage });
@@ -208,16 +233,7 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
       setProgress({ phase: "error", message });
 
       if (message === "__QUOTA_EXHAUSTED__") {
-        const settingsHint = provider === "gemini"
-          ? " Vào Cài đặt → Trợ lý AI để đổi API key hoặc thêm model khác."
-          : " Quota Groq đã hết, thử lại sau hoặc chuyển sang Gemini.";
-        toast.error(`Đã hết quota tất cả models.${settingsHint}`, {
-          duration: 10000,
-          action: provider === "gemini" ? {
-            label: "Mở Cài đặt",
-            onClick: () => window.location.href = "/settings",
-          } : undefined,
-        });
+        setQuotaDialog(true);
       } else {
         toast.error(`Tạo transcript thất bại: ${message}`);
       }
@@ -230,6 +246,36 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
 
   return (
     <div className="flex items-center gap-1">
+      {/* Quota exhausted dialog */}
+      {quotaDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 max-w-sm rounded-lg border bg-background p-6 shadow-xl">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+              <div>
+                <h3 className="font-semibold">Hết quota API</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Tất cả models đã hết quota.
+                  {provider === "gemini"
+                    ? " Vào Cài đặt → Trợ lý AI để đổi API key hoặc thêm model khác."
+                    : " Quota Groq đã hết, thử lại sau hoặc chuyển sang Gemini."}
+                </p>
+                <div className="mt-4 flex gap-2">
+                  {provider === "gemini" && (
+                    <Button size="sm" variant="outline" onClick={() => { setQuotaDialog(false); window.location.href = "/settings"; }}>
+                      Mở Cài đặt
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={() => setQuotaDialog(false)}>
+                    Đã hiểu
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main transcript button */}
       <Button
         size="sm"
