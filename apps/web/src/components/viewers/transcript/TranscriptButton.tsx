@@ -19,6 +19,7 @@ interface TranscriptButtonProps {
   fileSizeBytes?: number;
   durationSeconds?: number;
   onRunningChange?: (running: boolean) => void;
+  extractAudioFn?: (bytes: Uint8Array) => Promise<Uint8Array>;
 }
 
 function getStoredProvider(): Provider {
@@ -32,7 +33,7 @@ function getStoredDiarization(): boolean {
   return stored === null ? true : stored === "true";
 }
 
-export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes, durationSeconds, onRunningChange }: TranscriptButtonProps) {
+export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes, durationSeconds, onRunningChange, extractAudioFn }: TranscriptButtonProps) {
   const [progress, setProgress] = useState<TranscriptProgress | null>(null);
   const [provider, setProvider] = useState<Provider>(getStoredProvider);
   const [diarization, setDiarization] = useState<boolean>(getStoredDiarization);
@@ -146,6 +147,70 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
     throw new Error("Max retries exceeded");
   }
 
+  const isVideo = mimeType.startsWith("video/");
+
+  async function transcribeVideoChunkViaApi(params: {
+    chunkUrl: string;
+    byteStart: number;
+    byteEnd: number;
+    chunkIndex: number;
+    timeOffsetSeconds: number;
+  }): Promise<{ segments: { start: number; end: number; text: string; speaker?: string }[]; language: string; modelIndex?: number }> {
+    // Fetch video chunk bytes
+    const res = await fetch(params.chunkUrl, { headers: { Range: `bytes=${params.byteStart}-${params.byteEnd - 1}` } });
+    if (!res.ok && res.status !== 206) throw new Error(`Fetch video chunk failed: ${res.status}`);
+    const videoBytes = new Uint8Array(await res.arrayBuffer());
+
+    if (videoBytes.byteLength === 0) {
+      console.warn(`[TranscriptButton] video chunk=${params.chunkIndex} empty, skipping`);
+      return { segments: [], language: "vi" };
+    }
+
+    // Extract audio via ffmpeg.wasm
+    if (!extractAudioFn) throw new Error("extractAudioFn not provided for video");
+    setProgress({ phase: "transcribing", chunkIndex: params.chunkIndex + 1, totalChunks: undefined, message: `Đang tách audio chunk ${params.chunkIndex + 1}...` });
+    const audioBytes = await extractAudioFn(videoBytes);
+
+    if (audioBytes.byteLength === 0) {
+      console.warn(`[TranscriptButton] video chunk=${params.chunkIndex} audio extraction empty, skipping`);
+      return { segments: [], language: "vi" };
+    }
+
+    // Encode to base64 and send to route
+    const base64Audio = btoa(String.fromCharCode(...audioBytes));
+    const MAX_RETRIES = 5;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const apiRes = await fetch("/api/transcribe-audio-gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audioBase64: base64Audio,
+          mimeType: "audio/webm",
+          chunkIndex: params.chunkIndex,
+          timeOffsetSeconds: params.timeOffsetSeconds,
+          diarization: diarization,
+          ...(aiSettings?.geminiApiKey ? { geminiApiKey: aiSettings.geminiApiKey } : {}),
+          ...(aiSettings?.geminiModels?.length ? { geminiModels: aiSettings.geminiModels } : {}),
+        }),
+      });
+      if (apiRes.ok) return apiRes.json();
+      const err = await apiRes.json().catch(() => ({ error: apiRes.statusText }));
+      const errMsg = typeof err.error === "string" ? err.error : String(err.error ?? apiRes.statusText);
+      const isQuotaExhausted = errMsg.includes("All models failed") || (errMsg.includes("429") && errMsg.includes("limit: 0"));
+      if (isQuotaExhausted) throw new Error("__QUOTA_EXHAUSTED__");
+      const is429 = errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED");
+      const is503 = errMsg.includes("503") || errMsg.includes("UNAVAILABLE");
+      if ((is429 || is503) && attempt < MAX_RETRIES - 1) {
+        const waitMs = is503 ? 15000 + attempt * 10000 : 60000 + attempt * 30000;
+        toast.warning(`Đang chờ ${Math.round(waitMs / 1000)}s rồi thử lại (chunk ${params.chunkIndex + 1})...`, { duration: waitMs });
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+      throw new Error(errMsg ?? `HTTP ${apiRes.status}`);
+    }
+    throw new Error("Max retries exceeded");
+  }
+
   async function handleTranscribe() {
     if (isRunning) return;
     setDropdownOpen(false);
@@ -155,12 +220,26 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
       toast.warning("Chưa cấu hình Gemini API key. Vào Cài đặt → Trợ lý AI để setup.");
       return;
     }
+
+    // Video requires ffmpeg.wasm — check SharedArrayBuffer support
+    if (isVideo && typeof SharedArrayBuffer === "undefined") {
+      toast.error("Trình duyệt không hỗ trợ tính năng này (thiếu SharedArrayBuffer). Thử Chrome/Edge.");
+      return;
+    }
+
     let transcriptId: Id<"transcripts"> | null = null;
     try {
       transcriptId = await initTranscript({ docId });
       await updateStatus({ transcriptId, status: "processing" });
 
-      setProgress({ phase: "loading", message: "Đang phân tích file âm thanh..." });
+      setProgress({ phase: "loading", message: isVideo ? "Đang phân tích file video..." : "Đang phân tích file âm thanh..." });
+
+      // Pre-load ffmpeg.wasm for video before starting chunks
+      if (isVideo && extractAudioFn) {
+        setProgress({ phase: "loading", message: "Đang tải ffmpeg..." });
+        const { loadFFmpeg } = await import("@/hooks/useFFmpeg");
+        await loadFFmpeg();
+      }
 
       const freshUrl = await getFreshDownloadUrl({ docId });
       const webmInfo = await getWebmChunks({ downloadUrl: freshUrl, mimeType, fileSizeBytes, durationSeconds });
@@ -190,13 +269,21 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
         const batchUrls = await Promise.all(batchIndices.map(() => getFreshDownloadUrl({ docId })));
 
         // Compute timeOffset for each chunk based on byte position
-        // (accurate because we use chunkDurationSeconds from route)
         const batchResults = await Promise.all(batchIndices.map((i, k) => {
           const byteOffset = chunks[i].byteStart;
-          // Estimate time offset from byte position using overall bitrate
           const timeOffsetEst = durationSeconds && fileSizeBytes
             ? (byteOffset / fileSizeBytes) * durationSeconds
             : 0;
+
+          if (isVideo) {
+            return transcribeVideoChunkViaApi({
+              chunkUrl: batchUrls[k],
+              byteStart: chunks[i].byteStart,
+              byteEnd: chunks[i].byteEnd,
+              chunkIndex: i,
+              timeOffsetSeconds: timeOffsetEst,
+            });
+          }
 
           return transcribeChunkViaApi({
             downloadUrl: batchUrls[k],
@@ -225,7 +312,7 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
             currentModelIndex = result.modelIndex;
           }
           segmentsByChunk[i] = result.segments;
-          durationByChunk[i] = result.chunkDurationSeconds ?? 0;
+          durationByChunk[i] = (result as { chunkDurationSeconds?: number }).chunkDurationSeconds ?? 0;
           detectedLanguage = result.language;
         }
       }

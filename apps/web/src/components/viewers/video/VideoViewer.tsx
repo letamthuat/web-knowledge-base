@@ -10,13 +10,15 @@ import { TranscriptPanel } from "@/components/viewers/transcript/TranscriptPanel
 import { SubtitleOverlay } from "@/components/viewers/transcript/SubtitleOverlay";
 import { TranscriptButton } from "@/components/viewers/transcript/TranscriptButton";
 import { useResizable } from "@/hooks/useResizable";
+import { extractAudio } from "@/hooks/useFFmpeg";
 
 interface VideoViewerProps {
-  doc: { _id: Id<"documents">; title: string; mimeType?: string };
+  doc: { _id: Id<"documents">; title: string; mimeType?: string; durationMs?: number; fileSizeBytes?: number };
   downloadUrl: string;
+  onTranscribeRunningChange?: (running: boolean) => void;
 }
 
-export function VideoViewer({ doc, downloadUrl }: VideoViewerProps) {
+export function VideoViewer({ doc, downloadUrl, onTranscribeRunningChange }: VideoViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -97,6 +99,10 @@ export function VideoViewer({ doc, downloadUrl }: VideoViewerProps) {
               downloadUrl={downloadUrl}
               mimeType={doc.mimeType ?? "video/mp4"}
               hasTranscript={true}
+              fileSizeBytes={doc.fileSizeBytes}
+              durationSeconds={doc.durationMs ? doc.durationMs / 1000 : (duration > 0 ? duration : undefined)}
+              extractAudioFn={extractAudio}
+              onRunningChange={onTranscribeRunningChange}
             />
           </div>
         </div>
@@ -122,6 +128,10 @@ export function VideoViewer({ doc, downloadUrl }: VideoViewerProps) {
           downloadUrl={downloadUrl}
           mimeType={doc.mimeType ?? "video/mp4"}
           hasTranscript={false}
+          fileSizeBytes={doc.fileSizeBytes}
+          durationSeconds={doc.durationMs ? doc.durationMs / 1000 : (duration > 0 ? duration : undefined)}
+          extractAudioFn={extractAudio}
+          onRunningChange={onTranscribeRunningChange}
         />
       </div>
     </div>

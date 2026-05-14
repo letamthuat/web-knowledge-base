@@ -156,9 +156,19 @@ export const getWebmChunks = action({
       return { chunks: [{ byteStart: 0, byteEnd: CHUNK_SIZE }], totalBytes: 0, headerBytes: 0 };
     }
 
-    // Simple even split — no cluster parsing needed.
-    // transcribe-chunk route prepends header to each chunk so Groq gets valid webm.
-    // First, find where EBML header ends (first Cluster element at 0x1F43B675).
+    // Video files (mp4, mkv, etc.) — no EBML structure, plain byte split
+    const isVideo = args.mimeType.startsWith("video/");
+    if (isVideo) {
+      const numChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+      const chunks: { byteStart: number; byteEnd: number }[] = [];
+      for (let c = 0; c < numChunks; c++) {
+        chunks.push({ byteStart: c * CHUNK_SIZE, byteEnd: Math.min((c + 1) * CHUNK_SIZE, totalBytes) });
+      }
+      console.log(`[getWebmChunks] video totalBytes=${totalBytes} numChunks=${chunks.length}`);
+      return { chunks, totalBytes, headerBytes: 0 };
+    }
+
+    // WebM/audio — find EBML header boundary (first Cluster element 0x1F43B675)
     const headBuf = new Uint8Array(await (await fetch(args.downloadUrl, {
       headers: { Range: "bytes=0-65535" },
     })).arrayBuffer());

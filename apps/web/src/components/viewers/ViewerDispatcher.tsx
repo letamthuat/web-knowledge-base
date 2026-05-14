@@ -80,7 +80,7 @@ export function ViewerDispatcher({ doc, downloadUrl, highlightQuery, typography,
     case "markdown":  return <MarkdownViewer doc={doc} downloadUrl={downloadUrl} highlightQuery={highlightQuery} typography={typography} />;
     case "image":     return <ImageViewer doc={doc} downloadUrl={downloadUrl} />;
     case "audio":     return <AudioViewer doc={doc} downloadUrl={downloadUrl} onTranscribeRunningChange={onTranscribeRunningChange} />;
-    case "video":     return <VideoViewer doc={doc} downloadUrl={downloadUrl} />;
+    case "video":     return <VideoViewer doc={doc} downloadUrl={downloadUrl} onTranscribeRunningChange={onTranscribeRunningChange} />;
     case "docx":      return <DOCXViewer doc={doc} downloadUrl={downloadUrl} />;
     case "web_clip":  return <WebClipViewer doc={doc} downloadUrl={downloadUrl} />;
     case "pptx":      return <PPTXViewer doc={doc} downloadUrl={downloadUrl} />;
