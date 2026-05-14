@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Id } from "@/_generated/dataModel";
@@ -9,7 +9,6 @@ import { api } from "@/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward } from "lucide-react";
 import { TranscriptPanel } from "@/components/viewers/transcript/TranscriptPanel";
-import { SubtitleOverlay } from "@/components/viewers/transcript/SubtitleOverlay";
 import { TranscriptButton } from "@/components/viewers/transcript/TranscriptButton";
 import { useResizable } from "@/hooks/useResizable";
 
@@ -30,12 +29,10 @@ const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: AudioViewerProps) {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  // Seed duration from stored metadata so seek bar works immediately even for webm without index
   const [duration, setDuration] = useState(() => doc.durationMs ? doc.durationMs / 1000 : 0);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [speed, setSpeed] = useState(1);
-  // If we already have stored duration, treat as ready immediately (don't wait for loadedmetadata)
   const [ready, setReady] = useState(() => !!doc.durationMs);
   const { progress } = useReadingProgress(doc._id);
   const { savePosition, registerJump } = useReaderProgress();
@@ -47,6 +44,8 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
   const translatedSegments = transcript?.status === "completed" ? transcript.translatedSegments : undefined;
   const translatedLanguage = transcript?.translatedLanguage;
 
+  const audioRef = useRef<HTMLAudioElement>(null);
+
   useEffect(() => {
     registerJump((pos) => {
       if (pos.type === "time_seconds" && audioRef.current) {
@@ -55,9 +54,6 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
       }
     });
   }, [registerJump]);
-
-  // HTML5 audio element ref — no WaveSurfer for large file support
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -79,7 +75,6 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
     };
     const onTime = () => {
       setCurrentTime(audio.currentTime);
-      // For Infinity-duration webm, update duration as playback progresses
       if (!isFinite(audio.duration)) {
         setDuration((prev) => Math.max(prev, audio.currentTime));
       } else {
@@ -90,15 +85,12 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onEnded = () => setPlaying(false);
-    // Fired when browser updates duration (e.g. after buffering more of an Infinity-duration webm)
     const onDurationChange = () => {
       if (isFinite(audio.duration)) setDuration(audio.duration);
     };
+    const onError = () => setReady(true);
 
-    // Fallback: if metadata never fires (e.g. old file without durationMs), unblock UI after 5s
     const readyTimer = setTimeout(() => setReady(true), 5000);
-
-    const onError = () => { setReady(true); };
 
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("timeupdate", onTime);
@@ -118,7 +110,7 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
       audio.removeEventListener("error", onError);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [downloadUrl]);
+  }, []);
 
   const togglePlay = useCallback(() => {
     const a = audioRef.current;
@@ -131,21 +123,25 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
       a.pause();
     }
   }, []);
+
   const seek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const t = Number(e.target.value);
     if (audioRef.current) audioRef.current.currentTime = t;
     setCurrentTime(t);
   }, []);
+
   const toggleMute = useCallback(() => {
     const next = !muted;
     if (audioRef.current) audioRef.current.muted = next;
     setMuted(next);
   }, [muted]);
+
   const changeVolume = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const v = Number(e.target.value);
     if (audioRef.current) audioRef.current.volume = v;
     setVolume(v);
   }, []);
+
   const changeSpeed = useCallback((s: number) => {
     if (audioRef.current) audioRef.current.playbackRate = s;
     setSpeed(s);
@@ -153,9 +149,6 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
 
   const playerPanel = (
     <div className="w-full max-w-lg rounded-2xl border bg-card p-8 shadow-lg">
-      {/* Hidden audio element */}
-      <audio ref={audioRef} src={downloadUrl} preload="metadata" />
-
       {/* Visual placeholder where waveform was */}
       <div className="mb-5 rounded-xl bg-muted/50 px-3 py-4 flex h-20 items-center justify-center">
         {!ready ? (
@@ -204,7 +197,6 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
           <span className="w-10 tabular-nums">{formatTime(duration)}</span>
         </div>
       ) : (
-        /* Duration unknown (old webm without metadata) — show skip buttons + current time */
         <div className="mb-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span className="tabular-nums">{formatTime(currentTime)}</span>
           <div className="flex items-center gap-1">
@@ -256,20 +248,20 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
     </div>
   );
 
-  // Nếu có transcript → split view: player trái, transcript phải
+  // Audio element rendered outside playerPanel so ref is always populated before useEffect runs
+  const audioEl = <audio ref={audioRef} src={downloadUrl} preload="metadata" className="hidden" />;
+
   if (segments.length > 0) {
     return (
       <div ref={containerRef} className="flex flex-1 overflow-hidden">
-        {/* Player */}
+        {audioEl}
         <div className="flex items-center justify-center bg-muted/40 p-8 overflow-hidden" style={{ width: `${leftPercent}%` }}>
           {playerPanel}
         </div>
-        {/* Resize handle */}
         <div
           onMouseDown={onMouseDown}
           className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-primary/50 active:bg-primary transition-colors"
         />
-        {/* Transcript panel */}
         <div className="flex flex-col border-l bg-background overflow-hidden flex-1">
           <TranscriptPanel segments={segments} currentTime={currentTime} translatedSegments={translatedSegments} translatedLanguage={translatedLanguage} />
         </div>
@@ -279,8 +271,8 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
 
   return (
     <div className="flex flex-1 items-center justify-center bg-muted/40 p-8">
+      {audioEl}
       {playerPanel}
     </div>
   );
 }
-
