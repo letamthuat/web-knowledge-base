@@ -54,7 +54,26 @@ export default function RootLayout({ children }: RootLayoutProps) {
       {/* Restore reading theme before first paint to avoid flash */}
       <head>
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('rm-theme');if(t==='sepia'||t==='dark'||t==='light'){document.documentElement.classList.add('rm-'+t);}}catch(e){}})();` }} />
-        <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}` }} />
+        <script dangerouslySetInnerHTML={{ __html: `
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+              });
+            }
+            if ('caches' in window) {
+              caches.keys().then(function(keys) {
+                for (var i = 0; i < keys.length; i++) { caches.delete(keys[i]); }
+              });
+            }
+          } else {
+            if('serviceWorker' in navigator){
+              window.addEventListener('load',function(){
+                navigator.serviceWorker.register('/sw.js').catch(function(){});
+              });
+            }
+          }
+        ` }} />
       </head>
       <body className={inter.className}>
         {/* ConvexClientProvider bọc ConvexReactClient + Better Auth session */}

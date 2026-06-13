@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Id } from "@/_generated/dataModel";
@@ -74,6 +74,7 @@ export function ImageViewer({ doc, downloadUrl }: ImageViewerProps) {
           alt={doc.title}
           draggable={false}
           onError={() => setLoadError(true)}
+          crossOrigin="anonymous"
           style={{
             transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
             transformOrigin: "center center",

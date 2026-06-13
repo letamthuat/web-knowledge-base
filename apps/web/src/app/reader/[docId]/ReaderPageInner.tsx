@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -13,7 +13,7 @@ import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopove
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
 import { toProgressPct } from "@/lib/position";
-import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search } from "lucide-react";
+import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
@@ -30,7 +30,7 @@ import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useDocExport } from "@/hooks/useDocExport";
 
 function ReaderShell({ doc, downloadUrl }: {
-  doc: { _id: Id<"documents">; format: string; title: string; mimeType?: string; durationMs?: number; fileSizeBytes?: number };
+  doc: { _id: Id<"documents">; format: string; title: string; mimeType?: string; durationMs?: number; fileSizeBytes?: number; handbookId?: Id<"handbooks">; relPath?: string };
   downloadUrl: string;
 }) {
   const router = useRouter();
@@ -60,7 +60,7 @@ function ReaderShell({ doc, downloadUrl }: {
   const headerTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const typography = useAppTypography();
-  const { setActivePanel } = useActiveTab();
+  const { setActivePanel, sidebarOpen, setSidebarOpen } = useActiveTab();
   const { exportDoc, isExporting } = useDocExport();
 
   const handleNewNote = useCallback(async () => {
@@ -298,6 +298,19 @@ function ReaderShell({ doc, downloadUrl }: {
             <Button variant="ghost" size="sm" className="p-1.5 shrink-0 md:hidden" onClick={() => setDrawerOpen(true)}>
               <Menu className="h-4 w-4" />
             </Button>
+            {/* Desktop: button to toggle sidebar */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors md:flex"
+              aria-label={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
+            >
+              {sidebarOpen ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4" />
+              )}
+            </button>
+
             <AppLogo size={32} />
             <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
           </div>
@@ -482,7 +495,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Không tìm thấy tài liệu.</p>
-        <Button variant="outline" onClick={() => confirmLeave(() => router.push("/library"))}>Về thư viện</Button>
+        <Button variant="outline" onClick={() => router.push("/library")}>Về thư viện</Button>
       </div>
     );
   }
@@ -491,7 +504,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden bg-background">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4" style={{ paddingTop: 'var(--safe-top)' }}>
-          <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/library"))} className="gap-1.5">
+          <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Thư viện
           </Button>
@@ -506,7 +519,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden bg-background">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4" style={{ paddingTop: 'var(--safe-top)' }}>
-          <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/library"))} className="gap-1.5">
+          <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Thư viện
           </Button>

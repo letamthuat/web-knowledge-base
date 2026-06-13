@@ -30,7 +30,9 @@ export function BottomNav() {
     router.prefetch(href);
   }, [router]);
 
-  if (pathname.startsWith("/reader/")) return null;
+  const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/verify-email", "/reset-password", "/offline"];
+
+  if (pathname.startsWith("/reader/") || PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) return null;
 
   function isActive(href: string | null) {
     if (!href) return searchOpen;

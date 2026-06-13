@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download, X, Menu, Search } from "lucide-react";
+import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download, X, Menu, Search, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { AppLogo } from "@/components/AppLogo";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
@@ -40,7 +40,7 @@ export function NotesPageInner() {
       setPendingNoteId(null);
     }
   }, [convexActiveNoteId, pendingNoteId]);
-  const { setActivePanel } = useActiveTab();
+  const { setActivePanel, sidebarOpen: globalSidebarOpen, setSidebarOpen: setGlobalSidebarOpen } = useActiveTab();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -166,6 +166,19 @@ export function NotesPageInner() {
           <Button variant="ghost" size="sm" className="md:hidden p-1.5" onClick={() => setNavDrawerOpen(true)}>
             <Menu className="h-4 w-4" />
           </Button>
+          {/* Desktop: button to toggle sidebar */}
+          <button
+            onClick={() => setGlobalSidebarOpen(!globalSidebarOpen)}
+            className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors md:flex"
+            aria-label={globalSidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
+          >
+            {globalSidebarOpen ? (
+              <PanelLeftClose className="h-4 w-4" />
+            ) : (
+              <PanelLeftOpen className="h-4 w-4" />
+            )}
+          </button>
+
           <AppLogo size={32} />
           <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo, memo } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -13,7 +13,7 @@ import "katex/dist/katex.min.css";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { List, X, Highlighter, StickyNote, Bookmark } from "lucide-react";
+import { List, X, Highlighter, StickyNote, Bookmark, Sparkles, Lightbulb, Info, AlertTriangle, AlertOctagon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MermaidBlock } from "./MermaidBlock";
 import { HighlightMenu } from "./HighlightMenu";
@@ -28,13 +28,18 @@ import { useHighlights, type HighlightColor, type HighlightPosition } from "@/ho
 import { useNotes } from "@/hooks/useNotes";
 import type { Components } from "react-markdown";
 import GithubSlugger from "github-slugger";
+import { useHandbookResolver } from "@/components/handbook/HandbookResolverContext";
+import { resolveRelative } from "@/lib/handbook/resolvePath";
+import { CrossLinkHoverCard } from "@/components/handbook/CrossLinkHoverCard";
 
 interface MarkdownViewerProps {
-  doc: { _id: Id<"documents">; title: string };
+  doc: { _id: Id<"documents">; title: string; relPath?: string; handbookId?: Id<"handbooks"> };
   downloadUrl: string;
   highlightQuery?: string;
   typography?: { fontFamily: string; fontSize: number; lineHeight: number; colWidthClass: string };
 }
+
+type Resolver = NonNullable<ReturnType<typeof useHandbookResolver>>;
 
 interface TocEntry {
   id: string;
@@ -109,8 +114,12 @@ function splitIntoSections(markdown: string): string[] {
   const lines = markdown.split("\n");
   const sections: string[] = [];
   let current: string[] = [];
+  let inCodeBlock = false;
   for (const line of lines) {
-    if (/^#{1,2}\s/.test(line) && current.length > 0) {
+    if (line.trim().startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+    }
+    if (!inCodeBlock && /^#{1,2}\s/.test(line) && current.length > 0) {
       sections.push(current.join("\n"));
       current = [line];
     } else {
@@ -121,14 +130,440 @@ function splitIntoSections(markdown: string): string[] {
   return sections.length > 0 ? sections : [markdown];
 }
 
-const MD_COMPONENTS: Components = {
-  code({ className, children, ...props }) {
-    const lang = /language-(\w+)/.exec(className ?? "")?.[1];
-    const code = String(children).replace(/\n$/, "");
-    if (lang === "mermaid") return <MermaidBlock code={code} />;
-    return <code className={className} {...props}>{children}</code>;
+// ──────────────────────────────────────────────
+// Callout/Alert Parser & Styling for Blockquotes
+// ──────────────────────────────────────────────
+
+interface CalloutStyle {
+  bgClass: string;
+  borderClass: string;
+  borderLeftClass: string;
+  textClass: string;
+  iconColor: string;
+  defaultEmoji: string;
+  iconName: string;
+}
+
+function LeafIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+      <path d="M17.71 9.88c-1.34-1.46-3.1-2.92-5.71-7.88-.36 0-.68.22-.8.56C10 6 8 8.23 6.29 9.88a7 7 0 00-2 5 7.7 7.7 0 0015.4 0 7 7 0 00-2-5z" />
+    </svg>
+  );
+}
+
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+      <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+const CALLOUT_STYLES: Record<string, CalloutStyle> = {
+  INSIGHT: {
+    bgClass: "bg-[#edf8f9] dark:bg-[#0c2a2d]/80",
+    borderClass: "border-[#cbe8e9] dark:border-[#194a4e]/85",
+    borderLeftClass: "",
+    textClass: "text-[#00828a] dark:text-[#4cd4dd]",
+    iconColor: "text-[#00828a] dark:text-[#4cd4dd]",
+    defaultEmoji: "💡",
+    iconName: "LeafIcon",
+  },
+  TIP: {
+    bgClass: "bg-[#edf8f9] dark:bg-[#0c2a2d]/80",
+    borderClass: "border-[#cbe8e9] dark:border-[#194a4e]/85",
+    borderLeftClass: "",
+    textClass: "text-[#00828a] dark:text-[#4cd4dd]",
+    iconColor: "text-[#00828a] dark:text-[#4cd4dd]",
+    defaultEmoji: "💡",
+    iconName: "LeafIcon",
+  },
+  NOTE: {
+    bgClass: "bg-[#f0f4f9] dark:bg-[#0f1e2d]/80",
+    borderClass: "border-[#d6e2f0] dark:border-[#19334e]/85",
+    borderLeftClass: "",
+    textClass: "text-[#005fb8] dark:text-[#60a5fa]",
+    iconColor: "text-[#005fb8] dark:text-[#60a5fa]",
+    defaultEmoji: "📝",
+    iconName: "PencilIcon",
+  },
+  INFO: {
+    bgClass: "bg-[#f0f4f9] dark:bg-[#0f1e2d]/80",
+    borderClass: "border-[#d6e2f0] dark:border-[#19334e]/85",
+    borderLeftClass: "",
+    textClass: "text-[#005fb8] dark:text-[#60a5fa]",
+    iconColor: "text-[#005fb8] dark:text-[#60a5fa]",
+    defaultEmoji: "ℹ️",
+    iconName: "PencilIcon",
+  },
+  WARNING: {
+    bgClass: "bg-[#fef6ed] dark:bg-[#2d200f]/80",
+    borderClass: "border-[#fbe4ce] dark:border-[#4e3619]/85",
+    borderLeftClass: "",
+    textClass: "text-[#b35b00] dark:text-[#f59e0b]",
+    iconColor: "text-[#b35b00] dark:text-[#f59e0b]",
+    defaultEmoji: "⚠️",
+    iconName: "AlertTriangle",
+  },
+  CAUTION: {
+    bgClass: "bg-[#fef6ed] dark:bg-[#2d200f]/80",
+    borderClass: "border-[#fbe4ce] dark:border-[#4e3619]/85",
+    borderLeftClass: "",
+    textClass: "text-[#b35b00] dark:text-[#f59e0b]",
+    iconColor: "text-[#b35b00] dark:text-[#f59e0b]",
+    defaultEmoji: "⚠️",
+    iconName: "AlertTriangle",
+  },
+  IMPORTANT: {
+    bgClass: "bg-[#edf8f9] dark:bg-[#0c2a2d]/80",
+    borderClass: "border-[#cbe8e9] dark:border-[#194a4e]/85",
+    borderLeftClass: "",
+    textClass: "text-[#00828a] dark:text-[#4cd4dd]",
+    iconColor: "text-[#00828a] dark:text-[#4cd4dd]",
+    defaultEmoji: "📌",
+    iconName: "LeafIcon",
+  },
+  DANGER: {
+    bgClass: "bg-[#fdf2f2] dark:bg-[#2d0f0f]/80",
+    borderClass: "border-[#fcd2d2] dark:border-[#4e1919]/85",
+    borderLeftClass: "",
+    textClass: "text-[#c81e1e] dark:text-[#f87171]",
+    iconColor: "text-[#c81e1e] dark:text-[#f87171]",
+    defaultEmoji: "🚫",
+    iconName: "AlertOctagon",
+  },
+  CRITICAL: {
+    bgClass: "bg-[#fdf2f2] dark:bg-[#2d0f0f]/80",
+    borderClass: "border-[#fcd2d2] dark:border-[#4e1919]/85",
+    borderLeftClass: "",
+    textClass: "text-[#c81e1e] dark:text-[#f87171]",
+    iconColor: "text-[#c81e1e] dark:text-[#f87171]",
+    defaultEmoji: "🚨",
+    iconName: "AlertOctagon",
   },
 };
+
+function getFirstText(node: React.ReactNode): string {
+  if (!node) return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const txt = getFirstText(child);
+      if (txt) return txt;
+    }
+  }
+  if (React.isValidElement(node)) {
+    const el = node as React.ReactElement<{ children?: React.ReactNode }>;
+    return getFirstText(el.props.children);
+  }
+  return "";
+}
+
+function parseCalloutStart(node: React.ReactNode) {
+  const text = getFirstText(node).trim();
+  
+  // 1. Check Obsidian / GitHub style: [!NOTE]
+  const obsidianMatch = text.match(/^\[!(\w+)\]/i);
+  if (obsidianMatch) {
+    return {
+      type: obsidianMatch[1].toUpperCase(),
+      isCallout: true as const,
+      rawPrefix: obsidianMatch[0],
+    };
+  }
+  
+  // 2. Check emoji/keyword style: e.g. "💡 INSIGHT —"
+  const keywordMatch = text.match(/^([^\w\n]*)\s*(INSIGHT|NOTE|TIP|WARNING|IMPORTANT|CAUTION|DANGER|INFO|CRITICAL)\s*(?:—|:|-)/i);
+  if (keywordMatch) {
+    return {
+      type: keywordMatch[2].toUpperCase(),
+      isCallout: true as const,
+      rawPrefix: keywordMatch[0],
+    };
+  }
+  
+  return { isCallout: false as const };
+}
+
+function stripPrefix(node: React.ReactNode, prefix: string): React.ReactNode {
+  if (!node) return node;
+  if (typeof node === "string") {
+    const trimmedNode = node.trimStart();
+    if (trimmedNode.startsWith(prefix)) {
+      return trimmedNode.slice(prefix.length).trimStart();
+    }
+    return node;
+  }
+  if (Array.isArray(node)) {
+    if (node.length === 0) return node;
+    const firstCleaned = stripPrefix(node[0], prefix);
+    if (firstCleaned === "") {
+      return node.slice(1);
+    }
+    return [firstCleaned, ...node.slice(1)];
+  }
+  if (React.isValidElement(node)) {
+    const el = node as React.ReactElement<{ children?: React.ReactNode }>;
+    const children = el.props.children;
+    const newChildren = stripPrefix(children, prefix);
+    return React.cloneElement(el, { children: newChildren } as any);
+  }
+  return node;
+}
+
+function splitAtFirstNewline(node: React.ReactNode): { title: React.ReactNode; body: React.ReactNode } {
+  if (!node) return { title: null, body: null };
+
+  if (typeof node === "string") {
+    const newlineIndex = node.indexOf("\n");
+    if (newlineIndex !== -1) {
+      const title = node.substring(0, newlineIndex);
+      const body = node.substring(newlineIndex + 1);
+      return { title, body };
+    }
+    return { title: node, body: null };
+  }
+
+  if (Array.isArray(node)) {
+    const titleArray: React.ReactNode[] = [];
+    const bodyArray: React.ReactNode[] = [];
+    let splitFound = false;
+
+    for (const child of node) {
+      if (splitFound) {
+        bodyArray.push(child);
+      } else {
+        const { title: childTitle, body: childBody } = splitAtFirstNewline(child);
+        if (childTitle !== null) titleArray.push(childTitle);
+        if (childBody !== null) {
+          bodyArray.push(childBody);
+          splitFound = true;
+        }
+      }
+    }
+    return {
+      title: titleArray.length > 0 ? titleArray : null,
+      body: bodyArray.length > 0 ? bodyArray : null,
+    };
+  }
+
+  if (React.isValidElement(node)) {
+    const el = node as React.ReactElement<{ children?: React.ReactNode }>;
+    const children = el.props.children;
+    const { title: titleChildren, body: bodyChildren } = splitAtFirstNewline(children);
+    
+    const titleEl = titleChildren !== null ? React.cloneElement(el, { children: titleChildren } as any) : null;
+    const bodyEl = bodyChildren !== null ? React.cloneElement(el, { children: bodyChildren } as any) : null;
+    
+    return { title: titleEl, body: bodyEl };
+  }
+
+  return { title: node, body: null };
+}
+
+function renderCallout(type: string, titleNode: React.ReactNode, bodyNodes: React.ReactNode[]) {
+  const style = CALLOUT_STYLES[type] || CALLOUT_STYLES.NOTE;
+
+  let IconComponent: React.ComponentType<{ className?: string }> = Info;
+  if (style.iconName === "LeafIcon") IconComponent = LeafIcon;
+  else if (style.iconName === "PencilIcon") IconComponent = PencilIcon;
+  else if (style.iconName === "AlertTriangle") IconComponent = AlertTriangle;
+  else if (style.iconName === "AlertOctagon") IconComponent = AlertOctagon;
+
+  const hasTitle = getFirstText(titleNode).trim().length > 0;
+
+  return (
+    <div className={`my-6 p-5 rounded-xl border ${style.bgClass} ${style.borderClass} transition-all duration-200`}>
+      <div className={`flex items-start gap-2.5 font-semibold text-sm mb-3 ${style.textClass} tracking-wide`}>
+        <IconComponent className={`h-4.5 w-4.5 shrink-0 mt-0.5`} />
+        {hasTitle ? (
+          <div className="text-[14px] font-semibold leading-snug">{titleNode}</div>
+        ) : (
+          <span className="uppercase text-[11px] font-bold tracking-widest opacity-80">{type}</span>
+        )}
+      </div>
+      {bodyNodes.length > 0 && (
+        <div className="text-[14.5px] leading-relaxed text-foreground/90 select-text prose-p:my-2 prose-blockquote:my-0 not-italic font-normal">
+          {bodyNodes}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const P_COMPONENT: Components["p"] = function P({ children, ...props }: any) {
+  const callout = parseCalloutStart(children);
+  if (!callout.isCallout) {
+    return <p {...props}>{children}</p>;
+  }
+
+  const cleanedChildren = stripPrefix(children, callout.rawPrefix);
+  const { title: titlePart, body: bodyPart } = splitAtFirstNewline(cleanedChildren);
+  
+  let titleNode: React.ReactNode = null;
+  if (titlePart !== null) {
+    if (React.isValidElement(titlePart)) {
+      titleNode = (titlePart as any).props.children;
+    } else {
+      titleNode = titlePart;
+    }
+  }
+
+  const bodyNodes: React.ReactNode[] = [];
+  if (bodyPart !== null) {
+    bodyNodes.push(bodyPart);
+  }
+
+  return renderCallout(callout.type, titleNode, bodyNodes);
+};
+
+const BLOCKQUOTE_COMPONENT: Components["blockquote"] = function Blockquote({ children, ...props }: any) {
+  const childrenArray = React.Children.toArray(children).filter((child) => {
+    if (typeof child === "string" && child.trim() === "") return false;
+    return true;
+  });
+  if (childrenArray.length === 0) {
+    return (
+      <blockquote className="my-6 border-l-4 border-muted/50 pl-4 italic text-muted-foreground bg-muted/10 py-2 pr-2 rounded-r-lg" {...props}>
+        {children}
+      </blockquote>
+    );
+  }
+
+  const c0 = childrenArray[0];
+  const callout = parseCalloutStart(c0);
+  
+  if (!callout.isCallout) {
+    return (
+      <blockquote className="my-6 border-l-4 border-muted/50 pl-4 italic text-muted-foreground bg-muted/10 py-2 pr-2 rounded-r-lg" {...props}>
+        {children}
+      </blockquote>
+    );
+  }
+
+  const c0_cleaned = stripPrefix(c0, callout.rawPrefix);
+  const { title: titlePart, body: bodyPart } = splitAtFirstNewline(c0_cleaned);
+  
+  let titleNode: React.ReactNode = null;
+  let bodyNodes: React.ReactNode[] = [];
+  
+  if (titlePart !== null) {
+    if (React.isValidElement(titlePart)) {
+      titleNode = (titlePart as any).props.children;
+    } else {
+      titleNode = titlePart;
+    }
+    bodyNodes = childrenArray.slice(1);
+  } else {
+    titleNode = null;
+    bodyNodes = childrenArray.slice(1);
+  }
+
+  if (bodyPart !== null) {
+    bodyNodes = [bodyPart, ...bodyNodes];
+  }
+
+  return renderCallout(callout.type, titleNode, bodyNodes);
+};
+
+const TABLE_COMPONENTS = {
+  table({ children, ...props }: any) {
+    return (
+      <div className="my-6 overflow-x-auto rounded-lg border border-border/80 shadow-sm">
+        <table className="min-w-full divide-y divide-border border-collapse text-sm text-left" {...props}>
+          {children}
+        </table>
+      </div>
+    );
+  },
+  thead({ children, ...props }: any) {
+    return <thead className="bg-muted/40 border-b border-border/80" {...props}>{children}</thead>;
+  },
+  tbody({ children, ...props }: any) {
+    return <tbody className="divide-y divide-border/60 bg-card/5" {...props}>{children}</tbody>;
+  },
+  tr({ children, ...props }: any) {
+    return <tr className="hover:bg-muted/10 transition-colors" {...props}>{children}</tr>;
+  },
+  th({ children, ...props }: any) {
+    return <th className="px-4 py-3 font-semibold text-foreground border border-border/60" {...props}>{children}</th>;
+  },
+  td({ children, ...props }: any) {
+    return <td className="px-4 py-2.5 border border-border/40 align-middle not-italic font-normal" {...props}>{children}</td>;
+  }
+};
+
+const CODE_COMPONENT: Components["code"] = function Code({ className, children, ...props }) {
+  const lang = /language-(\w+)/.exec(className ?? "")?.[1];
+  const code = String(children).replace(/\n$/, "");
+  if (lang === "mermaid") return <MermaidBlock code={code} />;
+  return <code className={className} {...props}>{children}</code>;
+};
+
+const MD_COMPONENTS: Components = {
+  code: CODE_COMPONENT,
+  blockquote: BLOCKQUOTE_COMPONENT,
+  p: P_COMPONENT,
+  ...TABLE_COMPONENTS
+};
+
+// Factory: khi doc thuộc handbook, override img/a để resolve relative link (12.4).
+// onHoverLink(docId, x, y) để bật hover preview (13.3); null khi rời chuột.
+function makeComponents(
+  resolver: Resolver | null,
+  baseRelPath: string,
+  onHoverLink: (info: { docId: Id<"documents">; x: number; y: number } | null) => void,
+): Components {
+  if (!resolver || !baseRelPath) return MD_COMPONENTS;
+
+  return {
+    code: CODE_COMPONENT,
+    blockquote: BLOCKQUOTE_COMPONENT,
+    p: P_COMPONENT,
+    ...TABLE_COMPONENTS,
+    img({ src, alt, ...props }) {
+      const original = typeof src === "string" ? src : "";
+      const r = resolveRelative(baseRelPath, original);
+      if (r.kind === "internal") {
+        const url = resolver.getImageUrl(r.relPath);
+        if (url) return <img src={url} alt={alt ?? ""} crossOrigin="anonymous" {...props} />;
+      }
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={original} alt={alt ?? ""} crossOrigin="anonymous" {...props} />;
+    },
+    a({ href, children, ...props }) {
+      const original = typeof href === "string" ? href : "";
+      const r = resolveRelative(baseRelPath, original);
+
+      if (r.kind === "internal") {
+        const target = resolver.filesByPath.get(r.relPath);
+        if (target) {
+          return (
+            <a
+              href={`/reader/${target.docId}`}
+              onClick={(e) => { e.preventDefault(); resolver.openInternal(target.docId, r.anchor); }}
+              onMouseEnter={(e) => onHoverLink({ docId: target.docId, x: e.clientX, y: e.clientY })}
+              onMouseLeave={() => onHoverLink(null)}
+              className="text-primary underline decoration-dotted underline-offset-2"
+              {...props}
+            >
+              {children}
+            </a>
+          );
+        }
+        // Không khớp file nào — render link thường (no-op điều hướng)
+        return <a className="text-muted-foreground underline decoration-dotted" {...props}>{children}</a>;
+      }
+
+      if (r.kind === "anchor") {
+        return <a href={`#${r.anchor}`} {...props}>{children}</a>;
+      }
+
+      return <a href={original} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
+    },
+  };
+}
 
 export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }: MarkdownViewerProps) {
   const [content, setContent] = useState<string | null>(null);
@@ -153,6 +588,18 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
   const { progress } = useReadingProgress(doc._id);
   const { scale, zoomIn, zoomOut, reset: resetZoom } = useZoom(1, 0.1, 0.5, 2);
   const restored = useRef(false);
+
+  // ── Handbook relative-link resolver (12.4) + cross-link hover (13.3) ──
+  const resolver = useHandbookResolver();
+  const baseRelPath = doc.relPath ?? "";
+  const [linkHover, setLinkHover] = useState<{ docId: Id<"documents">; x: number; y: number } | null>(null);
+  const onHoverLink = useCallback((info: { docId: Id<"documents">; x: number; y: number } | null) => {
+    setLinkHover(info);
+  }, []);
+  const mdComponents = useMemo(
+    () => makeComponents(resolver, baseRelPath, onHoverLink),
+    [resolver, baseRelPath, onHoverLink]
+  );
 
   // ── Highlight state ──
   const { highlights, addHighlight, removeHighlight, updateNote, addBookmark } = useHighlights(doc._id);
@@ -310,7 +757,10 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     fetch(downloadUrl)
       .then((r) => r.arrayBuffer())
       .then((buf) => new TextDecoder("utf-8").decode(buf))
-      .then(setContent)
+      .then((txt) => {
+        setContent(txt);
+        fetch("/api/debug-log", { method: "POST", body: txt }).catch(() => {});
+      })
       .catch(() => setError("Không thể tải file Markdown"));
   }, [downloadUrl]);
 
@@ -545,7 +995,6 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
           </div>
           <div className="flex items-center gap-2">
             {/* Annotation panel toggle */}
-            {/* Annotation panel toggle */}
             <button
               onClick={() => setNotePanelOpen((v) => !v)}
               className={[
@@ -606,32 +1055,34 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         {/* Content area */}
         <div
           ref={contentRef}
-          className="flex-1 overflow-y-auto overflow-x-hidden"
+          className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/70 dark:bg-slate-950/70"
           style={{ WebkitOverflowScrolling: "touch", willChange: "scroll-position" } as React.CSSProperties}
           onScroll={handleScroll}
           onPointerUp={handleMouseUp}
         >
-          <div className={`mx-auto px-4 py-8 sm:px-6 ${typography?.colWidthClass ?? "max-w-3xl"}`} style={{ zoom: scale, fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
-            <article className="prose prose-neutral dark:prose-invert max-w-none">
-              {sections.length === 1 ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
-                  components={MD_COMPONENTS}
-                >
-                  {sections[0]}
-                </ReactMarkdown>
-              ) : (
-                sections.map((section, i) => (
-                  <LazySection
-                    key={i}
-                    content={section}
-                    components={MD_COMPONENTS}
-                    scrollRoot={contentRef}
-                  />
-                ))
-              )}
-            </article>
+          <div className={`mx-auto px-4 py-10 sm:px-6 md:px-8 ${typography?.colWidthClass ?? "max-w-4xl"}`} style={{ zoom: scale }}>
+            <div className="bg-card text-card-foreground border border-border/60 rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.25)] px-6 py-10 sm:px-12 sm:py-12 md:px-16 md:py-16" style={{ fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
+              <article className="prose prose-neutral dark:prose-invert max-w-none">
+                {sections.length === 1 ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
+                    components={mdComponents}
+                  >
+                    {sections[0]}
+                  </ReactMarkdown>
+                ) : (
+                  sections.map((section, i) => (
+                    <LazySection
+                      key={i}
+                      content={section}
+                      components={mdComponents}
+                      scrollRoot={contentRef}
+                    />
+                  ))
+                )}
+              </article>
+            </div>
           </div>
         </div>
 
@@ -703,6 +1154,11 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
             />
           );
         })()}
+
+        {/* Cross-link hover preview (13.3) */}
+        {linkHover && (
+          <CrossLinkHoverCard docId={linkHover.docId} x={linkHover.x} y={linkHover.y} />
+        )}
       </div>
 
       {/* Notes side panel — personal notes workspace */}

@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+// touch to force HMR rebuild
 
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,6 +27,7 @@ import { UploadDropzone } from "@/components/library/UploadDropzone";
 import { SearchModal } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
+import { HandbookSidebarContent } from "../handbook/HandbookSidebar";
 
 const L = labels.library;
 const N = labels.nav;
@@ -37,7 +39,7 @@ export function LibraryPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
-  const { setActivePanel } = useActiveTab();
+  const { setActivePanel, sidebarOpen, setSidebarOpen } = useActiveTab();
   const { data: session, isPending } = useSession();
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -47,12 +49,8 @@ export function LibraryPageInner() {
   const [createFolderParent, setCreateFolderParent] = useState<Id<"folders"> | undefined>();
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
-  // Sidebar — desktop: open by default, mobile: closed by default
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Sidebar — mobile drawer
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(224);
-  const sidebarResizing = useRef(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const [scope, setScope] = useState<ViewScope>("all");
   const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([]);
@@ -124,24 +122,7 @@ export function LibraryPageInner() {
     if (!isPending && !session) router.replace("/login");
   }, [session, isPending, router]);
 
-  // Sidebar resize (desktop only)
-  const onSidebarMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    sidebarResizing.current = true;
-    const onMove = (ev: MouseEvent) => {
-      if (!sidebarResizing.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const w = ev.clientX - rect.left;
-      setSidebarWidth(Math.min(400, Math.max(160, w)));
-    };
-    const onUp = () => {
-      sidebarResizing.current = false;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }, []);
+
 
   const docsToShow = useMemo(() => {
     if (scope !== "all") return folderDocs ?? undefined;
@@ -324,54 +305,7 @@ export function LibraryPageInner() {
     );
   }
 
-  // Shared sidebar content
-  const SidebarContent = () => (
-    <div className="space-y-1">
-      <button
-        onClick={() => { setScope("all"); setBreadcrumbs([]); setMobileSidebarOpen(false); }}
-        className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-          scope === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted text-foreground"
-        }`}
-      >
-        <LayoutGrid className="h-4 w-4 shrink-0" />
-        <span className="flex-1 text-left truncate">Tất cả tài liệu</span>
-        {allDocs && (
-          <span className={`text-xs tabular-nums ${scope === "all" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-            {allDocs.length}
-          </span>
-        )}
-      </button>
 
-      <div className="pt-3 pb-1 flex items-center justify-between px-1">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</span>
-        <button
-          onClick={() => { setCreateFolderParent(undefined); setCreateFolderOpen(true); }}
-          className="rounded p-0.5 hover:bg-muted transition-colors"
-          title="Tạo folder mới"
-        >
-          <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
-      </div>
-
-      {(!allFolders || allFolders.length === 0) && (
-        <p className="px-3 py-2 text-xs text-muted-foreground">Chưa có folder nào</p>
-      )}
-      {rootFolders.map((folder: any) => (
-        <FolderNode key={folder._id} folder={folder} />
-      ))}
-
-      <div className="pt-3">
-        <Button
-          variant="ghost" size="sm"
-          className="w-full justify-start text-muted-foreground"
-          onClick={() => { router.push("/library/trash"); setMobileSidebarOpen(false); }}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Thùng rác
-        </Button>
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-dvh bg-background pb-14 md:pb-0">
@@ -387,17 +321,20 @@ export function LibraryPageInner() {
             >
               <Menu className="h-4 w-4 text-muted-foreground" />
             </button>
-            {/* Desktop: toggle sidebar */}
+
+            {/* Desktop: button to toggle sidebar */}
             <button
-              onClick={() => setSidebarOpen(v => !v)}
-              className="mr-1 rounded p-1.5 hover:bg-muted transition-colors hidden md:flex"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors md:flex"
               aria-label={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
             >
-              {sidebarOpen
-                ? <PanelLeftClose className="h-4 w-4 text-muted-foreground" />
-                : <PanelLeftOpen className="h-4 w-4 text-muted-foreground" />
-              }
+              {sidebarOpen ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4" />
+              )}
             </button>
+
             <AppLogo size={32} />
             <span className="font-semibold">Web Knowledge Base</span>
           </div>
@@ -495,32 +432,13 @@ export function LibraryPageInner() {
                 <Settings className="h-4 w-4" /> {N.settings}
               </button>
             </div>
-            <SidebarContent />
+            <HandbookSidebarContent onLinkClick={() => setMobileSidebarOpen(false)} />
           </aside>
         </div>
       )}
 
       {/* Main layout — full width */}
-      <div ref={containerRef} className="flex px-4 md:px-6 py-6" style={{ gap: 0 }}>
-
-        {/* Desktop sidebar */}
-        {sidebarOpen && (
-          <>
-            <aside
-              style={{ width: sidebarWidth, minWidth: sidebarWidth }}
-              className="hidden md:block shrink-0 mr-0"
-            >
-              <div className="sticky top-20 overflow-y-auto max-h-[calc(100vh-6rem)]">
-                <SidebarContent />
-              </div>
-            </aside>
-            {/* Resize handle */}
-            <div
-              onMouseDown={onSidebarMouseDown}
-              className="hidden md:block w-1.5 shrink-0 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors rounded-full mx-1"
-            />
-          </>
-        )}
+      <div className="flex px-4 md:px-6 py-6">
 
         {/* Main content */}
         <main className="flex-1 min-w-0">

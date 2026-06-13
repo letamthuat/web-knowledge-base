@@ -2,7 +2,7 @@
 title: 'Video Transcript via Gemini (ffmpeg.wasm audio extraction)'
 type: 'feature'
 created: '2026-05-14'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '9705bbb5738e00f53ccec8718185193bf65152c3'
 ---
 

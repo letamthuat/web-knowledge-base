@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node apps/web/scripts/copy-convex.js)"
+    ]
+  }
+}

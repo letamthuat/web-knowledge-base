@@ -123,6 +123,11 @@ export default defineSchema({
     storageBackend: storageBackend,
     storageKey: v.string(),             // Id<"_storage"> hoặc R2 object key
 
+    // Handbook hierarchy (Epic 12) — optional, backward-compatible.
+    // handbookId=undefined => tài liệu lẻ (dùng hệ folders cũ).
+    handbookId: v.optional(v.id("handbooks")),
+    relPath: v.optional(v.string()),    // đường dẫn tương đối trong handbook, vd "assets/img/m06/x.png"
+
     // URL content (web_clip)
     sourceUrl: v.optional(v.string()),
     clippedContent: v.optional(v.string()), // Mozilla Readability output
@@ -149,6 +154,8 @@ export default defineSchema({
     .index("by_user_status", ["userId", "status"])
     .index("by_user_format", ["userId", "format"])
     .index("by_user_created", ["userId", "createdAt"])
+    .index("by_handbook", ["handbookId"])
+    .index("by_handbook_path", ["handbookId", "relPath"])
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["userId", "format", "status"],
@@ -157,6 +164,32 @@ export default defineSchema({
       searchField: "extractedText",
       filterFields: ["userId", "status"],
     }),
+
+  // ─── DOMAINS (Epic 12 — tầng 1: vùng tri thức) ────────────────────────────
+  domains: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    color: v.optional(v.string()),
+    order: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_order", ["userId", "order"]),
+
+  // ─── HANDBOOKS (Epic 12 — tầng 2: sổ tay thuộc 1 domain) ──────────────────
+  handbooks: defineTable({
+    userId: v.id("users"),
+    domainId: v.id("domains"),
+    name: v.string(),
+    color: v.optional(v.string()),
+    order: v.number(),
+    emptyFolders: v.optional(v.array(v.string())), // folder rỗng (12.6) — prefix path
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_domain", ["domainId"]),
 
   // ─── TAGS ─────────────────────────────────────────────────────────────────
   // FR10: Tag tự do

@@ -178,3 +178,137 @@ html.rm-sepia [data-color-scheme],
 html.rm-sepia .bn-container { background-color: #f4ecd8 !important; color: #3b2f2f !important; }
 html.rm-sepia .bn-block-content,
 html.rm-sepia .ProseMirror { color: #3b2f2f !important; }
+
+/* ─── Markdown Prose Refinements ─── */
+.prose {
+  font-size: inherit !important;
+  color: hsl(var(--foreground)) !important;
+  max-width: none !important;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 700;
+}
+
+.prose h1 {
+  border-bottom: 1px solid hsl(var(--border) / 0.8);
+  padding-bottom: 0.3em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose h2 {
+  border-bottom: 1px solid hsl(var(--border) / 0.8);
+  padding-bottom: 0.3em;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+}
+
+.prose h3 {
+  margin-top: 1.3em;
+  margin-bottom: 0.4em;
+}
+
+.prose p {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+
+.prose ul, .prose ol {
+  margin-top: 0.6em;
+  margin-bottom: 0.6em;
+  padding-left: 1.5em;
+}
+
+.prose li {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+.prose hr {
+  margin: 2em 0;
+  border-color: hsl(var(--border));
+}
+
+/* Disable automatic quotes on blockquotes added by Tailwind */
+.prose blockquote::before,
+.prose blockquote::after,
+.prose blockquote p::before,
+.prose blockquote p::after {
+  content: "" !important;
+}
+
+/* Academic Table Grid overrides */
+.prose table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 1.5em 0 !important;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid #d1d5db !important; /* light mode */
+  padding: 10px 14px !important;
+}
+
+.dark .prose th,
+.dark .prose td {
+  border: 1px solid #374151 !important; /* dark mode */
+}
+
+.prose thead {
+  background-color: #f3f4f6 !important;
+}
+
+.dark .prose thead {
+  background-color: #1f2937 !important;
+}
+
+.prose tr:nth-child(even) {
+  background-color: #f9fafb !important;
+}
+
+.dark .prose tr:nth-child(even) {
+  background-color: rgba(17, 24, 39, 0.4) !important;
+}
+
+/* Clean block code styles */
+pre {
+  background-color: #f8fafc !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 0.5rem !important;
+  padding: 1.25rem !important;
+  margin: 1.5rem 0 !important;
+}
+
+pre code {
+  color: inherit !important;
+}
+
+.dark pre {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #1e293b !important;
+}
+
+/* Disable default backticks on inline code in Tailwind Typography */
+.prose code::before,
+.prose code::after {
+  content: "" !important;
+}
+
+:not(pre) > code {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  padding: 0.2rem 0.4rem !important;
+  border-radius: 0.25rem !important;
+  font-size: 0.875em !important;
+  font-weight: 500 !important;
+}
+
+.dark :not(pre) > code {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}

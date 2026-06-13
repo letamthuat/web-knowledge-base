@@ -28,6 +28,11 @@ self.addEventListener("activate", (event) => {
 
 // ─── Fetch ───────────────────────────────────────────────────────────────────
 self.addEventListener("fetch", (event) => {
+  // Bypass service worker caching on localhost / 127.0.0.1 for local development
+  if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
+    return;
+  }
+
   const { request } = event;
 
   // Only handle GET requests
