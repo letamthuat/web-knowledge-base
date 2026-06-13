@@ -312,7 +312,6 @@ function ReaderShell({ doc, downloadUrl }: {
             </button>
 
             <AppLogo size={32} />
-            <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1 shrink-0">
