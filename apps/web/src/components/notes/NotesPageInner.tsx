@@ -51,7 +51,7 @@ export function NotesPageInner() {
 
   // On desktop, default sidebar open; track mobile
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
+    const mq = window.matchMedia("(max-width: 1279px)");
     setIsMobile(mq.matches);
     if (!mq.matches) setSidebarOpen(true);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
@@ -134,7 +134,7 @@ export function NotesPageInner() {
     <div className="flex flex-1 flex-col overflow-hidden bg-background">
       {/* Mobile nav drawer */}
       {navDrawerOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 xl:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setNavDrawerOpen(false)} />
           <aside className="absolute left-0 top-0 h-full w-64 bg-background border-r shadow-xl flex flex-col p-4 gap-1">
             <div className="flex items-center justify-between mb-3">
@@ -182,13 +182,13 @@ export function NotesPageInner() {
       {/* Navbar */}
       <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2" style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="md:hidden p-1.5" onClick={() => setNavDrawerOpen(true)}>
+          <Button variant="ghost" size="sm" className="xl:hidden p-1.5" onClick={() => setNavDrawerOpen(true)}>
             <Menu className="h-4 w-4" />
           </Button>
           {/* Desktop: button to toggle sidebar */}
           <button
             onClick={() => setGlobalSidebarOpen(!globalSidebarOpen)}
-            className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors md:flex"
+            className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
             aria-label={globalSidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
           >
             {globalSidebarOpen ? (
@@ -225,7 +225,7 @@ export function NotesPageInner() {
           <span className="hidden text-sm text-muted-foreground xl:inline">{session?.user?.email}</span>
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex md:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+            className="flex xl:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
             aria-label="Tìm kiếm"
           >
             <Search className="h-4 w-4" />
@@ -278,7 +278,7 @@ export function NotesPageInner() {
       </div>
 
       {/* Main content */}
-      <div className="relative flex flex-1 min-h-0 pb-14 md:pb-0">
+      <div className="relative flex flex-1 min-h-0 pb-14 xl:pb-0">
         {/* Sidebar — BottomSheet on mobile, inline on desktop */}
         {isMobile ? (
           <BottomSheet open={sidebarOpen} onClose={() => setSidebarOpen(false)} title="Danh sách ghi chú">

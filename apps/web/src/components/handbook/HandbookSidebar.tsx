@@ -323,7 +323,7 @@ export function HandbookSidebar() {
 
   return (
     <div
-      className={`relative hidden h-full shrink-0 flex-col bg-card md:flex transition-[width,border-color] duration-300 ease-in-out overflow-hidden ${
+      className={`relative hidden h-full shrink-0 flex-col bg-card xl:flex transition-[width,border-color] duration-300 ease-in-out overflow-hidden ${
         sidebarOpen ? "border-r border-border" : "border-r border-transparent"
       }`}
       style={{ width: sidebarOpen ? width : 0 }}

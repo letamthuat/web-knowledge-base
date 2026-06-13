@@ -309,7 +309,7 @@ export function LibraryPageInner() {
 
 
   return (
-    <div className="min-h-dvh bg-background pb-14 md:pb-0">
+    <div className="min-h-dvh bg-background pb-14 xl:pb-0">
       {/* Navbar — full width */}
       <header className="border-b bg-card sticky top-0 z-20" style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="flex h-14 items-center justify-between px-4 md:px-6">
@@ -317,7 +317,7 @@ export function LibraryPageInner() {
             {/* Mobile: hamburger để mở drawer */}
             <button
               onClick={() => setMobileSidebarOpen(v => !v)}
-              className="mr-1 rounded p-1.5 hover:bg-muted transition-colors md:hidden"
+              className="mr-1 rounded p-1.5 hover:bg-muted transition-colors xl:hidden"
               aria-label="Mở menu"
             >
               <Menu className="h-4 w-4 text-muted-foreground" />
@@ -326,7 +326,7 @@ export function LibraryPageInner() {
             {/* Desktop: button to toggle sidebar */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors md:flex"
+              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
               aria-label={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
             >
               {sidebarOpen ? (
@@ -359,7 +359,7 @@ export function LibraryPageInner() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex md:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              className="flex xl:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
               aria-label="Tìm kiếm"
             >
               <Search className="h-4 w-4" />
@@ -389,7 +389,7 @@ export function LibraryPageInner() {
 
       {/* Mobile sidebar drawer overlay */}
       {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-30 md:hidden">
+        <div className="fixed inset-0 z-30 xl:hidden">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/40"

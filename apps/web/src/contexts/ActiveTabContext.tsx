@@ -39,7 +39,7 @@ export function ActiveTabProvider({ children }: { children: ReactNode }) {
 
   const openSecondary = useCallback((docId: string) => {
     // Bỏ qua trên màn hình nhỏ — split chỉ cho desktop
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
+    if (typeof window !== "undefined" && window.innerWidth < 1280) {
       setActivePanelState(`reader:${docId}`);
       return;
     }

@@ -204,7 +204,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => setIsMobile(window.innerWidth < 1280);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -353,13 +353,13 @@ function ReaderShell({ doc, downloadUrl }: {
           style={{ paddingTop: 'var(--safe-top)' }}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" size="sm" className="p-1.5 shrink-0 md:hidden" onClick={() => setDrawerOpen(true)}>
+            <Button variant="ghost" size="sm" className="p-1.5 shrink-0 xl:hidden" onClick={() => setDrawerOpen(true)}>
               <Menu className="h-4 w-4" />
             </Button>
             {/* Desktop: button to toggle sidebar */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors md:flex"
+              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
               aria-label={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
             >
               {sidebarOpen ? (
@@ -410,7 +410,7 @@ function ReaderShell({ doc, downloadUrl }: {
             <span className="hidden xl:inline text-sm text-muted-foreground">{session?.user?.email}</span>
             <button
               onClick={() => setSearchOpen(true)}
-              className="hidden sm:flex md:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              className="hidden sm:flex xl:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
               aria-label="Tìm kiếm"
             >
               <Search className="h-4 w-4" />
