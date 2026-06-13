@@ -51,6 +51,7 @@ export function LibraryPageInner() {
 
   // Sidebar — mobile drawer
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [libraryTreeOpen, setLibraryTreeOpen] = useState(true);
 
   const [scope, setScope] = useState<ViewScope>("all");
   const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([]);
@@ -407,12 +408,27 @@ export function LibraryPageInner() {
             </div>
             {/* Mobile nav links */}
             <div className="flex flex-col gap-1 mb-4 border-b pb-4">
-              <button
-                onClick={() => { setMobileSidebarOpen(false); }}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium bg-muted text-foreground"
-              >
-                <BookOpen className="h-4 w-4" /> {N.library}
-              </button>
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium bg-muted text-foreground">
+                  <button
+                    onClick={() => { setMobileSidebarOpen(false); }}
+                    className="flex flex-1 items-center gap-2 text-left"
+                  >
+                    <BookOpen className="h-4 w-4" /> {N.library}
+                  </button>
+                  <button
+                    onClick={() => setLibraryTreeOpen(!libraryTreeOpen)}
+                    className="rounded p-1 hover:bg-muted-foreground/10 transition-colors"
+                  >
+                    <ChevronRight className={`h-4 w-4 transition-transform ${libraryTreeOpen ? "rotate-90" : ""}`} />
+                  </button>
+                </div>
+                {libraryTreeOpen && (
+                  <div className="ml-4 border-l pl-2 max-h-[60dvh] overflow-y-auto mt-1">
+                    <HandbookSidebarContent onLinkClick={() => setMobileSidebarOpen(false)} />
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => { setMobileSidebarOpen(false); setActivePanel("notes"); window.history.pushState(null, "", "/notes"); }}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
@@ -432,7 +448,6 @@ export function LibraryPageInner() {
                 <Settings className="h-4 w-4" /> {N.settings}
               </button>
             </div>
-            <HandbookSidebarContent onLinkClick={() => setMobileSidebarOpen(false)} />
           </aside>
         </div>
       )}

@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download, X, Menu, Search, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download, X, Menu, Search, PanelLeftClose, PanelLeftOpen, ChevronRight } from "lucide-react";
+import { HandbookSidebarContent } from "../handbook/HandbookSidebar";
 import { AppLogo } from "@/components/AppLogo";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
@@ -43,6 +44,7 @@ export function NotesPageInner() {
   const { setActivePanel, sidebarOpen: globalSidebarOpen, setSidebarOpen: setGlobalSidebarOpen } = useActiveTab();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+  const [libraryTreeOpen, setLibraryTreeOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   const typography = useAppTypography();
@@ -141,10 +143,27 @@ export function NotesPageInner() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <button onClick={() => { setNavDrawerOpen(false); setActivePanel("library"); window.history.pushState(null, "", "/library"); }}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
-              <BookOpen className="h-4 w-4" /> {N.library}
-            </button>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+                <button
+                  onClick={() => { setNavDrawerOpen(false); setActivePanel("library"); window.history.pushState(null, "", "/library"); }}
+                  className="flex flex-1 items-center gap-2 text-left"
+                >
+                  <BookOpen className="h-4 w-4" /> {N.library}
+                </button>
+                <button
+                  onClick={() => setLibraryTreeOpen(!libraryTreeOpen)}
+                  className="rounded p-1 hover:bg-muted-foreground/10 transition-colors"
+                >
+                  <ChevronRight className={`h-4 w-4 transition-transform ${libraryTreeOpen ? "rotate-90" : ""}`} />
+                </button>
+              </div>
+              {libraryTreeOpen && (
+                <div className="ml-4 border-l pl-2 max-h-[60dvh] overflow-y-auto mt-1">
+                  <HandbookSidebarContent onLinkClick={() => setNavDrawerOpen(false)} />
+                </div>
+              )}
+            </div>
             <button className="flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-muted font-medium transition-colors">
               <StickyNote className="h-4 w-4" /> {N.notes}
             </button>
