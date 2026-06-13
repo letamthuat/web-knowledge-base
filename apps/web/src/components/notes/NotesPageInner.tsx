@@ -202,7 +202,7 @@ export function NotesPageInner() {
           <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
         </div>
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/library")} onClick={() => { setActivePanel("library"); window.history.pushState(null, "", "/library"); }}>{N.library}</Button>
           <Button variant="secondary" size="sm" aria-current={true}>
             <StickyNote className="mr-1.5 h-3.5 w-3.5" />
@@ -222,7 +222,7 @@ export function NotesPageInner() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <span className="hidden text-sm text-muted-foreground md:inline">{session?.user?.email}</span>
+          <span className="hidden text-sm text-muted-foreground lg:inline">{session?.user?.email}</span>
           <button
             onClick={() => setSearchOpen(true)}
             className="flex md:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
@@ -232,7 +232,7 @@ export function NotesPageInner() {
           </button>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
-            <span className="ml-1 hidden md:inline">{N.logout}</span>
+            <span className="ml-1 hidden lg:inline">{N.logout}</span>
           </Button>
         </div>
       </header>

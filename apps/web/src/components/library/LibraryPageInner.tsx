@@ -340,7 +340,7 @@ export function LibraryPageInner() {
             <span className="font-semibold">Web Knowledge Base</span>
           </div>
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 lg:flex">
             <Button variant="secondary" size="sm" aria-current={true}>{N.library}</Button>
             <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/notes")} onClick={() => { setActivePanel("notes"); window.history.pushState(null, "", "/notes"); }}>{N.notes}</Button>
             <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => { setActivePanel("settings"); window.history.pushState(null, "", "/settings"); }}>
@@ -364,10 +364,10 @@ export function LibraryPageInner() {
             >
               <Search className="h-4 w-4" />
             </button>
-            <span className="hidden text-sm text-muted-foreground md:inline">{session.user.email}</span>
+            <span className="hidden text-sm text-muted-foreground lg:inline">{session.user.email}</span>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
-              <span className="ml-1 hidden md:inline">{N.logout}</span>
+              <span className="ml-1 hidden lg:inline">{N.logout}</span>
             </Button>
           </div>
         </div>

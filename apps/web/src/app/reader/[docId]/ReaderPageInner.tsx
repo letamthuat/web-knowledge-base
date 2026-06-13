@@ -372,7 +372,7 @@ function ReaderShell({ doc, downloadUrl }: {
             <AppLogo size={32} />
           </div>
 
-          <nav className="hidden md:flex items-center gap-1 shrink-0">
+          <nav className="hidden lg:flex items-center gap-1 shrink-0">
             <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/library"))}>Thư viện</Button>
             <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/notes"))}>
               <StickyNote className="mr-1.5 h-3.5 w-3.5" />Ghi chú
@@ -388,7 +388,7 @@ function ReaderShell({ doc, downloadUrl }: {
             {/* Desktop Full Screen Button */}
             <Button variant="ghost" size="sm" onClick={toggleFullscreen} title="Xem toàn màn hình" className="hidden sm:inline-flex gap-1">
               <Maximize2 className="h-4 w-4" />
-              <span className="hidden md:inline">Toàn màn hình</span>
+              <span className="hidden lg:inline">Toàn màn hình</span>
             </Button>
             {/* Mobile Full Screen Button (direct icon) */}
             <button
@@ -401,11 +401,11 @@ function ReaderShell({ doc, downloadUrl }: {
             </button>
             <Button variant="ghost" size="sm" onClick={() => exportDoc(doc._id)} disabled={isExporting} title="Export ZIP (file + highlights + ghi chú)" className="hidden sm:inline-flex gap-1">
               <Download className="h-4 w-4" />
-              <span className="hidden md:inline">Export ZIP</span>
+              <span className="hidden lg:inline">Export ZIP</span>
             </Button>
             <Button variant="ghost" size="sm" onClick={handleDownload} title="Tải xuống tài liệu" className="hidden sm:inline-flex gap-1">
               <Download className="h-4 w-4" />
-              <span className="hidden md:inline">Tải xuống</span>
+              <span className="hidden lg:inline">Tải xuống</span>
             </Button>
             <span className="hidden lg:inline text-sm text-muted-foreground">{session?.user?.email}</span>
             <button
@@ -422,9 +422,9 @@ function ReaderShell({ doc, downloadUrl }: {
             >
               <MoreHorizontal className="h-5 w-5" />
             </button>
-            <Button variant="ghost" size="sm" onClick={async () => { await signOut(); router.push("/login"); }} className="hidden md:inline-flex gap-1">
+            <Button variant="ghost" size="sm" onClick={async () => { await signOut(); router.push("/login"); }} className="hidden lg:inline-flex gap-1">
               <LogOut className="h-4 w-4" />
-              <span className="hidden md:inline">Đăng xuất</span>
+              <span className="hidden lg:inline">Đăng xuất</span>
             </Button>
           </div>
         </header>}
