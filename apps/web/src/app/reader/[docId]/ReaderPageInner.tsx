@@ -13,7 +13,7 @@ import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopove
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
 import { toProgressPct } from "@/lib/position";
-import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search, PanelLeftClose, PanelLeftOpen, Maximize2 } from "lucide-react";
 import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
@@ -59,6 +59,41 @@ function ReaderShell({ doc, downloadUrl }: {
   const [localPct, setLocalPct] = useState<number | null>(null);
   const headerTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (!document.fullscreenElement) {
+      if (readingMode) {
+        setReadingMode(false);
+        return;
+      }
+      try {
+        await containerRef.current?.requestFullscreen();
+        setReadingMode(true);
+      } catch (err) {
+        // Fallback for iOS
+        setReadingMode(true);
+      }
+    } else {
+      try {
+        await document.exitFullscreen();
+      } catch (err) {}
+      setReadingMode(false);
+    }
+  }, [readingMode]);
+
+  useEffect(() => {
+    function handleFullscreenChange() {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      setReadingMode(isCurrentlyFullscreen);
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
   const typography = useAppTypography();
   const { setActivePanel, sidebarOpen, setSidebarOpen } = useActiveTab();
   const { exportDoc, isExporting } = useDocExport();
@@ -98,18 +133,22 @@ function ReaderShell({ doc, downloadUrl }: {
           toast("Reading Mode chỉ dành cho định dạng đọc");
           return;
         }
-        setReadingMode((v) => !v);
+        toggleFullscreen();
         return;
       }
 
       // Esc → exit reading mode (only when search modal is closed)
       if (e.key === "Escape" && !searchOpen) {
-        setReadingMode(false);
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        } else {
+          setReadingMode(false);
+        }
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [doc.format, searchOpen]);
+  }, [doc.format, searchOpen, toggleFullscreen]);
 
 
   // Find the tab for this doc so we can persist scroll state into it
@@ -247,15 +286,15 @@ function ReaderShell({ doc, downloadUrl }: {
 
   return (
     <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition: savePositionWithTab, jumpTo, registerJump }}>
-      <div className="flex h-full flex-col overflow-hidden bg-background transition-colors">
+      <div ref={containerRef} className="flex h-full flex-col overflow-hidden bg-background transition-colors">
         {/* Reading Mode exit button */}
         {readingMode && (
           <button
-            onClick={() => setReadingMode(false)}
+            onClick={toggleFullscreen}
             className="fixed top-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50 transition-colors"
             aria-label="Thoát Reading Mode"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         )}
 
@@ -327,6 +366,20 @@ function ReaderShell({ doc, downloadUrl }: {
           <div className="flex items-center gap-2 shrink-0">
             <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
             <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
+            {/* Desktop Full Screen Button */}
+            <Button variant="ghost" size="sm" onClick={toggleFullscreen} title="Xem toàn màn hình" className="hidden sm:inline-flex gap-1">
+              <Maximize2 className="h-4 w-4" />
+              <span className="hidden md:inline">Toàn màn hình</span>
+            </Button>
+            {/* Mobile Full Screen Button (direct icon) */}
+            <button
+              onClick={toggleFullscreen}
+              className="flex sm:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              title="Xem toàn màn hình"
+              aria-label="Xem toàn màn hình"
+            >
+              <Maximize2 className="h-5 w-5" />
+            </button>
             <Button variant="ghost" size="sm" onClick={() => exportDoc(doc._id)} disabled={isExporting} title="Export ZIP (file + highlights + ghi chú)" className="hidden sm:inline-flex gap-1">
               <Download className="h-4 w-4" />
               <span className="hidden md:inline">Export ZIP</span>
@@ -422,6 +475,13 @@ function ReaderShell({ doc, downloadUrl }: {
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <BottomSheet open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} title="Thêm">
         <div className="flex flex-col gap-2 py-2">
+          <button
+            onClick={() => { setMoreMenuOpen(false); toggleFullscreen(); }}
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm hover:bg-muted transition-colors"
+          >
+            <Maximize2 className="h-5 w-5 text-muted-foreground" />
+            Xem toàn màn hình (Focus)
+          </button>
           <button
             onClick={() => { setMoreMenuOpen(false); exportDoc(doc._id); }}
             disabled={isExporting}
