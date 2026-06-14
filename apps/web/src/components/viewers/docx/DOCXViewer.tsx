@@ -130,8 +130,13 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
   }, [savePosition]);
 
   const scrollToHeading = useCallback((id: string) => {
-    const el = scrollRef.current?.querySelector(`#${id}`);
-    if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); setActiveId(id); }
+    const container = scrollRef.current;
+    if (!container) return;
+    const heading = container.querySelector(`#${id}`) as HTMLElement | null;
+    if (heading) {
+      container.scrollTo({ top: heading.offsetTop - 8, behavior: "smooth" });
+      setActiveId(id);
+    }
   }, []);
 
   const minLevel = useMemo(() =>

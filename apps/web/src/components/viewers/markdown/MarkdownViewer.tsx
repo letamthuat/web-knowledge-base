@@ -907,12 +907,22 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
   );
 
   const scrollToHeading = useCallback((id: string) => {
-    const el = contentRef.current?.querySelector(`#${CSS.escape(id)}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      activeIdRef.current = id;
-      setActiveId(id);
-    }
+    const container = contentRef.current;
+    if (!container) return;
+
+    const doScroll = (attempts = 0) => {
+      const heading = container.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
+      if (heading) {
+        // Scroll the overflow container, not the window
+        container.scrollTo({ top: heading.offsetTop - 8, behavior: "smooth" });
+        activeIdRef.current = id;
+        setActiveId(id);
+      } else if (attempts < 10) {
+        // LazySection may not have mounted yet — retry
+        requestAnimationFrame(() => doScroll(attempts + 1));
+      }
+    };
+    doScroll();
   }, []);
 
   if (error) {
