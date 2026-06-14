@@ -455,12 +455,6 @@ export function LibraryPageInner() {
               >
                 <Settings className="h-4 w-4" /> {N.settings}
               </button>
-              <button
-                onClick={() => { setMobileSidebarOpen(false); router.push("/library/trash"); }}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <Trash2 className="h-4 w-4 text-destructive" /> {L.trashButton}
-              </button>
             </div>
           </aside>
         </div>

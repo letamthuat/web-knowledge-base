@@ -17,10 +17,19 @@ import { formatBytes } from "@/lib/storage";
 const L = labels.trash;
 const Lf = labels.formats;
 
-const FORMAT_ICONS: Record<string, React.ElementType> = {
-  pdf: FileText, epub: BookOpen, docx: FileType2, pptx: Presentation,
-  image: Image, audio: Music, video: Video, markdown: FileCode, web_clip: Globe,
+const FORMAT_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  pdf: { icon: FileText, color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/20" },
+  epub: { icon: BookOpen, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/20" },
+  docx: { icon: FileType2, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/20" },
+  pptx: { icon: Presentation, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-950/20" },
+  image: { icon: Image, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20" },
+  audio: { icon: Music, color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/20" },
+  video: { icon: Video, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/20" },
+  markdown: { icon: FileCode, color: "text-teal-600 dark:text-teal-400", bg: "bg-teal-50 dark:bg-teal-950/20" },
+  web_clip: { icon: Globe, color: "text-sky-600 dark:text-sky-400", bg: "bg-sky-50 dark:bg-sky-950/20" },
 };
+
+const FALLBACK_CONFIG = { icon: FileText, color: "text-muted-foreground", bg: "bg-muted/40" };
 
 interface Doc {
   _id: Id<"documents">;
@@ -81,7 +90,7 @@ export function TrashView({ docs }: TrashViewProps) {
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">{L.autoDeleteNote}</p>
         {docs.length > 0 && (
           <Button
@@ -96,51 +105,81 @@ export function TrashView({ docs }: TrashViewProps) {
       </div>
       <div className="space-y-2">
         {docs.map((doc) => {
-          const Icon = FORMAT_ICONS[doc.format] ?? FileText;
+          const config = FORMAT_CONFIG[doc.format] ?? FALLBACK_CONFIG;
+          const Icon = config.icon;
           const daysLeft = doc.trashedAt
             ? 30 - differenceInDays(Date.now(), doc.trashedAt)
             : 30;
 
           return (
-            <div key={doc._id} className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
-              <Icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium">{doc.title}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-muted-foreground">
-                    {Lf[doc.format as keyof typeof Lf] ?? doc.format}
-                  </span>
-                  {doc.fileSizeBytes && (
-                    <span className="text-xs text-muted-foreground">· {formatBytes(doc.fileSizeBytes)}</span>
-                  )}
-                  {doc.trashedAt && (
-                    <span className="text-xs text-muted-foreground">
-                      · {L.trashedAt} {format(doc.trashedAt, "dd/MM/yyyy", { locale: vi })}
+            <div
+              key={doc._id}
+              className="group relative flex flex-col gap-3 rounded-xl border bg-card p-4 transition-all hover:bg-muted/5 hover:shadow-xs sm:pr-[180px]"
+            >
+              <div className="flex items-start gap-3">
+                {/* Format Icon Container */}
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.bg} ${config.color} group-hover:scale-105 transition-transform`}>
+                  <Icon className="h-5 w-5" aria-hidden />
+                </div>
+
+                {/* Title & Metadata */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                    <p className="truncate text-sm font-semibold text-foreground" title={doc.title}>
+                      {doc.title}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className={`w-fit h-4.5 px-1.5 text-[10px] font-medium shrink-0 ${
+                        daysLeft <= 7
+                          ? "border-destructive/30 bg-destructive/5 text-destructive"
+                          : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
+                      }`}
+                    >
+                      {daysLeft > 0 ? labels.document.daysLeft(daysLeft) : "Sắp xoá"}
+                    </Badge>
+                  </div>
+
+                  {/* Metadata Row */}
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-muted-foreground">
+                    <span className="font-medium">
+                      {Lf[doc.format as keyof typeof Lf] ?? doc.format}
                     </span>
-                  )}
-                  <Badge
-                    variant="outline"
-                    className={`h-4 px-1.5 text-xs ${daysLeft <= 7 ? "border-destructive text-destructive" : "text-muted-foreground"}`}
-                  >
-                    {daysLeft > 0 ? labels.document.daysLeft(daysLeft) : "Sắp xoá"}
-                  </Badge>
+                    {doc.fileSizeBytes && (
+                      <>
+                        <span className="text-muted-foreground/40">•</span>
+                        <span>{formatBytes(doc.fileSizeBytes)}</span>
+                      </>
+                    )}
+                    {doc.trashedAt && (
+                      <>
+                        <span className="text-muted-foreground/40">•</span>
+                        <span>
+                          {L.trashedAt} {format(doc.trashedAt, "dd/MM/yyyy", { locale: vi })}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
+
+              {/* Action Buttons Row */}
+              <div className="flex items-center gap-1.5 justify-end border-t border-border/40 pt-3 mt-1 sm:absolute sm:right-4 sm:top-1/2 sm:-translate-y-1/2 sm:border-t-0 sm:pt-0 sm:mt-0">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="h-8 text-xs gap-1.5 rounded-lg border-muted-foreground/20 hover:bg-muted"
                   onClick={() => handleRestore(doc._id)}
                   aria-label={`Khôi phục ${doc.title}`}
                 >
-                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                   {L.restore}
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                   onClick={() => setDeleteTarget(doc._id)}
-                  className="text-destructive hover:text-destructive"
                   aria-label={`Xoá vĩnh viễn ${doc.title}`}
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />

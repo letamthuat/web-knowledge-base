@@ -934,10 +934,18 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
   const hasToc = toc.length > 0;
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="relative flex flex-1 overflow-hidden">
+      {/* Backdrop for floating TOC on mobile */}
+      {hasToc && tocOpen && (
+        <div
+          className="absolute inset-0 z-20 bg-black/40 backdrop-blur-sm md:hidden"
+          onClick={toggleToc}
+        />
+      )}
+
       {/* ── TOC Sidebar — independent scroll ── */}
       {hasToc && tocOpen && (
-        <aside className="flex w-60 shrink-0 flex-col border-r bg-card">
+        <aside className="absolute md:relative left-0 top-0 bottom-0 z-30 flex w-60 shrink-0 flex-col border-r bg-card h-full shadow-2xl md:shadow-none">
           {/* Sidebar header */}
           <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
             <span className="text-sm font-semibold">Mục lục</span>
@@ -959,7 +967,12 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
               return (
                 <button
                   key={`${entry.id}-${i}`}
-                  onClick={() => scrollToHeading(entry.id)}
+                  onClick={() => {
+                    scrollToHeading(entry.id);
+                    if (window.innerWidth < 768) {
+                      setTocOpen(false);
+                    }
+                  }}
                   style={{ paddingLeft: `${indent + 16}px` }}
                   className={[
                     "flex w-full items-start gap-1 py-1.5 pr-3 text-left text-[13px] leading-snug transition-colors",

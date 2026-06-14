@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Id } from "@/_generated/dataModel";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
-import { Highlighter, List, StickyNote } from "lucide-react";
+import { Highlighter, List, StickyNote, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ZoomControls, useZoom } from "@/components/viewers/ZoomControls";
 import { useHighlightActions } from "@/hooks/useHighlightActions";
@@ -35,7 +35,7 @@ function buildToc(container: HTMLElement): TocEntry[] {
 export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
   const [html, setHtml] = useState<string | null>(null);
   const [toc, setToc] = useState<TocEntry[]>([]);
-  const [tocOpen, setTocOpen] = useState(true);
+  const [tocOpen, setTocOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
   const [activeId, setActiveId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -147,12 +147,28 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
   );
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="relative flex flex-1 overflow-hidden">
+      {/* Backdrop for floating TOC on mobile */}
+      {tocOpen && toc.length > 0 && (
+        <div
+          className="absolute inset-0 z-20 bg-black/40 backdrop-blur-sm md:hidden"
+          onClick={() => setTocOpen(false)}
+        />
+      )}
+
       {/* TOC Sidebar */}
       {tocOpen && toc.length > 0 && (
-        <aside className="flex w-60 shrink-0 flex-col border-r bg-card">
+        <aside className="absolute md:relative left-0 top-0 bottom-0 z-30 flex w-60 shrink-0 flex-col border-r bg-card h-full shadow-2xl md:shadow-none">
           <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
             <span className="text-sm font-semibold">Mục lục</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setTocOpen(false)}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
           </div>
           <nav className="flex-1 overflow-y-auto py-2">
             {toc.map((entry, i) => {
@@ -161,7 +177,12 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
               return (
                 <button
                   key={`${entry.id}-${i}`}
-                  onClick={() => scrollToHeading(entry.id)}
+                  onClick={() => {
+                    scrollToHeading(entry.id);
+                    if (window.innerWidth < 768) {
+                      setTocOpen(false);
+                    }
+                  }}
                   style={{ paddingLeft: `${indent + 16}px` }}
                   className={[
                     "flex w-full items-start py-1.5 pr-3 text-left text-[13px] leading-snug transition-colors",
