@@ -480,6 +480,7 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
   const [uploading, setUploading] = useState(false);
   const [uploadPrefix, setUploadPrefix] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false });
@@ -534,6 +535,11 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
             label: "Thêm file",
             icon: <FilePlus2 className="h-3.5 w-3.5" />,
             onClick: () => { setUploadPrefix(""); fileInputRef.current?.click(); },
+          },
+          {
+            label: "Import Thư mục",
+            icon: <FolderPlus className="h-3.5 w-3.5" />,
+            onClick: () => { setUploadPrefix(""); folderInputRef.current?.click(); },
           },
           {
             label: "Tạo folder",
@@ -632,6 +638,10 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
               onAddFile={(prefix) => {
                 setUploadPrefix(prefix);
                 fileInputRef.current?.click();
+              }}
+              onAddFolder={(prefix) => {
+                setUploadPrefix(prefix);
+                folderInputRef.current?.click();
               }}
               onAddEmptyFolder={(prefix) => {
                 setRenameDialog({
@@ -743,6 +753,111 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
           }
         }}
       />
+      <input
+        ref={folderInputRef}
+        type="file"
+        className="hidden"
+        disabled={uploading}
+        multiple
+        {...({
+          webkitdirectory: "",
+          directory: ""
+        } as any)}
+        onChange={async (e) => {
+          const filesList = Array.from(e.target.files ?? []);
+          if (filesList.length === 0) return;
+          setUploading(true);
+          const toastId = toast.loading(`Đang xử lý thư mục và chuẩn bị tải lên…`);
+          try {
+            const manifest: {
+              relPath: string;
+              storageKey: string;
+              format: string;
+              fileSizeBytes?: number;
+              mimeType?: string;
+            }[] = [];
+            let skipped = 0;
+            let uploadedCount = 0;
+
+            const validFiles = filesList.filter(f => {
+              const base = f.name;
+              if (base === ".DS_Store" || base === "Thumbs.db" || base.startsWith("._")) {
+                skipped++;
+                return false;
+              }
+              const fmt = extToFormat(base);
+              if (!fmt) {
+                skipped++;
+                return false;
+              }
+              return true;
+            });
+
+            if (validFiles.length === 0) {
+              throw new Error("Không tìm thấy file hợp lệ/được hỗ trợ trong thư mục");
+            }
+
+            for (let i = 0; i < validFiles.length; i++) {
+              const file = validFiles[i];
+              toast.loading(`Đang tải lên thư mục (${i + 1}/${validFiles.length}): ${file.name}…`, { id: toastId });
+
+              const format = extToFormat(file.name)!;
+              const { uploadUrl, storageKey } = await requestUploadUrl({
+                fileSizeBytes: file.size,
+                format,
+                fileName: file.name,
+                mimeType: file.type,
+              });
+
+              await new Promise<void>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.upload.addEventListener("progress", (evt) => {
+                  if (evt.lengthComputable) {
+                    const filePct = Math.round((evt.loaded / evt.total) * 100);
+                    toast.loading(`Đang tải lên (${i + 1}/${validFiles.length}): ${file.name} (${filePct}%)`, { id: toastId });
+                  }
+                });
+                xhr.addEventListener("load", () => {
+                  if (xhr.status >= 200 && xhr.status < 300) resolve();
+                  else reject(new Error(`Tải lên thất bại (HTTP ${xhr.status})`));
+                });
+                xhr.addEventListener("error", () => reject(new Error("Lỗi mạng khi tải lên")));
+                xhr.open("PUT", uploadUrl);
+                xhr.send(file);
+              });
+
+              const relativePath = file.webkitRelativePath || file.name;
+              const relPath = uploadPrefix ? `${uploadPrefix}/${relativePath}` : relativePath;
+
+              manifest.push({
+                relPath,
+                storageKey,
+                format,
+                fileSizeBytes: file.size,
+                mimeType: file.type,
+              });
+              uploadedCount++;
+            }
+
+            toast.loading(`Đang đồng bộ hóa cơ sở dữ liệu…`, { id: toastId });
+            const res = await finalizeImport({
+              handbookId,
+              files: manifest as any,
+            });
+
+            const successMsg = `Tải lên thư mục thành công! Đã thêm ${res.created} file.` + 
+              (skipped > 0 ? ` (Bỏ qua ${skipped} file không được hỗ trợ)` : "");
+            toast.success(successMsg, { id: toastId });
+            if (!open) setOpen(true);
+          } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || "Lỗi tải lên thư mục", { id: toastId });
+          } finally {
+            setUploading(false);
+            if (folderInputRef.current) folderInputRef.current.value = "";
+          }
+        }}
+      />
       {importOpen && (
         <ImportZipDialog handbookId={handbookId} handbookName={name} onClose={() => setImportOpen(false)} />
       )}
@@ -793,6 +908,7 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
   const [uploadFolderId, setUploadFolderId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false });
@@ -898,6 +1014,10 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
                   {
                     label: "Thêm file", icon: <FilePlus2 className="h-3.5 w-3.5" />,
                     onClick: () => { setUploadFolderId(node.id); fileInputRef.current?.click(); },
+                  },
+                  {
+                    label: "Import Thư mục", icon: <FolderPlus className="h-3.5 w-3.5" />,
+                    onClick: () => { setUploadFolderId(node.id); folderInputRef.current?.click(); },
                   },
                   {
                     label: "Tạo folder con", icon: <FolderPlus className="h-3.5 w-3.5" />,
@@ -1044,6 +1164,10 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
             onClick: () => { setUploadFolderId(null); fileInputRef.current?.click(); },
           },
           {
+            label: "Import Thư mục", icon: <FolderPlus className="h-3.5 w-3.5" />,
+            onClick: () => { setUploadFolderId(null); folderInputRef.current?.click(); },
+          },
+          {
             label: "Tạo folder", icon: <FolderPlus className="h-3.5 w-3.5" />,
             onClick: () => {
               setRenameDialog({
@@ -1129,6 +1253,133 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
           } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
+          }
+        }}
+      />
+      <input
+        ref={folderInputRef}
+        type="file"
+        className="hidden"
+        disabled={uploading}
+        multiple
+        {...({
+          webkitdirectory: "",
+          directory: ""
+        } as any)}
+        onChange={async (e) => {
+          const filesList = Array.from(e.target.files ?? []);
+          if (filesList.length === 0) return;
+          setUploading(true);
+          const toastId = toast.loading(`Đang xử lý thư mục tài liệu lẻ…`);
+          try {
+            let skipped = 0;
+            const validFiles = filesList.filter((f: File) => {
+              const base = f.name;
+              if (base === ".DS_Store" || base === "Thumbs.db" || base.startsWith("._")) {
+                skipped++;
+                return false;
+              }
+              const fmt = extToFormat(base);
+              if (!fmt) {
+                skipped++;
+                return false;
+              }
+              return true;
+            });
+
+            if (validFiles.length === 0) {
+              throw new Error("Không tìm thấy file hợp lệ/được hỗ trợ trong thư mục");
+            }
+
+            const pathCache = new Map<string, string>();
+            const getOrCreateFolder = async (relPath: string): Promise<string | null> => {
+              const parts = relPath.split("/");
+              parts.pop(); // remove filename
+              if (parts.length === 0) return uploadFolderId;
+
+              let parentId = uploadFolderId;
+              let currentPath = "";
+
+              for (const name of parts) {
+                currentPath = currentPath ? `${currentPath}/${name}` : name;
+                if (pathCache.has(currentPath)) {
+                  parentId = pathCache.get(currentPath)!;
+                } else {
+                  const cleanName = name.trim();
+                  const existingFolder = folders?.find(
+                    (f: any) => f.name === cleanName && f.parentFolderId === (parentId || undefined)
+                  );
+
+                  if (existingFolder) {
+                    parentId = existingFolder._id;
+                    pathCache.set(currentPath, parentId as string);
+                  } else {
+                    const newFolderId = await createFolder({
+                      name: cleanName,
+                      parentFolderId: parentId ? (parentId as any) : undefined,
+                    });
+                    parentId = newFolderId;
+                    pathCache.set(currentPath, newFolderId);
+                  }
+                }
+              }
+              return parentId;
+            };
+
+            for (let i = 0; i < validFiles.length; i++) {
+              const file = validFiles[i];
+              toast.loading(`Đang tải lên thư mục (${i + 1}/${validFiles.length}): ${file.name}…`, { id: toastId });
+
+              const destFolderId = await getOrCreateFolder(file.webkitRelativePath || file.name);
+
+              const format = extToFormat(file.name)!;
+              const { uploadUrl, storageKey } = await requestUploadUrl({
+                fileSizeBytes: file.size,
+                format,
+                fileName: file.name,
+                mimeType: file.type,
+              });
+
+              await new Promise<void>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.upload.addEventListener("progress", (evt) => {
+                  if (evt.lengthComputable) {
+                    const filePct = Math.round((evt.loaded / evt.total) * 100);
+                    toast.loading(`Đang tải lên (${i + 1}/${validFiles.length}): ${file.name} (${filePct}%)`, { id: toastId });
+                  }
+                });
+                xhr.addEventListener("load", () => {
+                  if (xhr.status >= 200 && xhr.status < 300) resolve();
+                  else reject(new Error(`Tải lên thất bại (HTTP ${xhr.status})`));
+                });
+                xhr.addEventListener("error", () => reject(new Error("Lỗi mạng khi tải lên")));
+                xhr.open("PUT", uploadUrl);
+                xhr.send(file);
+              });
+
+              const docId = await finalizeUpload({
+                title: file.name.replace(/\.[^/.]+$/, "") || file.name,
+                format: format as any,
+                fileSizeBytes: file.size,
+                storageBackend: "r2",
+                storageKey,
+              });
+
+              if (destFolderId) {
+                await assignDoc({ docId, folderId: destFolderId as any });
+              }
+            }
+
+            const successMsg = `Đã tải lên thư mục thành công!` + 
+              (skipped > 0 ? ` (Bỏ qua ${skipped} file không được hỗ trợ)` : "");
+            toast.success(successMsg, { id: toastId });
+            if (!open) setOpen(true);
+          } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || "Lỗi tải lên thư mục tài liệu lẻ", { id: toastId });
+          } finally {
+            setUploading(false);
+            if (folderInputRef.current) folderInputRef.current.value = "";
           }
         }}
       />

@@ -11,7 +11,7 @@ import { api } from "@/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { labels } from "@/lib/i18n/labels";
-import { detectFormat, formatBytes } from "@/lib/storage";
+import { detectFormat, formatBytes, extractFilesFromItems, type ExtractedFile } from "@/lib/storage";
 
 const L = labels.upload;
 
@@ -105,6 +105,7 @@ interface FileUploadState {
   progress: number;
   status: "pending" | "uploading" | "done" | "error";
   error?: string;
+  relativePath?: string;
 }
 
 interface UploadDropzoneProps {
@@ -117,10 +118,12 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
   const [uploads, setUploads] = useState<FileUploadState[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(defaultFolderId ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const requestUploadUrl = useAction(api.documents.actions.requestUploadUrl);
   const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
   const assignDoc = useMutation(api.folders.mutations.assignDoc);
+  const createFolder = useMutation(api.folders.mutations.create);
   const allFolders = useQuery(api.folders.queries.listByUser);
 
   const updateUpload = useCallback((index: number, patch: Partial<FileUploadState>) => {
@@ -128,33 +131,88 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
   }, []);
 
   const processFiles = useCallback(
-    async (files: File[]) => {
-      const newUploads: FileUploadState[] = files.map((f) => ({
-        file: f,
+    async (extracted: ExtractedFile[]) => {
+      const emptyDirs = extracted.filter(e => e.isEmptyDir);
+      const filesOnly = extracted.filter(e => !e.isEmptyDir && e.file);
+
+      const newUploads: FileUploadState[] = filesOnly.map((e) => ({
+        file: e.file!,
         progress: 0,
         status: "pending",
+        relativePath: e.relativePath,
       }));
 
-      const valid: { file: File; format: string; index: number }[] = [];
+      const valid: { file: File; format: string; index: number; relativePath: string }[] = [];
       newUploads.forEach((u, i) => {
         const format = detectFormat(u.file);
         if (!format) {
           newUploads[i] = { ...u, status: "error", error: L.unsupportedFormat };
           toast.error(`${u.file.name}: ${L.unsupportedFormat}`);
         } else {
-          valid.push({ file: u.file, format, index: i });
+          valid.push({ file: u.file, format, index: i, relativePath: u.relativePath || u.file.name });
         }
       });
 
       setUploads((prev) => [...prev, ...newUploads]);
 
       const baseIndex = uploads.length;
+      const pathCache = new Map<string, string>();
+
+      const getOrCreateFolder = async (relPath: string, isFinalDir: boolean = false): Promise<string | null> => {
+        const parts = relPath.split("/");
+        if (!isFinalDir) {
+          parts.pop(); // remove file name
+        }
+        if (parts.length === 0) {
+          return selectedFolderId;
+        }
+
+        let parentId = selectedFolderId;
+        let currentPath = "";
+
+        for (const name of parts) {
+          currentPath = currentPath ? `${currentPath}/${name}` : name;
+          if (pathCache.has(currentPath)) {
+            parentId = pathCache.get(currentPath)!;
+          } else {
+            const cleanName = name.trim();
+            const existingFolder = allFolders?.find(
+              (f: any) => f.name === cleanName && f.parentFolderId === (parentId || undefined)
+            );
+
+            if (existingFolder) {
+              parentId = existingFolder._id;
+              pathCache.set(currentPath, parentId as string);
+            } else {
+              const newFolderId = await createFolder({
+                name: cleanName,
+                parentFolderId: parentId ? (parentId as any) : undefined,
+              });
+              parentId = newFolderId;
+              pathCache.set(currentPath, newFolderId);
+            }
+          }
+        }
+        return parentId;
+      };
+
+      // 1. Tạo các thư mục rỗng trước
+      for (const dir of emptyDirs) {
+        try {
+          await getOrCreateFolder(dir.relativePath, true);
+        } catch (err) {
+          console.error("Lỗi tạo thư mục rỗng:", err);
+        }
+      }
+
       await Promise.all(
-        valid.map(async ({ file, format, index }) => {
+        valid.map(async ({ file, format, index, relativePath }) => {
           const absoluteIndex = baseIndex + index;
           updateUpload(absoluteIndex, { status: "uploading" });
 
           try {
+            const destFolderId = await getOrCreateFolder(relativePath);
+
             const { storageBackend, uploadUrl, storageKey } = await requestUploadUrl({
               fileSizeBytes: file.size,
               format,
@@ -196,7 +254,6 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
                 });
                 xhr.addEventListener("error", () => reject(new Error("Network/CORS error uploading to R2")));
                 xhr.open("PUT", uploadUrl);
-                // Do NOT set Content-Type — presigned URL doesn't sign it so R2 rejects signed mismatches
                 xhr.send(file);
               });
             }
@@ -205,16 +262,16 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
             const durationMs = await getMediaDuration(file);
             const docId = await finalizeUpload({
               title,
-              format: format as "pdf" | "epub" | "docx" | "pptx" | "image" | "audio" | "video" | "markdown" | "web_clip",
+              format: format as any,
               fileSizeBytes: file.size,
               durationMs: durationMs ?? undefined,
               storageBackend,
               storageKey: finalStorageKey,
             });
 
-            if (selectedFolderId && docId) {
+            if (destFolderId && docId) {
               try {
-                await assignDoc({ folderId: selectedFolderId as any, docId: docId as any });
+                await assignDoc({ folderId: destFolderId as any, docId: docId as any });
               } catch {}
             }
 
@@ -229,20 +286,30 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
         }),
       );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [uploads.length, requestUploadUrl, finalizeUpload, assignDoc, updateUpload, onUploadComplete, selectedFolderId],
+    [uploads.length, requestUploadUrl, finalizeUpload, assignDoc, updateUpload, onUploadComplete, selectedFolderId, createFolder, allFolders],
   );
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length) processFiles(files);
+    if (e.dataTransfer.items) {
+      const extracted = await extractFilesFromItems(e.dataTransfer.items);
+      if (extracted.length) processFiles(extracted);
+    } else {
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length) processFiles(files.map(f => ({ file: f, relativePath: f.name })));
+    }
   }, [processFiles]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    if (files.length) processFiles(files);
+    if (files.length) processFiles(files.map(f => ({ file: f, relativePath: f.webkitRelativePath || f.name })));
+    e.target.value = "";
+  }, [processFiles]);
+
+  const handleFolderInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length) processFiles(files.map(f => ({ file: f, relativePath: f.webkitRelativePath || f.name })));
     e.target.value = "";
   }, [processFiles]);
 
@@ -271,16 +338,27 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
               <Upload className={`h-6 w-6 ${isDragOver ? "text-primary" : "text-muted-foreground"}`} aria-hidden />
             </div>
             <p className="mb-1 font-semibold">{L.dropzoneText}</p>
-            <p className="mb-4 text-sm text-muted-foreground">hoặc nhấn để chọn file</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-            >
-              <FileUp className="mr-2 h-4 w-4" aria-hidden />
-              {L.browseButton}
-            </Button>
+            <p className="mb-4 text-sm text-muted-foreground">hoặc nhấn để chọn file/thư mục</p>
+            <div className="flex gap-2 justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+              >
+                <FileUp className="mr-2 h-4 w-4" aria-hidden />
+                {L.browseButton}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
+              >
+                <Folder className="mr-2 h-4 w-4 text-amber-500" aria-hidden />
+                Chọn thư mục
+              </Button>
+            </div>
             <p className="mt-4 text-xs text-muted-foreground">{L.supportedFormats}</p>
           </div>
 
@@ -294,7 +372,7 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
                 className="flex-1 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Không có folder</option>
-                {allFolders.map((f) => (
+                {allFolders.map((f: any) => (
                   <option key={f._id} value={f._id}>{f.name}</option>
                 ))}
               </select>
@@ -308,6 +386,19 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
             accept=".pdf,.epub,.docx,.pptx,.jpg,.jpeg,.png,.webp,.gif,.mp3,.m4a,.wav,.mp4,.webm,.md,.markdown,.html,.htm,.xhtml"
             className="hidden"
             onChange={handleFileInput}
+            aria-hidden
+          />
+
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            {...({
+              webkitdirectory: "",
+              directory: ""
+            } as any)}
+            className="hidden"
+            onChange={handleFolderInput}
             aria-hidden
           />
 

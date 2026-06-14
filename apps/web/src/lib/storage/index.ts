@@ -1,4 +1,6 @@
 export * from "./types";
+export * from "./folderUpload";
+
 
 export const CONVEX_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 

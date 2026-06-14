@@ -19,6 +19,7 @@ interface HandbookTreeProps {
   onDeleteFile?: (docId: Id<"documents">, title: string) => void;
   onDeleteFolder?: (prefix: string) => void;
   onAddFile?: (prefix: string) => void;
+  onAddFolder?: (prefix: string) => void;
   onAddEmptyFolder?: (prefix: string) => void;
   onRenameFile?: (docId: Id<"documents">, currentName: string) => void;
   onRenameFolder?: (prefix: string, currentName: string) => void;
@@ -49,7 +50,7 @@ function statusIcon(format: string, pct: number | null) {
 
 export function HandbookTree({
   handbookId, files, emptyFolders, activeDocId,
-  onOpenFile, onOpenSecondary, onDeleteFile, onDeleteFolder, onAddFile, onAddEmptyFolder,
+  onOpenFile, onOpenSecondary, onDeleteFile, onDeleteFolder, onAddFile, onAddFolder, onAddEmptyFolder,
   onRenameFile, onRenameFolder,
 }: HandbookTreeProps) {
   const tree = useMemo(() => buildTree(files, emptyFolders), [files, emptyFolders]);
@@ -111,11 +112,13 @@ export function HandbookTree({
                 </button>
                 <NodeMenu items={[
                   ...(onAddFile ? [{ label: "Thêm file", icon: <FilePlus2 className="h-3.5 w-3.5" />, onClick: () => onAddFile(node.path) }] : []),
+                  ...(onAddFolder ? [{ label: "Import Thư mục", icon: <FolderPlus className="h-3.5 w-3.5" />, onClick: () => onAddFolder(node.path) }] : []),
                   ...(onAddEmptyFolder ? [{ label: "Tạo folder con", icon: <FolderPlus className="h-3.5 w-3.5" />, onClick: () => onAddEmptyFolder(node.path) }] : []),
                   ...(onRenameFolder ? [{ label: "Đổi tên folder", icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => onRenameFolder(node.path, node.name) }] : []),
                   ...(onDeleteFolder ? [{ label: "Xóa folder", icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => onDeleteFolder(node.path) }] : []),
                 ]} />
               </div>
+
               {open && renderNodes(node.children, depth + 1)}
             </li>
           );
