@@ -753,15 +753,20 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     });
   }, [registerJump]);
 
+  const [fetchKey, setFetchKey] = useState(0);
+
   useEffect(() => {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 30_000);
 
     fetch(downloadUrl, { signal: controller.signal })
       .then((r) => {
         // Handle expired presigned URL (403/401) — evict cache so loader fetches a fresh URL
         if (r.status === 403 || r.status === 401) {
-          // Import evict function lazily to avoid circular dep
           import("@/app/reader/[docId]/ReaderPageInner").then(({ evictCachedUrl }) => {
             evictCachedUrl(doc._id);
           }).catch(() => {});
@@ -771,18 +776,23 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         return r.arrayBuffer();
       })
       .then((buf) => new TextDecoder("utf-8").decode(buf))
-      .then((txt) => setContent(txt))
+      .then((txt) => {
+        setError(null); // clear any stale error (e.g. from StrictMode first-run abort)
+        setContent(txt);
+      })
       .catch((err) => {
         if (err instanceof DOMException && err.name === "AbortError") {
-          setError("Tải file quá chậm, vui lòng thử lại");
-        } else {
-          setError(err instanceof Error ? err.message : "Không thể tải file Markdown");
+          // Only show error for real timeouts — ignore cleanup/StrictMode aborts
+          if (timedOut) setError("Tải file quá chậm, vui lòng thử lại");
+          return;
         }
+        setError(err instanceof Error ? err.message : "Không thể tải file Markdown");
       })
       .finally(() => clearTimeout(timeout));
 
     return () => { controller.abort(); clearTimeout(timeout); };
-  }, [downloadUrl, doc._id]);
+  }, [downloadUrl, doc._id, fetchKey]);
+
 
   const toc = useMemo(() => (content ? extractToc(content) : []), [content]);
   const sections = useMemo(() => (content ? splitIntoSections(content) : []), [content]);
@@ -996,7 +1006,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         <Button
           variant="outline"
           size="sm"
-          onClick={() => { setError(null); setContent(null); }}
+          onClick={() => { setError(null); setContent(null); setFetchKey((k) => k + 1); }}
         >
           Thử lại
         </Button>
