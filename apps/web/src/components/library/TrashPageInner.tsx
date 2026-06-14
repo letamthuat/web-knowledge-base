@@ -1,14 +1,15 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/_generated/api";
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { TrashView } from "@/components/library/TrashView";
 import { labels } from "@/lib/i18n/labels";
+import { AppLogo } from "@/components/AppLogo";
 
 const L = labels.trash;
 
@@ -34,9 +35,7 @@ export function TrashPageInner() {
     <div className="min-h-dvh bg-background">
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <BookOpen className="h-5 w-5 text-primary-foreground" aria-hidden />
-          </div>
+          <AppLogo size={32} />
           <span className="font-semibold">Web Knowledge Base</span>
         </div>
       </header>
