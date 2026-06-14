@@ -913,8 +913,13 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     const doScroll = (attempts = 0) => {
       const heading = container.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
       if (heading) {
-        // Scroll the overflow container, not the window
-        container.scrollTo({ top: heading.offsetTop - 8, behavior: "smooth" });
+        // getBoundingClientRect gives position relative to viewport.
+        // Subtracting container's rect and adding scrollTop gives
+        // the correct absolute position within the overflow container.
+        const containerRect = container.getBoundingClientRect();
+        const headingRect = heading.getBoundingClientRect();
+        const targetScrollTop = headingRect.top - containerRect.top + container.scrollTop - 8;
+        container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
         activeIdRef.current = id;
         setActiveId(id);
       } else if (attempts < 10) {

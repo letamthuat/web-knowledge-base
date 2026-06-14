@@ -134,7 +134,10 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
     if (!container) return;
     const heading = container.querySelector(`#${id}`) as HTMLElement | null;
     if (heading) {
-      container.scrollTo({ top: heading.offsetTop - 8, behavior: "smooth" });
+      const containerRect = container.getBoundingClientRect();
+      const headingRect = heading.getBoundingClientRect();
+      const targetScrollTop = headingRect.top - containerRect.top + container.scrollTop - 8;
+      container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
       setActiveId(id);
     }
   }, []);
