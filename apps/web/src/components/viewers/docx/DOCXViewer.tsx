@@ -134,10 +134,13 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
     if (!container) return;
     const heading = container.querySelector(`#${id}`) as HTMLElement | null;
     if (heading) {
-      const containerRect = container.getBoundingClientRect();
-      const headingRect = heading.getBoundingClientRect();
-      const targetScrollTop = headingRect.top - containerRect.top + container.scrollTop - 8;
-      container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+      let top = 0;
+      let el: HTMLElement | null = heading;
+      while (el && el !== container) {
+        top += el.offsetTop;
+        el = el.offsetParent as HTMLElement | null;
+      }
+      container.scrollTo({ top: top - 8, behavior: "smooth" });
       setActiveId(id);
     }
   }, []);

@@ -913,13 +913,16 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     const doScroll = (attempts = 0) => {
       const heading = container.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
       if (heading) {
-        // getBoundingClientRect gives position relative to viewport.
-        // Subtracting container's rect and adding scrollTop gives
-        // the correct absolute position within the overflow container.
-        const containerRect = container.getBoundingClientRect();
-        const headingRect = heading.getBoundingClientRect();
-        const targetScrollTop = headingRect.top - containerRect.top + container.scrollTop - 8;
-        container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+        // Walk up offsetParent chain to accumulate offsetTop relative to
+        // the scroll container. getBoundingClientRect cannot be used here
+        // because CSS zoom on the inner wrapper creates a coordinate mismatch.
+        let top = 0;
+        let el: HTMLElement | null = heading;
+        while (el && el !== container) {
+          top += el.offsetTop;
+          el = el.offsetParent as HTMLElement | null;
+        }
+        container.scrollTo({ top: top - 8, behavior: "smooth" });
         activeIdRef.current = id;
         setActiveId(id);
       } else if (attempts < 10) {
