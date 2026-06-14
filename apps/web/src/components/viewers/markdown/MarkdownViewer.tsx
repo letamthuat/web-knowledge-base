@@ -1068,7 +1068,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         {/* Content area */}
         <div
           ref={contentRef}
-          className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/70 dark:bg-slate-950/70"
+          className="relative flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/70 dark:bg-slate-950/70"
           style={{ WebkitOverflowScrolling: "touch", willChange: "scroll-position" } as React.CSSProperties}
           onScroll={handleScroll}
           onPointerUp={handleMouseUp}
