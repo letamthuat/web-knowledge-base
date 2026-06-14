@@ -754,14 +754,23 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
   }, [registerJump]);
 
   useEffect(() => {
-    fetch(downloadUrl)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+
+    fetch(downloadUrl, { signal: controller.signal })
       .then((r) => r.arrayBuffer())
       .then((buf) => new TextDecoder("utf-8").decode(buf))
-      .then((txt) => {
-        setContent(txt);
-        fetch("/api/debug-log", { method: "POST", body: txt }).catch(() => {});
+      .then((txt) => setContent(txt))
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          setError("Tải file quá chậm, vui lòng thử lại");
+        } else {
+          setError("Không thể tải file Markdown");
+        }
       })
-      .catch(() => setError("Không thể tải file Markdown"));
+      .finally(() => clearTimeout(timeout));
+
+    return () => { controller.abort(); clearTimeout(timeout); };
   }, [downloadUrl]);
 
   const toc = useMemo(() => (content ? extractToc(content) : []), [content]);

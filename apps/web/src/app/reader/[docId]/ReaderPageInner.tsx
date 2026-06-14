@@ -559,14 +559,31 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
 
   const [downloadUrl, setDownloadUrl] = useState<string | null>(() => getCachedUrl(docId));
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [slowLoad, setSlowLoad] = useState(false);
 
   useEffect(() => {
     if (!doc) return;
     if (getCachedUrl(docId)) return;
-    getDownloadUrl({ docId })
+
+    setUrlError(null);
+    setSlowLoad(false);
+
+    // Show "retry" hint after 8s if still loading
+    const slowTimer = setTimeout(() => setSlowLoad(true), 8_000);
+
+    // Wrap action with 15s timeout to avoid infinite spinner on mobile
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Tải file quá chậm, vui lòng thử lại")), 15_000)
+    );
+
+    Promise.race([getDownloadUrl({ docId }), timeoutPromise])
       .then((url) => { setCachedUrl(docId, url); setDownloadUrl(url); })
-      .catch((e) => setUrlError(e instanceof Error ? e.message : "Không thể tải file"));
-  }, [doc, docId, getDownloadUrl]);
+      .catch((e) => setUrlError(e instanceof Error ? e.message : "Không thể tải file"))
+      .finally(() => clearTimeout(slowTimer));
+
+    return () => clearTimeout(slowTimer);
+  }, [doc, docId, getDownloadUrl, retryCount]);
 
   if (doc === undefined) return <FullPageSpinner />;
   if (doc === null) {
@@ -588,7 +605,12 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
           </Button>
           <span className="flex-1 truncate text-sm font-medium">{doc.title}</span>
         </header>
-        <div className="flex flex-1 items-center justify-center text-destructive text-sm">{urlError}</div>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+          <p className="text-destructive text-sm">{urlError}</p>
+          <Button variant="outline" size="sm" onClick={() => { setRetryCount((c) => c + 1); setUrlError(null); }}>
+            Thử lại
+          </Button>
+        </div>
       </div>
     );
   }
@@ -603,8 +625,16 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
           </Button>
           <span className="flex-1 truncate text-sm font-medium">{doc.title}</span>
         </header>
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          {slowLoad && (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs text-muted-foreground">Mạng chậm, đang chờ kết nối…</p>
+              <Button variant="outline" size="sm" onClick={() => setRetryCount((c) => c + 1)}>
+                Thử lại
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
