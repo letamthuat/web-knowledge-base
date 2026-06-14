@@ -758,20 +758,31 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     const timeout = setTimeout(() => controller.abort(), 30_000);
 
     fetch(downloadUrl, { signal: controller.signal })
-      .then((r) => r.arrayBuffer())
+      .then((r) => {
+        // Handle expired presigned URL (403/401) — evict cache so loader fetches a fresh URL
+        if (r.status === 403 || r.status === 401) {
+          // Import evict function lazily to avoid circular dep
+          import("@/app/reader/[docId]/ReaderPageInner").then(({ evictCachedUrl }) => {
+            evictCachedUrl(doc._id);
+          }).catch(() => {});
+          throw new Error("URL hết hạn, vui lòng thử lại");
+        }
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.arrayBuffer();
+      })
       .then((buf) => new TextDecoder("utf-8").decode(buf))
       .then((txt) => setContent(txt))
       .catch((err) => {
         if (err instanceof DOMException && err.name === "AbortError") {
           setError("Tải file quá chậm, vui lòng thử lại");
         } else {
-          setError("Không thể tải file Markdown");
+          setError(err instanceof Error ? err.message : "Không thể tải file Markdown");
         }
       })
       .finally(() => clearTimeout(timeout));
 
     return () => { controller.abort(); clearTimeout(timeout); };
-  }, [downloadUrl]);
+  }, [downloadUrl, doc._id]);
 
   const toc = useMemo(() => (content ? extractToc(content) : []), [content]);
   const sections = useMemo(() => (content ? splitIntoSections(content) : []), [content]);
@@ -980,8 +991,15 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
 
   if (error) {
     return (
-      <div className="flex flex-1 items-center justify-center text-destructive text-sm">
-        {error}
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-destructive text-sm">{error}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { setError(null); setContent(null); }}
+        >
+          Thử lại
+        </Button>
       </div>
     );
   }

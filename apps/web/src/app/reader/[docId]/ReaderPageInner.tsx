@@ -538,7 +538,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
 // Module-level URL cache — persists across tab navigations within the session
 const urlCache = new Map<string, { url: string; fetchedAt: number }>();
-const URL_TTL_MS = 10 * 60 * 1000; // 10 min (R2 presigned = 15 min)
+const URL_TTL_MS = 4 * 60 * 1000; // 4 min — conservative (Convex presigned URLs can expire)
 
 export function getCachedUrl(docId: string) {
   const entry = urlCache.get(docId);
@@ -549,6 +549,10 @@ export function getCachedUrl(docId: string) {
 
 export function setCachedUrl(docId: string, url: string) {
   urlCache.set(docId, { url, fetchedAt: Date.now() });
+}
+
+export function evictCachedUrl(docId: string) {
+  urlCache.delete(docId);
 }
 
 // ReaderDocLoader — used by AppShell keep-alive: receives docId as prop instead of useParams
