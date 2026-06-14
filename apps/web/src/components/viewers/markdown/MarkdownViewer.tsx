@@ -906,32 +906,68 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     [savePosition]
   );
 
+  // Map heading ID → section index (built from raw markdown text, not DOM)
+  const headingSectionMap = useMemo((): Map<string, number> => {
+    if (!content) return new Map();
+    const sects = splitIntoSections(content);
+    const map = new Map<string, number>();
+    const slugger = new GithubSlugger();
+    sects.forEach((sec, idx) => {
+      for (const line of sec.split("\n")) {
+        const m = line.match(/^(#{1,6})\s+(.+)/);
+        if (!m) continue;
+        const text = m[2].replace(/[*_`[\]]/g, "").trim();
+        const id = slugger.slug(text);
+        if (!map.has(id)) map.set(id, idx);
+      }
+    });
+    return map;
+  }, [content]);
+
   const scrollToHeading = useCallback((id: string) => {
     const container = contentRef.current;
     if (!container) return;
 
-    const doScroll = (attempts = 0) => {
+    const fineTune = () => {
       const heading = container.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
-      if (heading) {
-        // Walk up offsetParent chain to accumulate offsetTop relative to
-        // the scroll container. getBoundingClientRect cannot be used here
-        // because CSS zoom on the inner wrapper creates a coordinate mismatch.
-        let top = 0;
-        let el: HTMLElement | null = heading;
-        while (el && el !== container) {
-          top += el.offsetTop;
-          el = el.offsetParent as HTMLElement | null;
-        }
-        container.scrollTo({ top: top - 8, behavior: "smooth" });
-        activeIdRef.current = id;
-        setActiveId(id);
-      } else if (attempts < 10) {
-        // LazySection may not have mounted yet — retry
-        requestAnimationFrame(() => doScroll(attempts + 1));
+      if (!heading) return false;
+      // contentRef has position:relative, so it is heading's offsetParent root.
+      // Walk chain to sum offsetTop values until we reach container (or body).
+      let top = 0;
+      let el: HTMLElement | null = heading;
+      while (el && el !== container) {
+        top += el.offsetTop;
+        el = el.offsetParent as HTMLElement | null;
       }
+      // If walk never reached container (zoom edge case), fall back to simple offsetTop
+      if (el !== container) top = heading.offsetTop;
+      container.scrollTo({ top: Math.max(0, top - 8), behavior: "smooth" });
+      activeIdRef.current = id;
+      setActiveId(id);
+      return true;
     };
-    doScroll();
-  }, []);
+
+    // If heading is already in DOM, scroll immediately
+    if (fineTune()) return;
+
+    // Heading not yet in DOM (LazySection not mounted).
+    // Pre-scroll to the estimated section position to trigger IntersectionObserver.
+    const sectionIdx = headingSectionMap.get(id);
+    if (sectionIdx !== undefined) {
+      const totalSections = sections.length;
+      const estimatedPct = totalSections > 1 ? sectionIdx / totalSections : 0;
+      const estimatedTop = estimatedPct * container.scrollHeight;
+      container.scrollTo({ top: estimatedTop, behavior: "instant" });
+    }
+
+    // Poll until heading appears in DOM (LazySection mounts after scroll triggers IntersectionObserver)
+    let attempts = 0;
+    const poll = () => {
+      if (fineTune()) return;
+      if (attempts++ < 50) requestAnimationFrame(poll);
+    };
+    requestAnimationFrame(poll);
+  }, [headingSectionMap, sections.length]);
 
   if (error) {
     return (
