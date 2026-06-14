@@ -32,15 +32,21 @@ const SettingsPageInner = dynamic(
   () => import("@/components/settings/SettingsPageInner").then((m) => m.SettingsPageInner),
   { ssr: false }
 );
+const TrashPageInner = dynamic(
+  () => import("@/components/library/TrashPageInner").then((m) => m.TrashPageInner),
+  { ssr: false }
+);
 
 // Preload all dynamic chunks immediately so they're ready before user taps a tab
 if (typeof window !== "undefined") {
   import("@/components/library/LibraryPageInner");
   import("@/components/notes/NotesPageInner");
   import("@/components/settings/SettingsPageInner");
+  import("@/components/library/TrashPageInner");
 }
 
 function pathnameToPanel(pathname: string): string | null {
+  if (pathname === "/library/trash") return "trash";
   if (pathname === "/library" || pathname.startsWith("/library/")) return "library";
   if (pathname === "/notes"   || pathname.startsWith("/notes/"))   return "notes";
   if (pathname === "/settings"|| pathname.startsWith("/settings/"))return "settings";
@@ -129,6 +135,9 @@ function AppShellContent({ children }: { children: ReactNode }) {
           </TabPanel>
           <TabPanel active={current === "settings"}>
             <SettingsPageInner />
+          </TabPanel>
+          <TabPanel active={current === "trash"}>
+            <TrashPageInner />
           </TabPanel>
           {mountedDocIds.current.map((docId) => (
             <TabPanel

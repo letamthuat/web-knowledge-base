@@ -367,7 +367,12 @@ export function SettingsPageInner() {
                   </div>
                   <p className="text-xl font-bold">{stats.docCount}</p>
                   {stats.trashedCount > 0 && (
-                    <p className="text-xs text-muted-foreground">{stats.trashedCount} trong thùng rác</p>
+                    <button
+                      onClick={() => router.push("/library/trash")}
+                      className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors mt-0.5"
+                    >
+                      {stats.trashedCount} trong thùng rác (xem)
+                    </button>
                   )}
                 </div>
                 <div className="rounded-lg bg-muted/50 p-3 text-center">

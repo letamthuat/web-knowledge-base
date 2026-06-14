@@ -157,7 +157,7 @@ export function LibraryPageInner() {
   }
 
   async function handleDeleteFolder(folderId: Id<"folders">, name: string) {
-    if (!confirm(`Xoá folder "${name}"? Tài liệu bên trong sẽ không bị xoá.`)) return;
+    if (!confirm(`Xóa folder "${name}" và TOÀN BỘ tài liệu/thư mục con bên trong? Hành động này không thể hoàn tác.`)) return;
     try {
       await deleteFolder({ folderId });
       if (scope === folderId) { setScope("all"); setBreadcrumbs([]); }
@@ -346,6 +346,14 @@ export function LibraryPageInner() {
             <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => { setActivePanel("settings"); window.history.pushState(null, "", "/settings"); }}>
               <Settings className="mr-1 h-4 w-4" />{N.settings}
             </Button>
+            <Button
+              variant="ghost" size="sm"
+              onMouseEnter={() => router.prefetch("/library/trash")}
+              onClick={() => router.push("/library/trash")}
+            >
+              <Trash2 className="mr-1 h-4 w-4 text-destructive" />
+              {L.trashButton}
+            </Button>
             <button
               onClick={() => setSearchOpen(true)}
               className="flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -446,6 +454,12 @@ export function LibraryPageInner() {
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
               >
                 <Settings className="h-4 w-4" /> {N.settings}
+              </button>
+              <button
+                onClick={() => { setMobileSidebarOpen(false); router.push("/library/trash"); }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <Trash2 className="h-4 w-4 text-destructive" /> {L.trashButton}
               </button>
             </div>
           </aside>

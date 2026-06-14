@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/_generated/api";
@@ -233,6 +234,7 @@ const WIDTH_KEY = "hb-sidebar-width";
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export function HandbookSidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
+  const router = useRouter();
   const domains = useQuery(api.domains.queries.listDomains);
   const { openTab } = useTabSync();
   const { activePanel, setActivePanel, openSecondary } = useActiveTab();
@@ -293,6 +295,19 @@ export function HandbookSidebarContent({ onLinkClick }: { onLinkClick?: () => vo
         ))}
 
         <LooseDocsSection activeDocId={activeDocId} onOpenFile={openDoc} onOpenSecondary={openSecondary} />
+
+        <div className="border-t border-border/40 mt-2 pt-2 px-2">
+          <button
+            onClick={() => {
+              router.push("/library/trash");
+              if (onLinkClick) onLinkClick();
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5 shrink-0 text-destructive" />
+            <span>Thùng rác</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1055,7 +1070,7 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
                     onClick: () => {
                       setConfirmDialog({
                         open: true, title: "Xóa folder",
-                        description: `Xóa folder "${node.name}" và toàn bộ file bên trong?`,
+                        description: `Xóa folder "${node.name}" và TOÀN BỘ tài liệu/thư mục con bên trong? Hành động này không thể hoàn tác.`,
                         onConfirm: async () => {
                           setConfirmDialog({ open: false });
                           try {
