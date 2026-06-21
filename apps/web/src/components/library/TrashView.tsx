@@ -4,9 +4,7 @@ import { useState } from "react";
 import { format, differenceInDays } from "date-fns";
 import { vi } from "date-fns/locale";
 import { FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, RotateCcw, Trash2 } from "lucide-react";
-import { useMutation } from "convex/react";
-import { api } from "@/_generated/api";
-import { Id } from "@/_generated/dataModel";
+import { restoreDocument, deletePermanent, deleteAllTrashed } from "@/lib/api/documents";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,11 +30,11 @@ const FORMAT_CONFIG: Record<string, { icon: React.ElementType; color: string; bg
 const FALLBACK_CONFIG = { icon: FileText, color: "text-muted-foreground", bg: "bg-muted/40" };
 
 interface Doc {
-  _id: Id<"documents">;
+  _id: string;
   title: string;
   format: string;
-  fileSizeBytes?: number;
-  trashedAt?: number;
+  fileSizeBytes?: number | null;
+  trashedAt?: number | null;
   createdAt: number;
 }
 
@@ -45,27 +43,23 @@ interface TrashViewProps {
 }
 
 export function TrashView({ docs }: TrashViewProps) {
-  const [deleteTarget, setDeleteTarget] = useState<Id<"documents"> | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [clearAllOpen, setClearAllOpen] = useState(false);
 
-  const restoreMutation = useMutation(api.documents.mutations.restore);
-  const deleteMutation = useMutation(api.documents.mutations.deletePermanent);
-  const deleteAllTrashed = useMutation(api.documents.mutations.deleteAllTrashed);
-
-  async function handleRestore(docId: Id<"documents">) {
-    await restoreMutation({ docId });
+  async function handleRestore(docId: string) {
+    await restoreDocument(docId);
     toast.success(L.restoreSuccess);
   }
 
   async function handleDeletePermanent() {
     if (!deleteTarget) return;
-    await deleteMutation({ docId: deleteTarget });
+    await deletePermanent(deleteTarget);
     setDeleteTarget(null);
     toast.success(L.deletePermanentSuccess);
   }
 
   async function handleClearAll() {
-    const count = await deleteAllTrashed({});
+    const count = await deleteAllTrashed();
     setClearAllOpen(false);
     toast.success(`Đã xoá vĩnh viễn ${count} tài liệu`);
   }

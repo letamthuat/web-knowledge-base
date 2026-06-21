@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Menu, X, BookOpen, ChevronRight, StickyNote, Settings, Search } from "lucide-react";
-import { useQuery } from "convex/react";
-import { api } from "@/_generated/api";
+import { useTrashedDocuments } from "@/lib/api/documents";
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { TrashView } from "@/components/library/TrashView";
@@ -19,7 +18,7 @@ const N = labels.nav;
 export function TrashPageInner() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
-  const trashedDocs = useQuery(api.documents.queries.listTrashed);
+  const trashedDocs = useTrashedDocuments();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [libraryTreeOpen, setLibraryTreeOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);

@@ -25,7 +25,27 @@
 - [x] **Phase 0** — Tạo Supabase project + cài SDK/CLI + env
 - [x] **Phase 1** — Schema Postgres: bảng + FK + index + RLS + tsvector  (đã chạy 0001_init.sql)
 - [x] **Phase 2** — Auth: Supabase Auth email/password + forgot/reset. (Google tạm tắt; MFA để sau)
-- [ ] **Phase 3** — Data layer: Supabase client + hook realtime thay `useQuery`  ← *kế tiếp*
+- [~] **Phase 3** — Data layer (ĐANG LÀM): foundation + domains reading_progress/tags/folders/documents-API + R2 routes xong; còn cập nhật consumer + domains notes/highlights/tabs/handbooks/transcripts.
+
+### Tiến độ Phase 3 (commit theo domain trên nhánh `supabase`)
+- ✅ Foundation: `hooks/useRealtimeQuery.ts` (có option `select`), `providers/SupabaseProvider.tsx`
+- ✅ `lib/api/reading-progress.ts`, `lib/api/tags.ts`, `lib/api/folders.ts`, `lib/api/documents.ts`
+- ✅ R2: `lib/r2.ts`, `app/api/storage/{upload-url,download-url}/route.ts`
+- ✅ Consumer đã đổi: useReadingProgress, RecentHistory, TagPopover, FilterBar
+- ⏳ Consumer CÒN LẠI: DataPrefetcher, LibraryPageInner, DocumentCard, TrashPageInner, TrashView,
+  reader/ReaderPageInner, tabs/TabBar+TabDropdown, UploadDropzone, recording dialogs, HandbookSidebar...
+
+### PATTERN chuyển đổi 1 call site (cơ học)
+| Convex | Supabase |
+|---|---|
+| `useQuery(api.X.queries.listByUser)` | `useXxxList()` từ `lib/api/X` (dùng `useRealtimeQuery`) |
+| `useQuery(api.X.queries.getByDoc, {docId})` | `useRealtimeOne("table", {filter:{docId}})` hoặc hook domain |
+| `useMutation(api.X.mutations.foo)` → `await foo(args)` | `import { foo } from "lib/api/X"; await foo(...)` |
+| `useAction(api.documents.actions.getDownloadUrl)` | `import { getDownloadUrl } from "lib/api/documents"` |
+| `Id<"documents">` | `string` |
+| import `{ api }`, `convex/react` | XOÁ; import từ `@/lib/api/*` |
+
+Lưu ý: bỏ `useMutation`/`useAction` wrapper — gọi thẳng async function. Bỏ import `convex/react` + `@/_generated/*`.
 - [ ] **Phase 4** — Server functions: extract text + presigned URL → Vercel routes; cron
 - [ ] **Phase 5** — Search: RPC FTS Postgres thay query `search`
 - [ ] **Phase 6** — Migrate dữ liệu cũ: export Convex → transform → import Postgres (khi Convex bật lại)
