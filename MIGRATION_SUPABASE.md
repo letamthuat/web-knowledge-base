@@ -29,13 +29,24 @@
 
 ### Tiến độ Phase 3 (commit theo domain trên nhánh `supabase`)
 - ✅ Foundation: `hooks/useRealtimeQuery.ts` (có option `select`), `providers/SupabaseProvider.tsx`
-- ✅ `lib/api/reading-progress.ts`, `lib/api/tags.ts`, `lib/api/folders.ts`, `lib/api/documents.ts`, `lib/api/notes.ts`, `lib/api/note-tabs.ts`
+- ✅ Domain API (`lib/api/*`): reading-progress, tags, folders, documents, **notes, note-tabs, highlights, tabs, users (profiles), reading-history**
 - ✅ R2: `lib/r2.ts`, `app/api/storage/{upload-url,download-url}/route.ts`
-- ✅ Consumer đã đổi: useReadingProgress, RecentHistory, TagPopover, FilterBar, useNotes (hook lá), useNoteTabs (hook lá)
-- ⚠️ Còn nợ ở notes: NoteEditor vẫn dùng convex actions cho media upload (requestNoteMediaUploadUrl/getNoteMediaUrl/copyNoteFileToLibrary) → cần R2 route khi migrate trang lớn; useSearch.ts notes.search để Phase 5
-- ⏳ Consumer CÒN LẠI (trang lớn): DataPrefetcher, LibraryPageInner, DocumentCard, ReaderPageInner,
-  NotesPageInner, NoteEditor (media upload), UploadDropzone, recording dialogs, HandbookSidebar, useSearch...
-  (TabBar/TabDropdown chỉ dùng type NoteTab — đã tương thích, không cần đổi)
+- ✅ Hook lá đã đổi sang Supabase: useReadingProgress, **useNotes, useNoteTabs, useHighlights, useTabSync, useReadingModePrefs**
+- ✅ Consumer nhỏ đã đổi: RecentHistory, TagPopover, FilterBar, **ReadingHistoryPopover**
+- ⚠️ Còn nợ trong domain đã làm:
+  - notes: NoteEditor vẫn dùng convex actions cho media upload (requestNoteMediaUploadUrl/getNoteMediaUrl/copyNoteFileToLibrary) → cần R2 route khi migrate trang lớn
+  - reading-history: `recordOpen` đã có trong `lib/api/reading-history.ts` nhưng ReaderPageInner vẫn gọi convex (đổi khi migrate trang lớn)
+  - users: `deleteAccount` (action) để Phase 4
+- ⏳ Domain CÒN LẠI (kẹt sau trang lớn hoặc cần server action):
+  - aiSettings → chỉ 2 consumer là SettingsPageInner + TranscriptButton (trang lớn) → migrate cùng trang
+  - domains (handbook) → consumer HandbookSidebar (trang lớn)
+  - transcripts, handbooks → có actions (Gemini transcribe, ZIP ingest) → Phase 4 Vercel routes
+- ⏳ Trang lớn CÒN LẠI: DataPrefetcher, LibraryPageInner, DocumentCard, ReaderPageInner, NotesPageInner,
+  NoteEditor, NotesSidePanel, MarkdownViewer/DOCXViewer/WebClipViewer (highlights), SettingsPageInner,
+  TranscriptButton, UploadDropzone, recording dialogs, HandbookSidebar, useSearch (Phase 5),
+  useBackupDownload, useDocExport
+  (TabBar/TabDropdown chỉ dùng type NoteTab/TabDoc — đã tương thích, không cần đổi)
+- 📌 tsc hiện còn 14 lỗi tiền tồn ở DocumentCard/useBackupDownload/useDocExport (domain documents/library chưa migrate xong) — các file domain mới đều sạch.
 
 ### PATTERN chuyển đổi 1 call site (cơ học)
 | Convex | Supabase |
