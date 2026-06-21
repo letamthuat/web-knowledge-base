@@ -62,6 +62,28 @@ export async function updateTranscriptStatus(
   if (error) throw error;
 }
 
+export type WebmChunkInfo = {
+  chunks: { byteStart: number; byteEnd: number }[];
+  totalBytes: number;
+  headerBytes: number;
+};
+
+// Tính ranh giới chunk audio/video qua route (Range request server-side).
+export async function getWebmChunks(args: {
+  downloadUrl: string;
+  mimeType: string;
+  fileSizeBytes?: number;
+  durationSeconds?: number;
+}): Promise<WebmChunkInfo> {
+  const res = await fetch("/api/transcripts/webm-chunks", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) throw new Error("Không tính được chunk audio");
+  return (await res.json()) as WebmChunkInfo;
+}
+
 export async function saveTranscriptSegments(args: {
   transcriptId: string;
   segments: TranscriptSegment[];

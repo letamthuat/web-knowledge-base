@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useAction } from "convex/react";
-import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { useAiSettings } from "@/lib/api/ai-settings";
 import { getDownloadUrl } from "@/lib/api/documents";
-import { initTranscript, updateTranscriptStatus, saveTranscriptSegments } from "@/lib/api/transcripts";
+import { initTranscript, updateTranscriptStatus, saveTranscriptSegments, getWebmChunks } from "@/lib/api/transcripts";
 import { Button } from "@/components/ui/button";
 import { Captions, Loader2, RefreshCw, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { TranscriptProgress } from "@/lib/transcriptService";
@@ -48,7 +46,6 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
 
   const aiSettings = useAiSettings();
 
-  const getWebmChunks = useAction(api.transcripts.actions.getWebmChunks);
 
   // Notify parent + block browser navigation when running
   useEffect(() => {
