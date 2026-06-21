@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useAction, useMutation } from "convex/react";
-import { api } from "@/_generated/api";
+import { requestUploadUrl } from "@/lib/api/documents";
+import { finalizeImport } from "@/lib/api/handbooks";
 import { Id } from "@/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -24,9 +24,6 @@ export function ImportZipDialog({ handbookId, handbookName, onClose, onComplete 
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const requestUploadUrl = useAction(api.documents.actions.requestUploadUrl);
-  const finalizeImport = useMutation(api.handbooks.mutations.finalizeImport);
 
   const handleFile = useCallback(async (file: File) => {
     try {
@@ -51,12 +48,9 @@ export function ImportZipDialog({ handbookId, handbookName, onClose, onComplete 
         setStatusText(`Đang tải lên ${i + 1}/${entries.length}: ${e.relPath}`);
         setProgress(Math.round((i / entries.length) * 100));
         try {
-          const { uploadUrl, storageKey } = await requestUploadUrl({
-            fileSizeBytes: e.size,
-            format: e.format,
-            fileName: e.relPath.split("/").pop() ?? e.relPath,
-            mimeType: e.mimeType,
-          });
+          const { uploadUrl, storageKey } = await requestUploadUrl(
+            e.relPath.split("/").pop() ?? e.relPath,
+          );
           await putToR2(uploadUrl, e.blob);
           manifest.push({
             relPath: e.relPath,
@@ -80,10 +74,7 @@ export function ImportZipDialog({ handbookId, handbookName, onClose, onComplete 
       setPhase("finalizing");
       setStatusText("Đang hoàn tất…");
       setProgress(100);
-      const res = await finalizeImport({
-        handbookId,
-        files: manifest as never,
-      });
+      const res = await finalizeImport(handbookId, manifest);
 
       setPhase("done");
       const msgs = [`Đã thêm ${res.created} file`];

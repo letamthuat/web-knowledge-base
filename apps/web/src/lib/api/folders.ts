@@ -15,13 +15,13 @@ export type DocFolderRow = { _id: string; docId: string; folderId: string };
 type DocLite = { _id: string; title: string; format: string; status: string; createdAt: number; fileSizeBytes: number | null };
 
 // Tất cả folder của user.
-export function useFoldersList(): FolderRow[] | undefined {
-  return useRealtimeQuery<FolderRow>("folders", { order: { column: "name", ascending: true } });
+export function useFoldersList(enabled = true): FolderRow[] | undefined {
+  return useRealtimeQuery<FolderRow>("folders", { order: { column: "name", ascending: true }, enabled });
 }
 
 // Tất cả mapping document_folders (dựng cây sidebar).
-export function useAllDocFolders(): DocFolderRow[] | undefined {
-  return useRealtimeQuery<DocFolderRow>("document_folders");
+export function useAllDocFolders(enabled = true): DocFolderRow[] | undefined {
+  return useRealtimeQuery<DocFolderRow>("document_folders", { enabled });
 }
 
 // Folder chứa 1 doc (hoặc null).

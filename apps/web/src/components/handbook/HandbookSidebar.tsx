@@ -3,9 +3,24 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { useQuery, useMutation, useAction } from "convex/react";
-import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
+import { useDomains, createDomain as apiCreateDomain, renameDomain as apiRenameDomain, removeDomain as apiRemoveDomain } from "@/lib/api/domains";
+import {
+  useHandbooks, useHandbookFiles,
+  createHandbook as apiCreateHandbook, renameHandbook as apiRenameHandbook, removeHandbook as apiRemoveHandbook,
+  addEmptyFolder as apiAddEmptyFolder, removeFolder as apiRemoveHbFolder,
+  renameFolder as apiRenameHbFolder, renameHandbookFile as apiRenameHandbookFile,
+  finalizeImport as apiFinalizeImport,
+} from "@/lib/api/handbooks";
+import {
+  useFoldersList, useAllDocFolders,
+  createFolder as apiCreateFolder, deleteFolder as apiDeleteFolder,
+  renameFolder as apiRenameDocFolder, assignDocToFolder as apiAssignDoc,
+} from "@/lib/api/folders";
+import {
+  useLooseDocsWithProgress, deletePermanent as apiDeletePermanent,
+  renameDocument as apiRenameDoc, requestUploadUrl as apiRequestUploadUrl, finalizeUpload as apiFinalizeUpload,
+} from "@/lib/api/documents";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { toast } from "sonner";
@@ -235,10 +250,10 @@ const WIDTH_KEY = "hb-sidebar-width";
 
 export function HandbookSidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
   const router = useRouter();
-  const domains = useQuery(api.domains.queries.listDomains);
+  const domains = useDomains();
   const { openTab } = useTabSync();
   const { activePanel, setActivePanel, openSecondary } = useActiveTab();
-  const createDomain = useMutation(api.domains.mutations.create);
+  const createDomain = (a: { name: string; color?: string }) => apiCreateDomain(a.name, a.color);
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
 
@@ -364,10 +379,10 @@ function DomainNode({ domainId, name, activeDocId, onOpenFile, onOpenSecondary }
   onOpenFile: (id: Id<"documents">) => void; onOpenSecondary: (id: string) => void;
 }) {
   const [open, setOpen] = useState(true);
-  const handbooks = useQuery(api.handbooks.queries.listHandbooks, open ? { domainId } : "skip");
-  const createHandbook = useMutation(api.handbooks.mutations.create);
-  const renameDomain = useMutation(api.domains.mutations.rename);
-  const removeDomain = useMutation(api.domains.mutations.remove);
+  const handbooks = useHandbooks(domainId, open);
+  const createHandbook = (a: { domainId: string; name: string; color?: string }) => apiCreateHandbook(a.domainId, a.name, a.color);
+  const renameDomain = (a: { domainId: string; name: string }) => apiRenameDomain(a.domainId, a.name);
+  const removeDomain = (a: { domainId: string }) => apiRemoveDomain(a.domainId);
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false });
@@ -500,16 +515,16 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false });
 
-  const files = useQuery(api.handbooks.queries.listHandbookFiles, open ? { handbookId } : "skip");
-  const renameHb = useMutation(api.handbooks.mutations.rename);
-  const removeHb = useMutation(api.handbooks.mutations.remove);
-  const addEmptyFolder = useMutation(api.handbooks.mutations.addEmptyFolder);
-  const removeFolder = useMutation(api.handbooks.mutations.removeFolder);
-  const deleteDoc = useMutation(api.documents.mutations.deletePermanent);
-  const renameFolder = useMutation(api.handbooks.mutations.renameFolder);
-  const renameHandbookFile = useMutation(api.handbooks.mutations.renameHandbookFile);
-  const requestUploadUrl = useAction(api.documents.actions.requestUploadUrl);
-  const finalizeImport = useMutation(api.handbooks.mutations.finalizeImport);
+  const files = useHandbookFiles(handbookId, open);
+  const renameHb = (a: { handbookId: string; name: string }) => apiRenameHandbook(a.handbookId, a.name);
+  const removeHb = (a: { handbookId: string }) => apiRemoveHandbook(a.handbookId);
+  const addEmptyFolder = (a: { handbookId: string; prefix: string }) => apiAddEmptyFolder(a.handbookId, a.prefix);
+  const removeFolder = (a: { handbookId: string; prefix: string }) => apiRemoveHbFolder(a.handbookId, a.prefix);
+  const deleteDoc = (a: { docId: string }) => apiDeletePermanent(a.docId);
+  const renameFolder = (a: { handbookId: string; oldPrefix: string; newPrefix: string }) => apiRenameHbFolder(a.handbookId, a.oldPrefix, a.newPrefix);
+  const renameHandbookFile = (a: { docId: string; newName: string }) => apiRenameHandbookFile(a.docId, a.newName);
+  const requestUploadUrl = (a: { fileName: string; fileSizeBytes?: number; format?: string; mimeType?: string }) => apiRequestUploadUrl(a.fileName);
+  const finalizeImport = (a: { handbookId: string; files: Parameters<typeof apiFinalizeImport>[1] }) => apiFinalizeImport(a.handbookId, a.files);
 
   const fileList: HandbookFile[] = useMemo(
     () => (files ?? []).map((f: any) => ({ ...f })) as HandbookFile[],
@@ -928,18 +943,18 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false });
 
-  const docs = useQuery(api.documents.queries.listLooseDocsWithProgress, open ? {} : "skip");
-  const folders = useQuery(api.folders.queries.listByUser, open ? {} : "skip");
-  const docFolders = useQuery(api.folders.queries.listAllDocFolders, open ? {} : "skip");
+  const docs = useLooseDocsWithProgress(open);
+  const folders = useFoldersList(open);
+  const docFolders = useAllDocFolders(open);
 
-  const createFolder = useMutation(api.folders.mutations.create);
-  const deleteFolder = useMutation(api.folders.mutations.deleteFolder);
-  const renameFolder = useMutation(api.folders.mutations.rename);
-  const assignDoc = useMutation(api.folders.mutations.assignDoc);
-  const renameDoc = useMutation(api.documents.mutations.rename);
-  const deleteDoc = useMutation(api.documents.mutations.deletePermanent);
-  const requestUploadUrl = useAction(api.documents.actions.requestUploadUrl);
-  const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
+  const createFolder = (a: { name: string; parentFolderId?: string }) => apiCreateFolder(a.name, a.parentFolderId);
+  const deleteFolder = (a: { folderId: string }) => apiDeleteFolder(a.folderId);
+  const renameFolder = (a: { folderId: string; name: string }) => apiRenameDocFolder(a.folderId, a.name);
+  const assignDoc = (a: { docId: string; folderId: string }) => apiAssignDoc(a.docId, a.folderId);
+  const renameDoc = (a: { docId: string; newTitle: string }) => apiRenameDoc(a.docId, a.newTitle);
+  const deleteDoc = (a: { docId: string }) => apiDeletePermanent(a.docId);
+  const requestUploadUrl = (a: { fileName: string; fileSizeBytes?: number; format?: string; mimeType?: string }) => apiRequestUploadUrl(a.fileName);
+  const finalizeUpload = apiFinalizeUpload;
 
   const toggleFolder = useCallback((folderId: string) => {
     setExpanded((prev) => {

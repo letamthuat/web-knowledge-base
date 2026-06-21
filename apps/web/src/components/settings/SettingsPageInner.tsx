@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/_generated/api";
 import { useAiSettings, saveAiSettings } from "@/lib/api/ai-settings";
+import { useStorageStats } from "@/lib/api/documents";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -301,7 +302,7 @@ export function SettingsPageInner() {
   const router = useRouter();
   const deleteAccount = useAction(api.users.actions.deleteAccount);
   const backfillExtractText = useAction(api.documents.actions.backfillExtractText);
-  const stats = useQuery(api.documents.queries.getStorageStats);
+  const stats = useStorageStats();
   const { downloadBackup, isDownloading } = useBackupDownload();
   const [confirm, setConfirm] = useState(false);
   const [input, setInput] = useState("");
