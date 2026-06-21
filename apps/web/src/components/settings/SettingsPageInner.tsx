@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAction, useQuery, useMutation } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/_generated/api";
+import { useAiSettings, saveAiSettings } from "@/lib/api/ai-settings";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -43,8 +44,7 @@ const CONVEX_FILE_LIMIT = 1 * 1024 * 1024 * 1024;
 const R2_STORAGE_LIMIT = 10 * 1024 * 1024 * 1024;
 
 function AiSettingsSection() {
-  const aiSettings = useQuery(api.aiSettings.queries.getAiSettings);
-  const saveAiSettings = useMutation(api.aiSettings.mutations.saveAiSettings);
+  const aiSettings = useAiSettings();
 
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);

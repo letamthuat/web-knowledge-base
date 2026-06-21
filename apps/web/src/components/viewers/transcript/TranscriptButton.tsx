@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useMutation, useAction, useQuery } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
+import { useAiSettings } from "@/lib/api/ai-settings";
+import { getDownloadUrl } from "@/lib/api/documents";
 import { Button } from "@/components/ui/button";
 import { Captions, Loader2, RefreshCw, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { TranscriptProgress } from "@/lib/transcriptService";
@@ -43,13 +45,12 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
 
   const isRunning = progress !== null && progress.phase !== "done" && progress.phase !== "error";
 
-  const aiSettings = useQuery(api.aiSettings.queries.getAiSettings);
+  const aiSettings = useAiSettings();
 
   const initTranscript = useMutation(api.transcripts.mutations.initTranscript);
   const updateStatus = useMutation(api.transcripts.mutations.updateStatus);
   const saveSegments = useMutation(api.transcripts.mutations.saveSegments);
   const getWebmChunks = useAction(api.transcripts.actions.getWebmChunks);
-  const getFreshDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
 
   // Notify parent + block browser navigation when running
   useEffect(() => {
@@ -241,7 +242,7 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
         await loadFFmpeg();
       }
 
-      const freshUrl = await getFreshDownloadUrl({ docId });
+      const freshUrl = await getDownloadUrl(docId);
       const webmInfo = await getWebmChunks({ downloadUrl: freshUrl, mimeType, fileSizeBytes, durationSeconds });
       const { chunks, headerBytes } = webmInfo;
 
@@ -266,7 +267,7 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
         if (batchStart > 0) await new Promise((r) => setTimeout(r, provider === "gemini" ? 1000 : 15000));
 
         // Pre-fetch URLs for all chunks in batch in parallel
-        const batchUrls = await Promise.all(batchIndices.map(() => getFreshDownloadUrl({ docId })));
+        const batchUrls = await Promise.all(batchIndices.map(() => getDownloadUrl(docId)));
 
         // Compute timeOffset for each chunk based on byte position
         const batchResults = await Promise.all(batchIndices.map((i, k) => {
