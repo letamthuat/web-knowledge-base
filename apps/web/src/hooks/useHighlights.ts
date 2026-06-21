@@ -1,11 +1,17 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
 import { useCallback } from "react";
-import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
+import {
+  useHighlightsByDoc,
+  createHighlight,
+  removeHighlight as apiRemoveHighlight,
+  updateHighlightNote,
+  createBookmark,
+  type HighlightColor,
+} from "@/lib/api/highlights";
 
-export type HighlightColor = "yellow" | "green" | "blue" | "pink" | "purple" | "custom";
+export type { HighlightColor } from "@/lib/api/highlights";
 
 export interface HighlightPosition {
   xpath: string;
@@ -14,17 +20,27 @@ export interface HighlightPosition {
   text: string;
 }
 
-export function useHighlights(docId: Id<"documents">) {
-  const highlights = useQuery(api.highlights.queries.listByDoc, { docId }) ?? [];
+// Hình dạng highlight cho UI (giữ Id<> cho trang lớn chưa migrate).
+type UIHighlight = {
+  _id: Id<"highlights">;
+  docId: Id<"documents">;
+  color: HighlightColor;
+  type: "text" | "bookmark" | "timestamp";
+  positionType: string;
+  positionValue: string;
+  selectedText?: string | null;
+  note?: string | null;
+  customColor?: string | null;
+  updatedAt: number;
+  createdAt: number;
+};
 
-  const createMutation = useMutation(api.highlights.mutations.create);
-  const removeMutation = useMutation(api.highlights.mutations.remove);
-  const updateNoteMutation = useMutation(api.highlights.mutations.updateNote);
-  const createBookmarkMutation = useMutation(api.highlights.mutations.createBookmark);
+export function useHighlights(docId: Id<"documents">) {
+  const highlights = (useHighlightsByDoc(docId) ?? []) as unknown as UIHighlight[];
 
   const addHighlight = useCallback(
     (color: HighlightColor, position: HighlightPosition, customColor?: string) =>
-      createMutation({
+      createHighlight({
         docId,
         color,
         customColor,
@@ -33,30 +49,29 @@ export function useHighlights(docId: Id<"documents">) {
         selectedText: position.text,
         clientMutationId: `${Date.now()}-${Math.random()}`,
       }),
-    [docId, createMutation]
+    [docId]
   );
 
   const removeHighlight = useCallback(
-    (highlightId: Id<"highlights">) => removeMutation({ highlightId }),
-    [removeMutation]
+    (highlightId: Id<"highlights">) => apiRemoveHighlight(highlightId),
+    []
   );
 
   const updateNote = useCallback(
-    (highlightId: Id<"highlights">, note?: string) =>
-      updateNoteMutation({ highlightId, note }),
-    [updateNoteMutation]
+    (highlightId: Id<"highlights">, note?: string) => updateHighlightNote(highlightId, note),
+    []
   );
 
   const addBookmark = useCallback(
     (scrollPct: number, headingId?: string, label?: string) =>
-      createBookmarkMutation({
+      createBookmark({
         docId,
         scrollPct,
         headingId,
         label,
         clientMutationId: `${Date.now()}-${Math.random()}`,
       }),
-    [docId, createBookmarkMutation]
+    [docId]
   );
 
   return { highlights, addHighlight, removeHighlight, updateNote, addBookmark };
