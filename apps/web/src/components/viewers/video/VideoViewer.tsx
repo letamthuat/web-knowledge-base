@@ -4,8 +4,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { Id } from "@/_generated/dataModel";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
-import { useQuery } from "convex/react";
-import { api } from "@/_generated/api";
+import { useTranscriptByDoc } from "@/lib/api/transcripts";
 import { TranscriptPanel } from "@/components/viewers/transcript/TranscriptPanel";
 import { SubtitleOverlay } from "@/components/viewers/transcript/SubtitleOverlay";
 import { TranscriptButton } from "@/components/viewers/transcript/TranscriptButton";
@@ -28,10 +27,10 @@ export function VideoViewer({ doc, downloadUrl, onTranscribeRunningChange }: Vid
   const lastSaveRef = useRef(0);
 
   const { containerRef, leftPercent, onMouseDown } = useResizable(60);
-  const transcript = useQuery(api.transcripts.queries.getByDoc, { docId: doc._id });
+  const transcript = useTranscriptByDoc(doc._id);
   const segments = transcript?.status === "completed" ? (transcript.segments ?? []) : [];
-  const translatedSegments = transcript?.status === "completed" ? transcript.translatedSegments : undefined;
-  const translatedLanguage = transcript?.translatedLanguage;
+  const translatedSegments = transcript?.status === "completed" ? (transcript.translatedSegments ?? undefined) : undefined;
+  const translatedLanguage = transcript?.translatedLanguage ?? undefined;
 
   useEffect(() => {
     registerJump((pos) => {

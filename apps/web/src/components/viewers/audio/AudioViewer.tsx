@@ -4,8 +4,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { Id } from "@/_generated/dataModel";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { useReaderProgress } from "@/components/viewers/ReaderProgressContext";
-import { useQuery } from "convex/react";
-import { api } from "@/_generated/api";
+import { useTranscriptByDoc } from "@/lib/api/transcripts";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward } from "lucide-react";
 import { TranscriptPanel } from "@/components/viewers/transcript/TranscriptPanel";
@@ -39,10 +38,10 @@ export function AudioViewer({ doc, downloadUrl, onTranscribeRunningChange }: Aud
   const restored = useRef(false);
 
   const { containerRef, leftPercent, onMouseDown } = useResizable(50);
-  const transcript = useQuery(api.transcripts.queries.getByDoc, { docId: doc._id });
+  const transcript = useTranscriptByDoc(doc._id);
   const segments = transcript?.status === "completed" ? (transcript.segments ?? []) : [];
-  const translatedSegments = transcript?.status === "completed" ? transcript.translatedSegments : undefined;
-  const translatedLanguage = transcript?.translatedLanguage;
+  const translatedSegments = transcript?.status === "completed" ? (transcript.translatedSegments ?? undefined) : undefined;
+  const translatedLanguage = transcript?.translatedLanguage ?? undefined;
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
