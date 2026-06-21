@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAction } from "convex/react";
-import { api } from "@/_generated/api";
 import { useAiSettings, saveAiSettings } from "@/lib/api/ai-settings";
-import { useStorageStats } from "@/lib/api/documents";
+import { useStorageStats, backfillExtractText } from "@/lib/api/documents";
+import { deleteAccount } from "@/lib/api/users";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -300,8 +299,6 @@ function AiSettingsSection() {
 
 export function SettingsPageInner() {
   const router = useRouter();
-  const deleteAccount = useAction(api.users.actions.deleteAccount);
-  const backfillExtractText = useAction(api.documents.actions.backfillExtractText);
   const stats = useStorageStats();
   const { downloadBackup, isDownloading } = useBackupDownload();
   const [confirm, setConfirm] = useState(false);
@@ -327,7 +324,7 @@ export function SettingsPageInner() {
     if (input !== CONFIRM_WORD) return;
     setLoading(true);
     try {
-      await deleteAccount({});
+      await deleteAccount();
       await signOut();
       toast.success("Tài khoản đã được xóa hoàn toàn");
       router.replace("/login");
@@ -440,7 +437,7 @@ export function SettingsPageInner() {
             onClick={async () => {
               setReindexing(true);
               try {
-                const { scheduled, total } = await backfillExtractText({});
+                const { scheduled, total } = await backfillExtractText();
                 if (scheduled === 0) {
                   toast.success(`Tất cả ${total} tài liệu đã được index`);
                 } else {

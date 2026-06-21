@@ -45,6 +45,15 @@ export async function getMyPreferences(): Promise<UserPreferences | null> {
   return (data?.preferences ?? null) as UserPreferences | null;
 }
 
+// Xoá tài khoản + toàn bộ dữ liệu (route service_role).
+export async function deleteAccount(): Promise<void> {
+  const res = await fetch("/api/account/delete", { method: "POST" });
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({ error: "Xoá tài khoản thất bại" }));
+    throw new Error(error ?? "Xoá tài khoản thất bại");
+  }
+}
+
 // ─── MUTATIONS ───────────────────────────────────────────────────────────────
 export async function updateReadingModePreferences(args: ReadingModePref): Promise<void> {
   const userId = await currentUserId();

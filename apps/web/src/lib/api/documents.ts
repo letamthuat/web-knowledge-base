@@ -215,6 +215,25 @@ export async function finalizeUpload(args: {
   return data._id;
 }
 
+// Trích xuất text cho mọi doc còn thiếu extractedText (gọi route extract cho từng doc).
+export async function backfillExtractText(): Promise<{ total: number; scheduled: number }> {
+  const { data: missing } = await supabase
+    .from("documents").select("_id").eq("status", "ready").is("extractedText", null);
+  const { count } = await supabase
+    .from("documents").select("_id", { count: "exact", head: true }).eq("status", "ready");
+  const ids = (missing ?? []).map((d) => (d as { _id: string })._id);
+  await Promise.all(
+    ids.map((docId) =>
+      fetch("/api/documents/extract", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ docId }),
+      }).catch(() => {}),
+    ),
+  );
+  return { total: count ?? ids.length, scheduled: ids.length };
+}
+
 // ─── ACTIONS (wrapper gọi Vercel route) ──────────────────────────────────────
 export async function getDownloadUrl(docId: string): Promise<string> {
   const res = await fetch("/api/storage/download-url", {
