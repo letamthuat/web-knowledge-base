@@ -7,10 +7,14 @@ import {
   FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe,
   MoreVertical, Pencil, Trash2, Folder, FolderX, ExternalLink, SquarePlus, Download,
 } from "lucide-react";
-import { useMutation, useQuery, useAction } from "convex/react";
 import { useRouter } from "next/navigation";
-import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
+import { useTagsForDoc } from "@/lib/api/tags";
+import { useFolderForDoc, useFoldersList, assignDocToFolder, removeDocFromFolder } from "@/lib/api/folders";
+import { useRealtimeOne } from "@/hooks/useRealtimeQuery";
+import type { ReadingProgressRow } from "@/lib/api/reading-progress";
+import { trashDocument, renameDocument, getDownloadUrl } from "@/lib/api/documents";
+import { openTab } from "@/lib/api/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -64,19 +68,15 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [newTitle, setNewTitle] = useState(doc.title);
 
-  const docTags = useQuery(api.tags.queries.listForDoc, { docId: doc._id });
-  const currentFolder = useQuery(api.folders.queries.getFolderForDoc, { docId: doc._id });
-  const readingProgress = useQuery(api.reading_progress.queries.getByDoc, { docId: doc._id });
-  const trashMutation = useMutation(api.documents.mutations.trash);
-  const renameMutation = useMutation(api.documents.mutations.rename);
-  const openTabMutation = useMutation(api.tabs.mutations.openTab);
-  const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
+  const docTags = useTagsForDoc(doc._id);
+  const currentFolder = useFolderForDoc(doc._id);
+  const readingProgress = useRealtimeOne<ReadingProgressRow>("reading_progress", { filter: { docId: doc._id } });
   const { exportDoc, isExporting } = useDocExport();
 
   async function handleDownload(e: React.MouseEvent) {
     e.stopPropagation();
     try {
-      const url = await getDownloadUrl({ docId: doc._id });
+      const url = await getDownloadUrl(doc._id);
       const ext = FORMAT_EXT[doc.format] ?? "";
       const fileName = doc.title.endsWith(ext) ? doc.title : doc.title + ext;
       const res = await fetch(url);
@@ -95,12 +95,10 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   async function handleOpenInTab(e: React.MouseEvent) {
     e.stopPropagation();
     try {
-      await openTabMutation({ docId: doc._id });
+      await openTab(doc._id);
       router.push(`/reader/${doc._id}`);
     } catch (err: unknown) {
-      const data = (err as { data?: { code?: string; messageVi?: string } })?.data;
-      if (data?.code === "VALIDATION") toast.error(data.messageVi ?? "Tối đa 10 tab cùng lúc");
-      else toast.error("Không thể mở tab");
+      toast.error(err instanceof Error ? err.message : "Không thể mở tab");
     }
   }
 
@@ -111,14 +109,14 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
     const title = newTitle.trim();
     if (!title || title === doc.title) { setShowRenameDialog(false); return; }
     try {
-      await renameMutation({ docId: doc._id, newTitle: title });
+      await renameDocument(doc._id, title);
       toast.success("Đã đổi tên tài liệu");
     } catch {}
     setShowRenameDialog(false);
   }
 
   async function handleTrash() {
-    await trashMutation({ docId: doc._id });
+    await trashDocument(doc._id);
     setShowTrashDialog(false);
   }
 
@@ -207,7 +205,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
                   <Folder className="h-2.5 w-2.5" />{currentFolder.name}
                 </Badge>
               )}
-              {docTags?.map((tag: { _id: string; name: string; color?: string }) => (
+              {docTags?.map((tag) => (
                 <Badge key={tag._id} variant="secondary" className="h-4 px-1.5 text-xs" style={{ borderColor: tag.color ?? undefined }}>
                   {tag.name}
                 </Badge>
@@ -325,16 +323,14 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
 function FolderDialog({ open, onOpenChange, docId, currentFolderId }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  docId: Id<"documents">;
-  currentFolderId: Id<"folders"> | null;
+  docId: string;
+  currentFolderId: string | null;
 }) {
-  const allFolders = useQuery(api.folders.queries.listByUser);
-  const assignDoc = useMutation(api.folders.mutations.assignDoc);
-  const removeDoc = useMutation(api.folders.mutations.removeDoc);
+  const allFolders = useFoldersList();
 
-  async function handleSelect(folderId: Id<"folders">) {
+  async function handleSelect(folderId: string) {
     try {
-      await assignDoc({ folderId, docId });
+      await assignDocToFolder(docId, folderId);
       toast.success("Đã chuyển tài liệu vào folder");
       onOpenChange(false);
     } catch {
@@ -344,7 +340,7 @@ function FolderDialog({ open, onOpenChange, docId, currentFolderId }: {
 
   async function handleRemove() {
     try {
-      await removeDoc({ docId });
+      await removeDocFromFolder(docId);
       toast.success("Đã xoá khỏi folder");
       onOpenChange(false);
     } catch {
