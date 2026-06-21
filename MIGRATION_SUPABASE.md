@@ -25,7 +25,7 @@
 - [x] **Phase 0** — Tạo Supabase project + cài SDK/CLI + env
 - [x] **Phase 1** — Schema Postgres: bảng + FK + index + RLS + tsvector  (đã chạy 0001_init.sql)
 - [x] **Phase 2** — Auth: Supabase Auth email/password + forgot/reset. (Google tạm tắt; MFA để sau)
-- [~] **Phase 3** — Data layer (ĐANG LÀM): foundation + domains reading_progress/tags/folders/documents-API + R2 routes xong; còn cập nhật consumer + domains notes/highlights/tabs/handbooks/transcripts.
+- [x] **Phase 3** — Data layer XONG: toàn bộ domain `lib/api/*` + mọi trang/consumer đã rời Convex (chỉ `useSearch` còn lại cho Phase 5). tsc=0. Smoke-test 12/12 PASS.
 
 ### Tiến độ Phase 3 (commit theo domain trên nhánh `supabase`)
 - ✅ Foundation: `hooks/useRealtimeQuery.ts` (có option `select`), `providers/SupabaseProvider.tsx`
@@ -75,10 +75,10 @@
 | import `{ api }`, `convex/react` | XOÁ; import từ `@/lib/api/*` |
 
 Lưu ý: bỏ `useMutation`/`useAction` wrapper — gọi thẳng async function. Bỏ import `convex/react` + `@/_generated/*`.
-- [ ] **Phase 4** — Server functions: extract text + presigned URL → Vercel routes; cron
-- [ ] **Phase 5** — Search: RPC FTS Postgres thay query `search`
+- [x] **Phase 4** — Server routes ĐÃ VIẾT (extract/backfill, account/delete, note media + copy-to-library, handbooks/asset-urls, transcripts/webm-chunks). Chi tiết ở mục "Phase 4 — Server routes" bên dưới. ⚠️ chưa test với file/upload thật. Còn (tùy chọn): Vercel Cron prune trash + dọn R2 mồ côi.
+- [ ] **Phase 5** — Search: RPC FTS Postgres (tsvector + GIN đã có sẵn trong schema) thay 3 query `search` → gỡ nốt `useSearch.ts` (= sạch 100% Convex). **← BƯỚC TIẾP THEO**
 - [ ] **Phase 6** — Migrate dữ liệu cũ: export Convex → transform → import Postgres (khi Convex bật lại)
-- [ ] **Phase 7** — Deploy: Vercel project thứ 2 trỏ nhánh `supabase` + keep-alive ping; test; cutover
+- [ ] **Phase 7** — Deploy: Vercel project thứ 2 trỏ nhánh `supabase` + keep-alive ping; test thật (upload/transcribe/handbook ZIP); cutover
 
 ---
 
