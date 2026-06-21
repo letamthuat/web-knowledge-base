@@ -29,6 +29,8 @@
     "@mozilla/readability": "^0.6.0",
     "@radix-ui/react-label": "^2.1.1",
     "@radix-ui/react-slot": "^1.1.1",
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.108.2",
     "@tailwindcss/typography": "^0.5.19",
     "better-auth": "1.2.7",
     "class-variance-authority": "^0.7.1",
