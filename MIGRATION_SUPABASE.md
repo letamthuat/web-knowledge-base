@@ -32,23 +32,26 @@
 - ✅ Domain API (`lib/api/*`): reading-progress, tags, folders, documents, **notes, note-tabs, highlights, tabs, users (profiles), reading-history**
 - ✅ R2: `lib/r2.ts`, `app/api/storage/{upload-url,download-url}/route.ts`
 - ✅ Hook lá đã đổi sang Supabase: useReadingProgress, **useNotes, useNoteTabs, useHighlights, useTabSync, useReadingModePrefs**
-- ✅ Consumer đã đổi: RecentHistory, TagPopover, FilterBar, **ReadingHistoryPopover, DocumentCard, useDocExport, useBackupDownload**
-- ✅ Non-hook getters (cho export/backup): getAllDocumentsFull, getNotesByDoc/getAllNotesWithDocTitle,
+- ✅ Domain API (`lib/api/*`) bổ sung: **ai-settings, transcripts (read)**
+- ✅ Consumer/trang đã đổi hẳn sang lib/api (bỏ convex): RecentHistory, TagPopover, FilterBar, ReadingHistoryPopover,
+  **DocumentCard, useDocExport, useBackupDownload, LibraryPageInner, DataPrefetcher, TabBar, TabDropdown,
+  UploadDropzone, AudioFinishDialog, ScreenFinishDialog, AudioViewer, VideoViewer, CrossLinkHoverCard, ReaderPageInner**
+- ✅ Consumer đổi MỘT PHẦN (đã bỏ phần read/write có thể, còn giữ convex cho action Phase 4):
+  - SettingsPageInner: aiSettings → lib/api; còn deleteAccount/backfillExtractText/getStorageStats (action/query)
+  - TranscriptButton: aiSettings + getDownloadUrl → lib/api; còn transcripts mutations + getWebmChunks (action)
+- ✅ Non-hook getters (export/backup): getAllDocumentsFull, getNotesByDoc/getAllNotesWithDocTitle,
   getHighlightsByDoc/getAllHighlights, getAllTags, getAllReadingProgress, getMyPreferences
-- 🎉 **`npx tsc --noEmit` = 0 lỗi** (toàn bộ baseline tiền tồn đã dọn). Các trang lớn còn lại vẫn import convex nhưng compile OK vì `_generated` còn đó.
-- ⚠️ Còn nợ trong domain đã làm:
-  - notes: NoteEditor vẫn dùng convex actions cho media upload (requestNoteMediaUploadUrl/getNoteMediaUrl/copyNoteFileToLibrary) → cần R2 route khi migrate trang lớn
-  - reading-history: `recordOpen` đã có trong `lib/api/reading-history.ts` nhưng ReaderPageInner vẫn gọi convex (đổi khi migrate trang lớn)
-  - users: `deleteAccount` (action) để Phase 4
-  - export: voice note media (voiceUrls) để trống — chờ migrate storage voice note ở Phase 4
-- ⏳ Domain CÒN LẠI (kẹt sau trang lớn hoặc cần server action):
-  - aiSettings → chỉ 2 consumer là SettingsPageInner + TranscriptButton (trang lớn) → migrate cùng trang
-  - domains (handbook) → consumer HandbookSidebar (trang lớn)
-  - transcripts, handbooks → có actions (Gemini transcribe, ZIP ingest) → Phase 4 Vercel routes
-- ⏳ Trang lớn CÒN LẠI (vẫn dùng convex): DataPrefetcher, LibraryPageInner, ReaderPageInner, NotesPageInner,
-  NoteEditor, NotesSidePanel, MarkdownViewer/DOCXViewer/WebClipViewer (highlights), SettingsPageInner,
-  TranscriptButton, UploadDropzone, recording dialogs, HandbookSidebar, AudioViewer/VideoViewer, useSearch (Phase 5)
-  (TabBar/TabDropdown chỉ dùng type NoteTab/TabDoc — đã tương thích, không cần đổi)
+- 🎉 **`npx tsc --noEmit` = 0 lỗi.** Toàn bộ tầng đọc + ghi đơn giản đã rời convex.
+
+### Còn lại — 7 file vẫn import convex (đều kẹt Phase 4/5, KHÔNG migrate được bằng lib/api hiện có)
+- `NoteEditor` — note media upload (requestNoteMediaUploadUrl/getNoteMediaUrl/copyNoteFileToLibrary) → cần R2 route Phase 4
+- `SettingsPageInner` — deleteAccount, backfillExtractText, getStorageStats
+- `TranscriptButton` — transcripts mutations (init/updateStatus/saveSegments) + getWebmChunks (action)
+- `HandbookResolverContext` — handbooks.listHandbookFiles (read) + getAssetUrls (action)
+- `HandbookSidebar` — domains + handbooks mutations + finalizeImport (ZIP ingest)
+- `ImportZipDialog` — handbooks.finalizeImport (ZIP ingest)
+- `useSearch` — Phase 5 (Postgres FTS)
+- ⚠️ Nợ: voice note media trong export (voiceUrls) để trống; domains/handbooks domain chưa tạo lib/api (chờ Phase 4 vì gắn với action ingest).
 
 ### PATTERN chuyển đổi 1 call site (cơ học)
 | Convex | Supabase |
