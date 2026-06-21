@@ -1,7 +1,6 @@
 ﻿"use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@/_generated/api";
+import { useHistoryByDoc } from "@/lib/api/reading-history";
 import { Id } from "@/_generated/dataModel";
 import {
   Popover,
@@ -41,11 +40,8 @@ function summarizePosition(posType: string, posValue: string): string {
   return "";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const readingHistoryApi = (api as any).reading_history?.queries ?? (api as any)["reading_history/queries"];
-
 export function ReadingHistoryPopover({ docId, onJump }: Props) {
-  const entries = useQuery(readingHistoryApi?.getByDoc, { docId, limit: 10 });
+  const entries = useHistoryByDoc(docId, 10);
 
   return (
     <Popover>
