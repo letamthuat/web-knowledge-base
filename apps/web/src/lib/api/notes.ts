@@ -46,6 +46,21 @@ export function useAllNotesWithDocTitle(): NoteWithDocTitle[] | undefined {
   );
 }
 
+// Non-hook: note của 1 doc (cho export).
+export async function getNotesByDoc(docId: string): Promise<NoteRow[]> {
+  const { data } = await supabase.from("notes").select("*").eq("docId", docId);
+  return (data ?? []) as NoteRow[];
+}
+
+// Non-hook: tất cả note của user + docTitle (cho backup).
+export async function getAllNotesWithDocTitle(): Promise<NoteWithDocTitle[]> {
+  const { data } = await supabase.from("notes").select("*, documents(title)");
+  return (data ?? []).map((r) => {
+    const { documents, ...rest } = r as NoteJoinRow;
+    return { ...rest, docTitle: documents?.title ?? null };
+  });
+}
+
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
   if (!data.user) throw new Error("Not authenticated");

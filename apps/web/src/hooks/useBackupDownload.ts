@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAction } from "convex/react";
-import { api } from "@/_generated/api";
 import { toast } from "sonner";
+import { getAllDocumentsFull, getDownloadUrl } from "@/lib/api/documents";
+import { getAllNotesWithDocTitle } from "@/lib/api/notes";
+import { getAllHighlights } from "@/lib/api/highlights";
+import { getAllTags } from "@/lib/api/tags";
+import { getAllReadingProgress } from "@/lib/api/reading-progress";
+import { getMyPreferences } from "@/lib/api/users";
 
 const FORMAT_EXT: Record<string, string> = {
   pdf: ".pdf", epub: ".epub", docx: ".docx", pptx: ".pptx",
@@ -16,7 +20,6 @@ function sanitize(name: string) {
 
 export function useBackupDownload() {
   const [isDownloading, setIsDownloading] = useState(false);
-  const getBackupData = useAction(api.documents.actions.getBackupData);
 
   async function downloadBackup() {
     if (isDownloading) return;
@@ -27,7 +30,62 @@ export function useBackupDownload() {
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
 
-      const { docs, notes, highlights, tags, readingProgress, preferences } = await getBackupData({});
+      // --- Gom dữ liệu từ Supabase (thay convex getBackupData) ---
+      const [allDocs, allNotes, allHighlights, rawTags, rawProgress, preferences] = await Promise.all([
+        getAllDocumentsFull(),
+        getAllNotesWithDocTitle(),
+        getAllHighlights(),
+        getAllTags(),
+        getAllReadingProgress(),
+        getMyPreferences(),
+      ]);
+
+      const docTitleById = new Map(allDocs.map((d) => [d._id, d.title]));
+
+      const docs = await Promise.all(
+        allDocs.map(async (d) => {
+          let downloadUrl = "";
+          if (d.format !== "web_clip" || !d.clippedContent) {
+            try {
+              downloadUrl = await getDownloadUrl(d._id);
+            } catch {}
+          }
+          return {
+            id: d._id,
+            title: d.title,
+            format: d.format,
+            createdAt: d.createdAt,
+            downloadUrl,
+            clippedContent: d.clippedContent ?? undefined,
+          };
+        }),
+      );
+
+      const notes = allNotes.map((n) => ({
+        id: n._id,
+        title: n.title ?? undefined,
+        body: n.body,
+        docId: n.docId,
+        docTitle: n.docTitle,
+        tagIds: n.tagIds ?? [],
+        updatedAt: n.updatedAt,
+      }));
+
+      const highlights = allHighlights.map((h) => ({
+        docId: h.docId,
+        docTitle: docTitleById.get(h.docId) ?? "",
+        text: h.selectedText ?? "",
+        note: h.note,
+        color: h.color,
+        createdAt: h.createdAt,
+      }));
+
+      const tags = rawTags.map((t) => ({ id: t._id, name: t.name, color: t.color ?? null }));
+      const readingProgress = rawProgress.map((p) => ({
+        docId: p.docId,
+        progressPct: p.progressPct ?? null,
+        updatedAt: p.updatedAt,
+      }));
 
       // --- Build tag lookup ---
       const tagMap = new Map<string, string>(tags.map((t) => [t.id, t.name]));

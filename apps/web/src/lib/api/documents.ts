@@ -62,6 +62,12 @@ export async function getDocumentById(docId: string): Promise<DocumentRow | null
   return (data as unknown as DocumentRow) ?? null;
 }
 
+// Non-hook: tất cả tài liệu của user (kèm clippedContent) — cho backup.
+export async function getAllDocumentsFull(): Promise<DocumentRow[]> {
+  const { data } = await supabase.from("documents").select(DOC_FULL_COLUMNS);
+  return (data ?? []) as unknown as DocumentRow[];
+}
+
 // ─── MUTATIONS ───────────────────────────────────────────────────────────────
 export async function trashDocument(docId: string): Promise<void> {
   const now = Date.now();

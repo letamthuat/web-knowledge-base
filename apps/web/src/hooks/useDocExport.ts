@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useAction } from "convex/react";
-import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { toast } from "sonner";
+import { getDocumentById, getDownloadUrl } from "@/lib/api/documents";
+import { getHighlightsByDoc } from "@/lib/api/highlights";
+import { getNotesByDoc } from "@/lib/api/notes";
 
 const FORMAT_EXT: Record<string, string> = {
   pdf: ".pdf", epub: ".epub", docx: ".docx", pptx: ".pptx",
@@ -22,7 +23,6 @@ function sanitizeName(name: string) {
 
 export function useDocExport() {
   const [isExporting, setIsExporting] = useState(false);
-  const getSingleDocExportData = useAction(api.documents.actions.getSingleDocExportData);
 
   async function exportDoc(docId: Id<"documents">) {
     if (isExporting) return;
@@ -33,7 +33,34 @@ export function useDocExport() {
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
 
-      const { doc, downloadUrl, highlights, notes, voiceUrls } = await getSingleDocExportData({ docId });
+      const doc = await getDocumentById(docId);
+      if (!doc) {
+        toast.error("Không tìm thấy tài liệu", { id: toastId });
+        return;
+      }
+      // File gốc: bỏ qua presigned URL cho web_clip có sẵn clippedContent.
+      let downloadUrl: string | null = null;
+      if (doc.format !== "web_clip" || !doc.clippedContent) {
+        try {
+          downloadUrl = await getDownloadUrl(docId);
+        } catch {}
+      }
+      const rawHighlights = await getHighlightsByDoc(docId);
+      const highlights = rawHighlights.map((h) => ({
+        id: h._id,
+        selectedText: h.selectedText ?? "",
+        note: h.note,
+        color: h.color,
+      }));
+      const rawNotes = await getNotesByDoc(docId);
+      const notes = rawNotes.map((n) => ({
+        id: n._id,
+        title: n.title ?? undefined,
+        body: n.body,
+        tagIds: n.tagIds ?? [],
+      }));
+      // Voice note (media trong storage) chưa migrate → để trống.
+      const voiceUrls: Record<string, string> = {};
       const safeTitle = sanitizeName(doc.title);
 
       // --- File gốc hoặc web_clip content ---

@@ -38,6 +38,13 @@ async function currentUserId(): Promise<string> {
   return data.user.id;
 }
 
+// Non-hook: preferences của user hiện tại (cho backup).
+export async function getMyPreferences(): Promise<UserPreferences | null> {
+  const userId = await currentUserId();
+  const { data } = await supabase.from("profiles").select("preferences").eq("id", userId).maybeSingle();
+  return (data?.preferences ?? null) as UserPreferences | null;
+}
+
 // ─── MUTATIONS ───────────────────────────────────────────────────────────────
 export async function updateReadingModePreferences(args: ReadingModePref): Promise<void> {
   const userId = await currentUserId();

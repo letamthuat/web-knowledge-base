@@ -38,6 +38,18 @@ async function currentUserId(): Promise<string> {
   return data.user.id;
 }
 
+// Non-hook: highlight của 1 doc (cho export).
+export async function getHighlightsByDoc(docId: string): Promise<HighlightRow[]> {
+  const { data } = await supabase.from("highlights").select("*").eq("docId", docId);
+  return (data ?? []) as HighlightRow[];
+}
+
+// Non-hook: tất cả highlight của user (cho backup).
+export async function getAllHighlights(): Promise<HighlightRow[]> {
+  const { data } = await supabase.from("highlights").select("*");
+  return (data ?? []) as HighlightRow[];
+}
+
 // ─── MUTATIONS ───────────────────────────────────────────────────────────────
 export async function createHighlight(args: {
   docId: string;

@@ -59,6 +59,12 @@ export async function upsertReadingProgress(args: {
   }
 }
 
+// Non-hook: tất cả reading_progress của user (cho backup).
+export async function getAllReadingProgress(): Promise<ReadingProgressRow[]> {
+  const { data } = await supabase.from("reading_progress").select("*");
+  return (data ?? []) as ReadingProgressRow[];
+}
+
 // Lịch sử đọc gần đây + join document (thay convex recentHistory).
 export type RecentHistoryItem = {
   progress: ReadingProgressRow;

@@ -59,6 +59,12 @@ async function currentUserId(): Promise<string> {
   return data.user.id;
 }
 
+// Non-hook: tất cả tag của user (cho backup).
+export async function getAllTags(): Promise<TagRow[]> {
+  const { data } = await supabase.from("tags").select("*");
+  return (data ?? []) as TagRow[];
+}
+
 // Tìm hoặc tạo tag theo tên (unique theo user+name).
 async function findOrCreateTag(userId: string, name: string): Promise<string> {
   const { data: existing } = await supabase
