@@ -46,9 +46,10 @@
 - ✅ Domain API bổ sung: **domains, handbooks** (reads + CRUD + folder ops + finalizeImport), **transcripts mutations**
 - ✅ Đã migrate hẳn: HandbookSidebar, ImportZipDialog, HandbookResolverContext (read), TranscriptButton (mutations), NoteEditor (add-to-library), SettingsPageInner (stats)
 
-### 🎉 DB LAYER + SMOKE TEST + PHASE 4 ROUTES HOÀN TẤT
-- Toàn bộ read/write đã rời Convex (Postgres). Smoke-test 12/12 PASS (auth/RLS/CRUD/join/realtime). Realtime cần `0002_realtime.sql` (đã chạy).
-- **CHỈ CÒN 1 file import convex: `useSearch.ts`** (Phase 5 FTS). Mọi file khác đã sạch.
+### 🎉 PHASE 3+4+5 HOÀN TẤT — APP ĐÃ RỜI CONVEX HOÀN TOÀN (runtime)
+- Toàn bộ read/write/action/search đã chạy trên Supabase. Smoke-test 12/12 (data) + 4/4 (search) PASS. Realtime cần `0002_realtime.sql` (đã chạy).
+- **0 file `src/` import `convex/react` hoặc `@/_generated/api`.** (Chỉ còn type `Id<>` từ `@/_generated/dataModel` — pure type, vô hại, dọn sau nếu muốn.)
+- CÒN: Phase 6 (migrate data Convex cũ → Postgres), Phase 7 (deploy + test thật upload/transcribe/ZIP). Tùy chọn: Vercel Cron prune; gỡ ConvexProvider/dep convex; voice note media trong export.
 
 ## [x] Phase 4 — Server routes (Next API, Node runtime) ĐÃ VIẾT
 | Route | Phục vụ |
@@ -76,7 +77,7 @@
 
 Lưu ý: bỏ `useMutation`/`useAction` wrapper — gọi thẳng async function. Bỏ import `convex/react` + `@/_generated/*`.
 - [x] **Phase 4** — Server routes ĐÃ VIẾT (extract/backfill, account/delete, note media + copy-to-library, handbooks/asset-urls, transcripts/webm-chunks). Chi tiết ở mục "Phase 4 — Server routes" bên dưới. ⚠️ chưa test với file/upload thật. Còn (tùy chọn): Vercel Cron prune trash + dọn R2 mồ côi.
-- [ ] **Phase 5** — Search: RPC FTS Postgres (tsvector + GIN đã có sẵn trong schema) thay 3 query `search` → gỡ nốt `useSearch.ts` (= sạch 100% Convex). **← BƯỚC TIẾP THEO**
+- [x] **Phase 5** — Search FTS XONG: `lib/api/search.ts` dùng PostgREST `.textSearch("searchVector", q, {type:websearch, config:simple})` cho documents+notes, `.ilike` note cho highlights (RLS tự lọc, KHÔNG cần RPC). `useSearch` → hook debounce fetch. Smoke-test 4/4 PASS. **→ KHÔNG còn file nào import Convex (runtime) nữa.**
 - [ ] **Phase 6** — Migrate dữ liệu cũ: export Convex → transform → import Postgres (khi Convex bật lại)
 - [ ] **Phase 7** — Deploy: Vercel project thứ 2 trỏ nhánh `supabase` + keep-alive ping; test thật (upload/transcribe/handbook ZIP); cutover
 
