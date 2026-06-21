@@ -68,3 +68,5 @@ Browser upload/download trực tiếp R2 qua presigned URL → bucket phải cho
 - Supabase free **pause sau 7 ngày idle** → cron keep-alive lo. Nếu vẫn lo, thêm pinger ngoài (cron-job.org / UptimeRobot free) trỏ `https://<app>.vercel.app/api/keep-alive`.
 - Vercel Hobby: cron chạy **1 lần/ngày** là đủ cho keep-alive.
 - Email xác nhận Supabase free có giới hạn tần suất; cá nhân dùng thoải mái.
+
+<!-- deploy trigger: lần đầu build nhánh supabase trên Vercel -->
