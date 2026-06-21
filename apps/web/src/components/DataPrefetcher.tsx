@@ -1,23 +1,24 @@
 "use client";
 
 /**
- * Fires Convex subscriptions at layout level so data is already in the
- * reactive cache when the user navigates to /library or /notes.
- * Convex returns null/[] for unauthenticated calls, so no auth guard needed.
- * Renders nothing — purely a cache warming component.
+ * Mở sẵn các Supabase Realtime subscription ở tầng layout để dữ liệu được nạp
+ * trước khi user vào /library hoặc /notes. RLS tự lọc theo user nên không cần
+ * guard auth. Render null — chỉ để "làm ấm" dữ liệu/subscription.
  */
-import { useQuery } from "convex/react";
-import { api } from "@/_generated/api";
+import { useDocumentsList } from "@/lib/api/documents";
+import { useFoldersList, useAllDocFolders } from "@/lib/api/folders";
+import { useAllNotesWithDocTitle } from "@/lib/api/notes";
+import { useNoteTabsList } from "@/lib/api/note-tabs";
 
 export function DataPrefetcher() {
   // Library data
-  useQuery(api.documents.queries.listByUser);
-  useQuery(api.folders.queries.listByUser);
-  useQuery(api.folders.queries.listAllDocFolders);
+  useDocumentsList();
+  useFoldersList();
+  useAllDocFolders();
 
   // Notes data
-  useQuery(api.notes.queries.listAllByUser, {});
-  useQuery(api.note_tabs.queries.listByUser);
+  useAllNotesWithDocTitle();
+  useNoteTabsList();
 
   return null;
 }

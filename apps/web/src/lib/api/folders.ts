@@ -12,7 +12,7 @@ export type FolderRow = {
   updatedAt: number;
 };
 export type DocFolderRow = { _id: string; docId: string; folderId: string };
-type DocLite = { _id: string; title: string; format: string; status: string };
+type DocLite = { _id: string; title: string; format: string; status: string; createdAt: number; fileSizeBytes: number | null };
 
 // Tất cả folder của user.
 export function useFoldersList(): FolderRow[] | undefined {
@@ -59,7 +59,7 @@ export function useDocsInFolder(folderId: string | undefined): DocLite[] | undef
     async function load() {
       const { data: rows } = await supabase
         .from("document_folders")
-        .select("documents(_id, title, format, status)")
+        .select("documents(_id, title, format, status, createdAt, fileSizeBytes)")
         .eq("folderId", folderId as string);
       if (!active) return;
       const docs = (rows ?? [])

@@ -11,9 +11,12 @@ import {
 } from "lucide-react";
 import { AppLogo } from "@/components/AppLogo";
 import { toast } from "sonner";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
+import { useDocumentsList, trashDocument } from "@/lib/api/documents";
+import {
+  useFoldersList, useAllDocFolders, useDocsInFolder,
+  createFolder, renameFolder, deleteFolder, assignDocToFolder,
+} from "@/lib/api/folders";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -87,13 +90,10 @@ export function LibraryPageInner() {
   function clearSelection() { setSelectedIds(new Set()); }
 
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
-  const allDocs = useQuery(api.documents.queries.listByUser);
-  const allFolders = useQuery(api.folders.queries.listByUser);
-  const allDocFolders = useQuery(api.folders.queries.listAllDocFolders);
-  const folderDocs = useQuery(
-    api.folders.queries.listDocsInFolder,
-    scope !== "all" ? { folderId: scope } : "skip"
-  );
+  const allDocs = useDocumentsList();
+  const allFolders = useFoldersList();
+  const allDocFolders = useAllDocFolders();
+  const folderDocs = useDocsInFolder(scope !== "all" ? scope : undefined);
 
   const subFolders = useMemo(
     () => scope !== "all" ? (allFolders?.filter((f: any) => f.parentFolderId === scope) ?? []) : [],
@@ -112,12 +112,6 @@ export function LibraryPageInner() {
     }
     return map;
   }, [allDocFolders, allDocs]);
-
-  const renameFolder = useMutation(api.folders.mutations.rename);
-  const deleteFolder = useMutation(api.folders.mutations.deleteFolder);
-  const createFolder = useMutation(api.folders.mutations.create);
-  const trashDoc = useMutation(api.documents.mutations.trash);
-  const assignDoc = useMutation(api.folders.mutations.assignDoc);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -150,7 +144,7 @@ export function LibraryPageInner() {
   async function handleRenameFolder() {
     if (!renameFolderId || !renameFolderName.trim()) return;
     try {
-      await renameFolder({ folderId: renameFolderId, name: renameFolderName.trim() });
+      await renameFolder(renameFolderId, renameFolderName.trim());
       toast.success("Đã đổi tên folder");
     } catch { toast.error("Đổi tên thất bại"); }
     setRenameFolderId(null);
@@ -159,7 +153,7 @@ export function LibraryPageInner() {
   async function handleDeleteFolder(folderId: Id<"folders">, name: string) {
     if (!confirm(`Xóa folder "${name}" và TOÀN BỘ tài liệu/thư mục con bên trong? Hành động này không thể hoàn tác.`)) return;
     try {
-      await deleteFolder({ folderId });
+      await deleteFolder(folderId);
       if (scope === folderId) { setScope("all"); setBreadcrumbs([]); }
       toast.success("Đã xoá folder");
     } catch { toast.error("Xoá folder thất bại"); }
@@ -170,7 +164,7 @@ export function LibraryPageInner() {
     if (!name) return;
     setIsCreatingFolder(true);
     try {
-      await createFolder({ name, parentFolderId: createFolderParent });
+      await createFolder(name, createFolderParent);
       toast.success(`Đã tạo folder "${name}"`);
       setCreateFolderName("");
       setCreateFolderOpen(false);
@@ -180,13 +174,13 @@ export function LibraryPageInner() {
 
   async function handleBulkTrash() {
     if (!confirm(`Chuyển ${selectedIds.size} tài liệu vào thùng rác?`)) return;
-    await Promise.all([...selectedIds].map(id => trashDoc({ docId: id as Id<"documents"> })));
+    await Promise.all([...selectedIds].map(id => trashDocument(id)));
     toast.success(`Đã chuyển ${selectedIds.size} tài liệu vào thùng rác`);
     clearSelection();
   }
 
   async function handleBulkAssignFolder(folderId: Id<"folders">) {
-    await Promise.all([...selectedIds].map(id => assignDoc({ docId: id as Id<"documents">, folderId })));
+    await Promise.all([...selectedIds].map(id => assignDocToFolder(id, folderId)));
     toast.success(`Đã chuyển ${selectedIds.size} tài liệu vào folder`);
     setBulkFolderOpen(false);
     clearSelection();
@@ -545,7 +539,7 @@ export function LibraryPageInner() {
           )}
 
           <DocumentGrid
-            docs={docsToShow}
+            docs={docsToShow as never}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onUploadClick={() => setUploadOpen(true)}
