@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/_generated/api";
-import { Id } from "@/_generated/dataModel";
+import { useRealtimeOne } from "@/hooks/useRealtimeQuery";
+import { upsertReadingProgress, type ReadingProgressRow } from "@/lib/api/reading-progress";
 import { serialize, toProgressPct } from "@/lib/position";
 import type { ReadingPosition } from "@/lib/position";
 
@@ -26,9 +25,10 @@ const THROTTLE_MS = 5000;
 
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
-export function useReadingProgress(docId: Id<"documents">) {
-  const progress = useQuery(api.reading_progress.queries.getByDoc, { docId });
-  const upsertMutation = useMutation(api.reading_progress.mutations.upsert);
+export function useReadingProgress(docId: string) {
+  const progress = useRealtimeOne<ReadingProgressRow>("reading_progress", {
+    filter: { docId },
+  });
 
   const pendingRef = useRef<{ pos: ReadingPosition; total?: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -49,7 +49,7 @@ export function useReadingProgress(docId: Id<"documents">) {
       setSaveStatus("saving");
       const now = Date.now();
       try {
-        await upsertMutation({
+        await upsertReadingProgress({
           docId,
           positionType: pos.type,
           positionValue: serialize(pos),
@@ -62,7 +62,7 @@ export function useReadingProgress(docId: Id<"documents">) {
         setSaveStatus("error");
       }
     },
-    [docId, upsertMutation, markSaved]
+    [docId, markSaved]
   );
 
   // savePosition now accepts optional total at call site

@@ -1,8 +1,7 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
-import { api } from "@/_generated/api";
+import { useRecentHistory } from "@/lib/api/reading-progress";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -22,7 +21,7 @@ const FORMAT_COLORS: Record<string, string> = {
 
 export function RecentHistory() {
   const router = useRouter();
-  const history = useQuery(api.reading_progress.queries.recentHistory, { limit: 10 });
+  const history = useRecentHistory(10);
 
   if (!history || history.length === 0) return null;
 
