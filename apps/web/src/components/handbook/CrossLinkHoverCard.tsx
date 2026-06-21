@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/_generated/api";
+import { useDocument } from "@/lib/api/documents";
 import { Id } from "@/_generated/dataModel";
 import { FileText } from "lucide-react";
 
@@ -25,10 +24,7 @@ function cleanSnippet(text: string, max = 280): string {
 export function CrossLinkHoverCard({ docId, x, y }: CrossLinkHoverCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y + 14 });
-  const doc = useQuery(api.documents.queries.getById, { docId }) as
-    | { title: string; extractedText?: string }
-    | null
-    | undefined;
+  const doc = useDocument(docId);
 
   useEffect(() => {
     const el = ref.current;
