@@ -6,8 +6,8 @@ import {
   Folder, FileText,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useAction, useMutation, useQuery } from "convex/react";
-import { api } from "@/_generated/api";
+import { requestUploadUrl, finalizeUpload } from "@/lib/api/documents";
+import { useFoldersList, createFolder, assignDocToFolder } from "@/lib/api/folders";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { labels } from "@/lib/i18n/labels";
@@ -120,11 +120,7 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
-  const requestUploadUrl = useAction(api.documents.actions.requestUploadUrl);
-  const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
-  const assignDoc = useMutation(api.folders.mutations.assignDoc);
-  const createFolder = useMutation(api.folders.mutations.create);
-  const allFolders = useQuery(api.folders.queries.listByUser);
+  const allFolders = useFoldersList();
 
   const updateUpload = useCallback((index: number, patch: Partial<FileUploadState>) => {
     setUploads((prev) => prev.map((u, i) => (i === index ? { ...u, ...patch } : u)));
@@ -184,10 +180,7 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
               parentId = existingFolder._id;
               pathCache.set(currentPath, parentId as string);
             } else {
-              const newFolderId = await createFolder({
-                name: cleanName,
-                parentFolderId: parentId ? (parentId as any) : undefined,
-              });
+              const newFolderId = await createFolder(cleanName, parentId ?? undefined);
               parentId = newFolderId;
               pathCache.set(currentPath, newFolderId);
             }
@@ -213,65 +206,38 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
           try {
             const destFolderId = await getOrCreateFolder(relativePath);
 
-            const { storageBackend, uploadUrl, storageKey } = await requestUploadUrl({
-              fileSizeBytes: file.size,
-              format,
-              fileName: file.name,
-              mimeType: file.type || undefined,
+            const { storageBackend, uploadUrl, storageKey } = await requestUploadUrl(file.name);
+
+            // Upload trực tiếp lên R2 qua presigned PUT URL.
+            await new Promise<void>((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.upload.addEventListener("progress", (e) => {
+                if (e.lengthComputable)
+                  updateUpload(absoluteIndex, { progress: Math.round((e.loaded / e.total) * 100) });
+              });
+              xhr.addEventListener("load", () => {
+                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                else reject(new Error(`R2 HTTP ${xhr.status}: ${xhr.responseText?.slice(0, 200)}`));
+              });
+              xhr.addEventListener("error", () => reject(new Error("Network/CORS error uploading to R2")));
+              xhr.open("PUT", uploadUrl);
+              xhr.send(file);
             });
-
-            let finalStorageKey = storageKey;
-
-            if (storageBackend === "convex") {
-              const convexStorageId = await new Promise<string>((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.upload.addEventListener("progress", (e) => {
-                  if (e.lengthComputable)
-                    updateUpload(absoluteIndex, { progress: Math.round((e.loaded / e.total) * 100) });
-                });
-                xhr.addEventListener("load", () => {
-                  if (xhr.status >= 200 && xhr.status < 300) {
-                    try { resolve(JSON.parse(xhr.responseText).storageId ?? ""); }
-                    catch { reject(new Error("Parse error")); }
-                  } else reject(new Error(`HTTP ${xhr.status}`));
-                });
-                xhr.addEventListener("error", () => reject(new Error("Network error")));
-                xhr.open("POST", uploadUrl);
-                xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-                xhr.send(file);
-              });
-              finalStorageKey = convexStorageId;
-            } else {
-              await new Promise<void>((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.upload.addEventListener("progress", (e) => {
-                  if (e.lengthComputable)
-                    updateUpload(absoluteIndex, { progress: Math.round((e.loaded / e.total) * 100) });
-                });
-                xhr.addEventListener("load", () => {
-                  if (xhr.status >= 200 && xhr.status < 300) resolve();
-                  else reject(new Error(`R2 HTTP ${xhr.status}: ${xhr.responseText?.slice(0, 200)}`));
-                });
-                xhr.addEventListener("error", () => reject(new Error("Network/CORS error uploading to R2")));
-                xhr.open("PUT", uploadUrl);
-                xhr.send(file);
-              });
-            }
 
             const title = file.name.replace(/\.[^.]+$/, "");
             const durationMs = await getMediaDuration(file);
             const docId = await finalizeUpload({
               title,
-              format: format as any,
+              format,
               fileSizeBytes: file.size,
               durationMs: durationMs ?? undefined,
               storageBackend,
-              storageKey: finalStorageKey,
+              storageKey,
             });
 
             if (destFolderId && docId) {
               try {
-                await assignDoc({ folderId: destFolderId as any, docId: docId as any });
+                await assignDocToFolder(docId, destFolderId);
               } catch {}
             }
 
@@ -286,7 +252,7 @@ export function UploadDropzone({ onUploadComplete, defaultFolderId }: UploadDrop
         }),
       );
     },
-    [uploads.length, requestUploadUrl, finalizeUpload, assignDoc, updateUpload, onUploadComplete, selectedFolderId, createFolder, allFolders],
+    [uploads.length, updateUpload, onUploadComplete, selectedFolderId, allFolders],
   );
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
