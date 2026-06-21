@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useAction, useMutation } from "convex/react";
-import { api } from "@/_generated/api";
+import { requestUploadUrl, finalizeUpload } from "@/lib/api/documents";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Id } from "@/_generated/dataModel";
@@ -27,9 +26,6 @@ export function AudioFinishDialog({ blob, durationMs, onClose, onCancel }: Props
   const [uploading, setUploading] = useState(false);
   const audioUrl = useRef(URL.createObjectURL(blob)).current;
 
-  const requestUploadUrl = useAction(api.documents.actions.requestUploadUrl);
-  const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
-
   async function handleUpload() {
     if (uploading) return;
     setUploading(true);
@@ -43,18 +39,10 @@ export function AudioFinishDialog({ blob, durationMs, onClose, onCancel }: Props
         // Non-critical — upload original if fix fails
       }
 
-      const { uploadUrl, storageKey } = await requestUploadUrl({
-        fileSizeBytes: uploadBlob.size,
-        format: "audio",
-        fileName: `${fileName}.webm`,
-        mimeType: "audio/webm",
-      });
+      const { uploadUrl, storageKey } = await requestUploadUrl(`${fileName}.webm`);
 
-      const res = await fetch(uploadUrl, {
-        method: "PUT",
-        body: uploadBlob,
-        headers: { "Content-Type": "audio/webm" },
-      });
+      // Không set Content-Type — presigned URL của R2 không ký header này (tránh signature mismatch).
+      const res = await fetch(uploadUrl, { method: "PUT", body: uploadBlob });
       if (!res.ok) throw new Error("Upload thất bại");
 
       const doc = await finalizeUpload({

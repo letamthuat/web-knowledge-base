@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useAction, useMutation } from "convex/react";
-import { api } from "@/_generated/api";
+import { requestUploadUrl, finalizeUpload } from "@/lib/api/documents";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Id } from "@/_generated/dataModel";
@@ -27,26 +26,14 @@ export function ScreenFinishDialog({ blob, durationMs, onClose, onCancel }: Prop
   const [uploading, setUploading] = useState(false);
   const videoUrl = useRef(URL.createObjectURL(blob)).current;
 
-  const requestUploadUrl = useAction(api.documents.actions.requestUploadUrl);
-  const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
-
   async function handleUpload() {
     if (uploading) return;
     setUploading(true);
     try {
-      const mimeType = blob.type || "video/webm";
-      const { uploadUrl, storageKey } = await requestUploadUrl({
-        fileSizeBytes: blob.size,
-        format: "video",
-        fileName: `${fileName}.webm`,
-        mimeType,
-      });
+      const { uploadUrl, storageKey } = await requestUploadUrl(`${fileName}.webm`);
 
-      const res = await fetch(uploadUrl, {
-        method: "PUT",
-        body: blob,
-        headers: { "Content-Type": mimeType },
-      });
+      // Không set Content-Type — presigned URL của R2 không ký header này (tránh signature mismatch).
+      const res = await fetch(uploadUrl, { method: "PUT", body: blob });
       if (!res.ok) throw new Error("Upload thất bại");
 
       const docId = await finalizeUpload({
