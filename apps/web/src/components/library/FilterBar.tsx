@@ -3,8 +3,8 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { X, ChevronDown } from "lucide-react";
-import { useQuery } from "convex/react";
-import { api } from "@/_generated/api";
+import { useTagsList } from "@/lib/api/tags";
+import { useFoldersList } from "@/lib/api/folders";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,8 +46,8 @@ interface FilterBarProps {
 
 export function FilterBar({ filters }: FilterBarProps) {
   const router = useRouter();
-  const allTags = useQuery(api.tags.queries.listByUser);
-  const allFolders = useQuery(api.folders.queries.listByUser);
+  const allTags = useTagsList();
+  const allFolders = useFoldersList();
 
   const updateUrl = useCallback(
     (newFilters: Partial<FilterState>) => {
