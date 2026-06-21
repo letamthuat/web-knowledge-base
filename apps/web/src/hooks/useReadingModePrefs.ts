@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/_generated/api";
+import { useMe, updateReadingModePreferences } from "@/lib/api/users";
 
 export type ReadingTheme = "light" | "sepia" | "dark";
 export type FontFamily = "serif" | "sans" | "mono";
@@ -24,11 +23,11 @@ const DEFAULTS: ReadingModePrefs = {
 };
 
 export function useReadingModePrefs(format?: string): ReadingModePrefs {
-  const me = useQuery(api.users.queries.me);
+  const me = useMe();
   const rm = me?.preferences?.readingMode;
 
   return {
-    theme: (format ? rm?.themeByFormat?.[format] as ReadingTheme | undefined : undefined) ?? DEFAULTS.theme,
+    theme: (format ? (rm?.themeByFormat?.[format] as ReadingTheme | undefined) : undefined) ?? DEFAULTS.theme,
     fontFamily: (rm?.fontFamily as FontFamily) ?? DEFAULTS.fontFamily,
     fontSize: rm?.fontSize ?? DEFAULTS.fontSize,
     lineHeight: rm?.lineHeight ?? DEFAULTS.lineHeight,
@@ -37,5 +36,5 @@ export function useReadingModePrefs(format?: string): ReadingModePrefs {
 }
 
 export function useUpdateReadingModePrefs() {
-  return useMutation(api.users.mutations.updateReadingModePreferences);
+  return updateReadingModePreferences;
 }
