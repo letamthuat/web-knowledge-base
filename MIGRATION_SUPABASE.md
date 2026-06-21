@@ -46,24 +46,23 @@
 - ✅ Domain API bổ sung: **domains, handbooks** (reads + CRUD + folder ops + finalizeImport), **transcripts mutations**
 - ✅ Đã migrate hẳn: HandbookSidebar, ImportZipDialog, HandbookResolverContext (read), TranscriptButton (mutations), NoteEditor (add-to-library), SettingsPageInner (stats)
 
-### 🎉 TẦNG DB THUẦN HOÀN TẤT — toàn bộ read + write đã ghi/đọc Postgres
-Còn lại đúng **5 file vẫn import convex, CHỈ vì server action (Phase 4) / search (Phase 5)** — mọi DB read/write đã rời convex:
-| File | Convex còn lại | Loại |
-|---|---|---|
-| `NoteEditor` | requestNoteMediaUploadUrl, getNoteMediaUrl, copyNoteFileToLibrary | R2 action (P4) |
-| `SettingsPageInner` | deleteAccount, backfillExtractText | action (P4) |
-| `TranscriptButton` | getWebmChunks | action cắt audio (P4) |
-| `HandbookResolverContext` | getAssetUrls | presigned ảnh (P4) |
-| `useSearch` | documents/notes/highlights search | FTS (P5) |
-- ⚠️ Nợ: voice note media trong export (voiceUrls) để trống → Phase 4.
+### 🎉 DB LAYER + SMOKE TEST + PHASE 4 ROUTES HOÀN TẤT
+- Toàn bộ read/write đã rời Convex (Postgres). Smoke-test 12/12 PASS (auth/RLS/CRUD/join/realtime). Realtime cần `0002_realtime.sql` (đã chạy).
+- **CHỈ CÒN 1 file import convex: `useSearch.ts`** (Phase 5 FTS). Mọi file khác đã sạch.
 
-## Phase 4 — Server routes cần viết (Vercel/Next API, Node runtime)
-- `POST /api/documents/extract` — trích text (pdf/docx/pptx/epub/md/web_clip) → ghi `extractedText` (đã có fire-and-forget gọi từ finalizeUpload/finalizeImport, CHƯA có route) + backfill
-- note media: presigned PUT (key `notes/<uid>/…`) + presigned GET theo storageKey + `copyNoteFileToLibrary` (đọc R2 → ghi key mới → finalize)
-- `getWebmChunks` — đọc webm từ R2, cắt theo thời lượng cho Gemini
-- `getAssetUrls` — presign GET cho ảnh trong handbook (theo relPath)
-- `deleteAccount` — xoá user qua Supabase admin (service_role)
-- (Cron) prune trash + dọn file R2 mồ côi
+## [x] Phase 4 — Server routes (Next API, Node runtime) ĐÃ VIẾT
+| Route | Phục vụ |
+|---|---|
+| `POST /api/documents/extract` | trích text pdf/docx/epub/md/web_clip → `extractedText` (gọi fire-and-forget từ finalizeUpload/finalizeImport/copy-to-library) |
+| `backfillExtractText()` (lib/api, fan-out route) | trích text cho doc cũ thiếu |
+| `POST /api/account/delete` | service_role xoá auth user (cascade) |
+| `POST /api/storage/upload-url` (+param `prefix`) | presigned PUT, prefix `notes/` cho media note |
+| `POST /api/notes/copy-to-library` | copy media note → document |
+| `POST /api/handbooks/asset-urls` | map relPath→presigned URL ảnh handbook |
+| `POST /api/transcripts/webm-chunks` | tính ranh giới chunk audio/video (EBML) |
+- getNoteMediaUrl tái dùng `/api/storage/download-url` theo storageKey.
+- ⏳ CÒN: voice note media trong export (voiceUrls để trống); (tùy chọn) Vercel Cron prune trash + dọn R2 mồ côi.
+- ⚠️ CHƯA test thực tế route với upload/transcribe thật (cần đăng nhập + file thật) — verify ở Phase 7 hoặc khi chạy app.
 
 ### PATTERN chuyển đổi 1 call site (cơ học)
 | Convex | Supabase |
