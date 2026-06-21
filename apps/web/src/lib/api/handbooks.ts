@@ -259,6 +259,18 @@ export async function renameFolder(handbookId: string, oldPrefix: string, newPre
     .eq("_id", handbookId);
 }
 
+// Map relPath → presigned URL cho ảnh trong handbook (resolver markdown).
+export async function getAssetUrls(handbookId: string): Promise<Record<string, string>> {
+  const res = await fetch("/api/handbooks/asset-urls", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ handbookId }),
+  });
+  if (!res.ok) return {};
+  const { urls } = (await res.json()) as { urls: Record<string, string> };
+  return urls;
+}
+
 export async function renameHandbookFile(docId: string, newName: string): Promise<void> {
   const name = newName.trim();
   if (!name || name.includes("/")) throw new Error("Tên file không hợp lệ");

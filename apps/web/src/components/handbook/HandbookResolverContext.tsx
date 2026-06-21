@@ -1,10 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
-import { useAction } from "convex/react";
-import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
-import { useHandbookFiles } from "@/lib/api/handbooks";
+import { useHandbookFiles, getAssetUrls } from "@/lib/api/handbooks";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 
@@ -28,7 +26,6 @@ export function HandbookResolverProvider({
   children: ReactNode;
 }) {
   const files = useHandbookFiles(handbookId);
-  const getAssetUrls = useAction(api.handbooks.actions.getAssetUrls);
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const { openTab } = useTabSync();
   const { setActivePanel } = useActiveTab();
@@ -36,11 +33,11 @@ export function HandbookResolverProvider({
   // Fetch presigned URL cho ảnh khi đổi handbook
   useEffect(() => {
     let cancelled = false;
-    getAssetUrls({ handbookId })
+    getAssetUrls(handbookId)
       .then((urls) => { if (!cancelled) setAssetUrls(urls); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [handbookId, getAssetUrls]);
+  }, [handbookId]);
 
   const filesByPath = useMemo(() => {
     const m = new Map<string, { docId: Id<"documents">; format: string }>();
