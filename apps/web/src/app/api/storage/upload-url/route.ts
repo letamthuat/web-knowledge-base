@@ -10,9 +10,11 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { fileName } = (await request.json()) as { fileName: string };
+  const { fileName, prefix } = (await request.json()) as { fileName: string; prefix?: string };
   const safe = (fileName ?? "file").replace(/[^a-zA-Z0-9._-]/g, "_");
-  const key = `${user.id}/${Date.now()}-${safe}`;
+  // prefix tùy chọn (vd "notes") cho media của note; mặc định theo user.
+  const cleanPrefix = prefix ? prefix.replace(/[^a-zA-Z0-9_-]/g, "") + "/" : "";
+  const key = `${cleanPrefix}${user.id}/${Date.now()}-${safe}`;
 
   const r2 = getR2Client();
   const uploadUrl = await getSignedUrl(

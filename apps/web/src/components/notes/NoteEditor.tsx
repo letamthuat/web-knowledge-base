@@ -25,9 +25,8 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { offset, shift } from "@floating-ui/react";
 import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
-import { useAction } from "convex/react";
-import { api } from "@/_generated/api";
 import { requestUploadUrl as requestDocUpload, finalizeUpload } from "@/lib/api/documents";
+import { requestNoteMediaUploadUrl, getNoteMediaUrl, copyNoteFileToLibrary } from "@/lib/api/notes";
 import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
 import { Download, Upload, ExternalLink, LibraryBig } from "lucide-react";
@@ -148,9 +147,6 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     }
   }, [noteId, autoFocusTitle]);
 
-  const requestUpload = useAction(api.notes.actions.requestNoteMediaUploadUrl);
-  const getMediaUrl = useAction(api.notes.actions.getNoteMediaUrl);
-  const copyNoteFileToLibrary = useAction(api.documents.actions.copyNoteFileToLibrary);
   const [addingToLib, setAddingToLib] = useState(false);
 
   // Called from AddToLibraryButton with storageKey + fileName
@@ -185,14 +181,11 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
   }, [addingToLib, copyNoteFileToLibrary]);
 
   const uploadFile = useCallback(async (file: File): Promise<string> => {
-    const { uploadUrl, storageKey } = await requestUpload({
-      fileName: file.name,
-      mimeType: file.type || "application/octet-stream",
-    });
+    const { uploadUrl, storageKey } = await requestNoteMediaUploadUrl(file.name);
     // No Content-Type header — presigned URL doesn't sign it, adding it causes R2 signature mismatch
     await fetch(uploadUrl, { method: "PUT", body: file });
-    return await getMediaUrl({ storageKey });
-  }, [requestUpload, getMediaUrl]);
+    return await getNoteMediaUrl(storageKey);
+  }, []);
 
   const editor = useCreateBlockNote({
     initialContent: parseBlocks(initialBody) as never,

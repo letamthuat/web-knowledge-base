@@ -105,3 +105,48 @@ export async function removeNote(noteId: string): Promise<void> {
   const { error } = await supabase.from("notes").delete().eq("_id", noteId);
   if (error) throw error;
 }
+
+// ─── NOTE MEDIA (R2 qua route) ──────────────────────────────────────────────
+// Presigned PUT cho media chèn vào note (key dưới prefix notes/).
+export async function requestNoteMediaUploadUrl(
+  fileName: string,
+): Promise<{ uploadUrl: string; storageKey: string }> {
+  const res = await fetch("/api/storage/upload-url", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ fileName, prefix: "notes" }),
+  });
+  if (!res.ok) throw new Error("Không lấy được link upload");
+  const { uploadUrl, storageKey } = (await res.json()) as { uploadUrl: string; storageKey: string };
+  return { uploadUrl, storageKey };
+}
+
+// Presigned GET cho media của note (tái dùng route download-url theo storageKey).
+export async function getNoteMediaUrl(storageKey: string): Promise<string> {
+  const res = await fetch("/api/storage/download-url", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ storageKey }),
+  });
+  if (!res.ok) throw new Error("Không lấy được link media");
+  const { url } = (await res.json()) as { url: string };
+  return url;
+}
+
+// Copy media của note vào thư viện (tạo document mới).
+export async function copyNoteFileToLibrary(args: {
+  sourceStorageKey: string;
+  fileName: string;
+  format: string;
+  mimeType?: string;
+  title?: string;
+}): Promise<string> {
+  const res = await fetch("/api/notes/copy-to-library", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) throw new Error("Không thể thêm vào thư viện");
+  const { docId } = (await res.json()) as { docId: string };
+  return docId;
+}
