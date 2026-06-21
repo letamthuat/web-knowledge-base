@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useAction, useMutation } from "convex/react";
-import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
+import { useDocument, getDownloadUrl } from "@/lib/api/documents";
+import { recordOpen } from "@/lib/api/reading-history";
 import { useSession } from "@/lib/auth-client";
 import { ViewerDispatcher } from "@/components/viewers/ViewerDispatcher";
 import { ProgressSaveIndicator } from "@/components/viewers/ProgressSaveIndicator";
@@ -178,14 +178,13 @@ function ReaderShell({ doc, downloadUrl }: {
     },
     [savePosition, updateScrollState, currentTabId]
   );
-  const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
   const FORMAT_EXT: Record<string, string> = {
     pdf: ".pdf", epub: ".epub", docx: ".docx", pptx: ".pptx",
     image: ".jpg", audio: ".mp3", video: ".mp4", markdown: ".md", web_clip: ".html",
   };
   async function handleDownload() {
     try {
-      const url = await getDownloadUrl({ docId: doc._id });
+      const url = await getDownloadUrl(doc._id);
       const ext = FORMAT_EXT[doc.format] ?? "";
       const fileName = doc.title.endsWith(ext) ? doc.title : doc.title + ext;
       // Fetch về blob để bypass cross-origin download restriction
@@ -264,9 +263,6 @@ function ReaderShell({ doc, downloadUrl }: {
     openTab(doc._id).catch(() => {});
   }, [tabsLoading, doc._id, openTab]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recordOpen = useMutation((api as any).reading_history.mutations.recordOpen);
-
   const jumpHandlerRef = useRef<((pos: ReadingPosition) => void) | null>(null);
   const registerJump = useCallback((fn: (pos: ReadingPosition) => void) => {
     jumpHandlerRef.current = fn;
@@ -279,12 +275,8 @@ function ReaderShell({ doc, downloadUrl }: {
   useEffect(() => {
     if (recorded.current || progress === undefined) return;
     recorded.current = true;
-    recordOpen({
-      docId: doc._id,
-      positionType: progress?.positionType as ReadingPosition["type"] | undefined,
-      positionValue: progress?.positionValue,
-    }).catch(() => {});
-  }, [progress, doc._id, recordOpen]);
+    recordOpen(doc._id, progress?.positionType, progress?.positionValue).catch(() => {});
+  }, [progress, doc._id]);
 
   return (
     <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition: savePositionWithTab, jumpTo, registerJump }}>
@@ -558,8 +550,7 @@ export function evictCachedUrl(docId: string) {
 // ReaderDocLoader — used by AppShell keep-alive: receives docId as prop instead of useParams
 export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
   const router = useRouter();
-  const doc = useQuery(api.documents.queries.getById, { docId });
-  const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
+  const doc = useDocument(docId);
 
   const [downloadUrl, setDownloadUrl] = useState<string | null>(() => getCachedUrl(docId));
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -581,7 +572,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
       setTimeout(() => reject(new Error("Tải file quá chậm, vui lòng thử lại")), 15_000)
     );
 
-    Promise.race([getDownloadUrl({ docId }), timeoutPromise])
+    Promise.race([getDownloadUrl(docId), timeoutPromise])
       .then((url) => { setCachedUrl(docId, url); setDownloadUrl(url); })
       .catch((e) => setUrlError(e instanceof Error ? e.message : "Không thể tải file"))
       .finally(() => clearTimeout(slowTimer));
@@ -644,7 +635,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     );
   }
 
-  return <ReaderShell doc={doc} downloadUrl={downloadUrl} />;
+  return <ReaderShell doc={doc as unknown as React.ComponentProps<typeof ReaderShell>["doc"]} downloadUrl={downloadUrl} />;
 }
 
 export default function ReaderPageInner() {
