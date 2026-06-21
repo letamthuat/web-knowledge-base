@@ -52,7 +52,7 @@ export function useRealtimeQuery<T = Record<string, unknown>>(
 
     // Realtime: có thay đổi nào trên bảng (RLS đã lọc theo user) → refetch.
     const channel = supabase
-      .channel(`rt:${table}:${filterKey}`)
+      .channel(`rt:${table}:${filterKey}:${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table },

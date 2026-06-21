@@ -42,7 +42,7 @@ export function useFolderForDoc(docId: string | undefined): FolderRow | null | u
     }
     void load();
     const channel = supabase
-      .channel(`rt:doc_folder:${docId}`)
+      .channel(`rt:doc_folder:${docId}:${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "document_folders" }, () => void load())
       .subscribe();
     return () => { active = false; void supabase.removeChannel(channel); };
@@ -69,7 +69,7 @@ export function useDocsInFolder(folderId: string | undefined): DocLite[] | undef
     }
     void load();
     const channel = supabase
-      .channel(`rt:docs_in_folder:${folderId}`)
+      .channel(`rt:docs_in_folder:${folderId}:${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "document_folders" }, () => void load())
       .subscribe();
     return () => { active = false; void supabase.removeChannel(channel); };

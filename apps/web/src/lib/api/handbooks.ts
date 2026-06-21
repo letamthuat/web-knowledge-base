@@ -68,7 +68,7 @@ export function useHandbookFiles(handbookId: string | undefined, enabled = true)
     }
     void load();
     const channel = supabase
-      .channel(`rt:handbook_files:${handbookId}`)
+      .channel(`rt:handbook_files:${handbookId}:${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "documents" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "reading_progress" }, () => void load())
       .subscribe();

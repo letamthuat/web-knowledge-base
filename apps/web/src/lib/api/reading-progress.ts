@@ -97,7 +97,7 @@ export function useRecentHistory(limit = 10): RecentHistoryItem[] | undefined {
     }
     void load();
     const channel = supabase
-      .channel("rt:reading_progress:recent")
+      .channel(`rt:reading_progress:recent:${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "reading_progress" }, () => void load())
       .subscribe();
     return () => {
