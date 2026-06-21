@@ -2,9 +2,13 @@
 
 import { useState, useRef } from "react";
 import { Tag, X, Plus } from "lucide-react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/_generated/api";
-import { Id } from "@/_generated/dataModel";
+import {
+  useTagsList,
+  useTagsForDoc,
+  addTagToDoc,
+  removeTagFromDoc,
+  createAndAddTagToDoc,
+} from "@/lib/api/tags";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +17,7 @@ import { labels } from "@/lib/i18n/labels";
 const L = labels.tag;
 
 interface TagPopoverProps {
-  docId: Id<"documents">;
+  docId: string;
 }
 
 export function TagPopover({ docId }: TagPopoverProps) {
@@ -21,11 +25,8 @@ export function TagPopover({ docId }: TagPopoverProps) {
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const allTags = useQuery(api.tags.queries.listByUser);
-  const docTags = useQuery(api.tags.queries.listForDoc, { docId });
-  const addToDoc = useMutation(api.tags.mutations.addToDoc);
-  const removeFromDoc = useMutation(api.tags.mutations.removeFromDoc);
-  const createAndAdd = useMutation(api.tags.mutations.createAndAddToDoc);
+  const allTags = useTagsList();
+  const docTags = useTagsForDoc(docId);
 
   const docTagIds = new Set(docTags?.map((t) => t._id) ?? []);
 
@@ -33,18 +34,18 @@ export function TagPopover({ docId }: TagPopoverProps) {
     t.name.toLowerCase().includes(input.toLowerCase()),
   );
 
-  async function handleToggle(tagId: Id<"tags">) {
+  async function handleToggle(tagId: string) {
     if (docTagIds.has(tagId)) {
-      await removeFromDoc({ docId, tagId });
+      await removeTagFromDoc(docId, tagId);
     } else {
-      await addToDoc({ docId, tagId });
+      await addTagToDoc(docId, tagId);
     }
   }
 
   async function handleCreate() {
     const name = input.trim();
     if (!name) return;
-    await createAndAdd({ docId, name });
+    await createAndAddTagToDoc(docId, name);
     setInput("");
     inputRef.current?.focus();
   }
