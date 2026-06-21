@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { useAiSettings } from "@/lib/api/ai-settings";

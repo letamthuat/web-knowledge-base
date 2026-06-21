@@ -25,8 +25,9 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { offset, shift } from "@floating-ui/react";
 import "@mantine/core/styles.css";
 import "@blocknote/mantine/style.css";
-import { useAction, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/_generated/api";
+import { requestUploadUrl as requestDocUpload, finalizeUpload } from "@/lib/api/documents";
 import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
 import { Download, Upload, ExternalLink, LibraryBig } from "lucide-react";
@@ -150,8 +151,6 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
   const requestUpload = useAction(api.notes.actions.requestNoteMediaUploadUrl);
   const getMediaUrl = useAction(api.notes.actions.getNoteMediaUrl);
   const copyNoteFileToLibrary = useAction(api.documents.actions.copyNoteFileToLibrary);
-  const requestDocUpload = useAction(api.documents.actions.requestUploadUrl);
-  const finalizeUpload = useMutation(api.documents.mutations.finalizeUpload);
   const [addingToLib, setAddingToLib] = useState(false);
 
   // Called from AddToLibraryButton with storageKey + fileName
@@ -275,16 +274,11 @@ export function NoteEditor({ noteId, initialTitle, initialBody, docTitle, docId,
     }
     setAddingToLib(true);
     try {
-      const { uploadUrl, storageKey } = await requestDocUpload({
-        fileSizeBytes: file.size,
-        format,
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-      });
+      const { uploadUrl, storageKey } = await requestDocUpload(file.name);
       await fetch(uploadUrl, { method: "PUT", body: file });
       const docId = await finalizeUpload({
         title: file.name.replace(/\.[^/.]+$/, ""),
-        format: format as never,
+        format,
         fileSizeBytes: file.size,
         storageBackend: "r2",
         storageKey,
