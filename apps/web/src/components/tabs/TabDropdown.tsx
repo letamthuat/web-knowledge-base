@@ -1,8 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
-import { api } from "@/_generated/api";
 import { useTabSync, TabDoc } from "@/hooks/useTabSync";
 import { Id } from "@/_generated/dataModel";
 import { X, Plus, PanelLeftClose, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, StickyNote } from "lucide-react";
@@ -13,10 +11,6 @@ const FORMAT_ICONS: Record<string, React.ElementType> = {
   pdf: FileText, epub: BookOpen, docx: FileType2, pptx: Presentation,
   image: Image, audio: Music, video: Video, markdown: FileCode, web_clip: Globe,
 };
-
-function useDoc(docId: Id<"documents">) {
-  return useQuery(api.documents.queries.getById, { docId });
-}
 
 interface TabDropdownProps {
   currentDocId: Id<"documents"> | null;
@@ -143,8 +137,7 @@ function TabChip({
   onSelect: () => void;
   onClose: () => void;
 }) {
-  const doc = useDoc(tab.docId as Id<"documents">);
-  const Icon = FORMAT_ICONS[doc?.format ?? ""] ?? FileText;
+  const Icon = FORMAT_ICONS[tab.docFormat ?? ""] ?? FileText;
 
   return (
     <div
@@ -160,7 +153,7 @@ function TabChip({
         className="flex min-w-0 items-center gap-1"
       >
         <Icon className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-        <span className="max-w-[80px] truncate">{doc?.title ?? "…"}</span>
+        <span className="max-w-[80px] truncate">{tab.docTitle || "…"}</span>
       </button>
       <button
         onClick={onClose}

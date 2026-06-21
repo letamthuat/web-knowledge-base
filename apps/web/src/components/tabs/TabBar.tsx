@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, PanelLeftClose, StickyNote } from "lucide-react";
-import { useAction } from "convex/react";
-import { api } from "@/_generated/api";
+import { getDownloadUrl } from "@/lib/api/documents";
 import { getCachedUrl, setCachedUrl } from "@/app/reader/[docId]/ReaderPageInner";
 import { useTabSync, TabDoc } from "@/hooks/useTabSync";
 import { Id } from "@/_generated/dataModel";
@@ -45,7 +44,6 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
   const router = useRouter();
   // Use pre-joined docTitle/docFormat from tabs query — no extra subscription per tab
   const Icon = FORMAT_ICONS[tab.docFormat ?? ""] ?? FileText;
-  const getDownloadUrl = useAction(api.documents.actions.getDownloadUrl);
 
   const {
     attributes,
@@ -66,7 +64,7 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
   // Warm download URL as soon as tab appears in the bar (not waiting for hover)
   useEffect(() => {
     if (!getCachedUrl(tab.docId as string)) {
-      getDownloadUrl({ docId: tab.docId as Id<"documents"> })
+      getDownloadUrl(tab.docId as string)
         .then((url) => setCachedUrl(tab.docId as string, url))
         .catch(() => {});
     }
