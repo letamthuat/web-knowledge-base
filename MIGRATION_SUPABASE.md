@@ -78,7 +78,7 @@
 Lưu ý: bỏ `useMutation`/`useAction` wrapper — gọi thẳng async function. Bỏ import `convex/react` + `@/_generated/*`.
 - [x] **Phase 4** — Server routes ĐÃ VIẾT (extract/backfill, account/delete, note media + copy-to-library, handbooks/asset-urls, transcripts/webm-chunks). Chi tiết ở mục "Phase 4 — Server routes" bên dưới. ⚠️ chưa test với file/upload thật. Còn (tùy chọn): Vercel Cron prune trash + dọn R2 mồ côi.
 - [x] **Phase 5** — Search FTS XONG: `lib/api/search.ts` dùng PostgREST `.textSearch("searchVector", q, {type:websearch, config:simple})` cho documents+notes, `.ilike` note cho highlights (RLS tự lọc, KHÔNG cần RPC). `useSearch` → hook debounce fetch. Smoke-test 4/4 PASS. **→ KHÔNG còn file nào import Convex (runtime) nữa.**
-- [ ] **Phase 6** — Migrate dữ liệu cũ: export Convex → transform → import Postgres (khi Convex bật lại)
+- [x] ~~**Phase 6** — Migrate dữ liệu cũ~~ **ĐÃ HUỶ (fresh start)**: user quyết định không migrate. Note quan trọng duy nhất ("Ôn tập Aptis") đã xuất ra `Ôn tập Aptis.md`. Đã **xoá sạch 94 object R2** (540MB tài liệu cũ). Supabase mới bắt đầu từ trống. Convex cũ bỏ mặc (locked).
 - [ ] **Phase 7** — Deploy: Vercel project thứ 2 trỏ nhánh `supabase` + keep-alive ping; test thật (upload/transcribe/handbook ZIP); cutover
 
 ---
