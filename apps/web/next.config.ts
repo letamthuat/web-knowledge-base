@@ -23,9 +23,9 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "connect-src 'self' *.convex.cloud *.convex.site wss://*.convex.cloud *.r2.cloudflarestorage.com *.resend.com",
-              "img-src 'self' data: blob: https://*.googleusercontent.com https://*.convex.cloud https://*.convex.site https://*.r2.cloudflarestorage.com",
-              "media-src 'self' blob: https://*.convex.cloud https://*.convex.site https://*.r2.cloudflarestorage.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.r2.cloudflarestorage.com",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.r2.cloudflarestorage.com",
+              "media-src 'self' blob: https://*.supabase.co https://*.r2.cloudflarestorage.com",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data:",
