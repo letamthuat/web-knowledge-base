@@ -29,11 +29,13 @@
 
 ### Tiến độ Phase 3 (commit theo domain trên nhánh `supabase`)
 - ✅ Foundation: `hooks/useRealtimeQuery.ts` (có option `select`), `providers/SupabaseProvider.tsx`
-- ✅ `lib/api/reading-progress.ts`, `lib/api/tags.ts`, `lib/api/folders.ts`, `lib/api/documents.ts`
+- ✅ `lib/api/reading-progress.ts`, `lib/api/tags.ts`, `lib/api/folders.ts`, `lib/api/documents.ts`, `lib/api/notes.ts`, `lib/api/note-tabs.ts`
 - ✅ R2: `lib/r2.ts`, `app/api/storage/{upload-url,download-url}/route.ts`
-- ✅ Consumer đã đổi: useReadingProgress, RecentHistory, TagPopover, FilterBar
-- ⏳ Consumer CÒN LẠI: DataPrefetcher, LibraryPageInner, DocumentCard, TrashPageInner, TrashView,
-  reader/ReaderPageInner, tabs/TabBar+TabDropdown, UploadDropzone, recording dialogs, HandbookSidebar...
+- ✅ Consumer đã đổi: useReadingProgress, RecentHistory, TagPopover, FilterBar, useNotes (hook lá), useNoteTabs (hook lá)
+- ⚠️ Còn nợ ở notes: NoteEditor vẫn dùng convex actions cho media upload (requestNoteMediaUploadUrl/getNoteMediaUrl/copyNoteFileToLibrary) → cần R2 route khi migrate trang lớn; useSearch.ts notes.search để Phase 5
+- ⏳ Consumer CÒN LẠI (trang lớn): DataPrefetcher, LibraryPageInner, DocumentCard, ReaderPageInner,
+  NotesPageInner, NoteEditor (media upload), UploadDropzone, recording dialogs, HandbookSidebar, useSearch...
+  (TabBar/TabDropdown chỉ dùng type NoteTab — đã tương thích, không cần đổi)
 
 ### PATTERN chuyển đổi 1 call site (cơ học)
 | Convex | Supabase |
