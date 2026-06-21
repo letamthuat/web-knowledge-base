@@ -6,6 +6,7 @@ import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
 import { useAiSettings } from "@/lib/api/ai-settings";
 import { getDownloadUrl } from "@/lib/api/documents";
+import { initTranscript, updateTranscriptStatus, saveTranscriptSegments } from "@/lib/api/transcripts";
 import { Button } from "@/components/ui/button";
 import { Captions, Loader2, RefreshCw, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { TranscriptProgress } from "@/lib/transcriptService";
@@ -47,9 +48,6 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
 
   const aiSettings = useAiSettings();
 
-  const initTranscript = useMutation(api.transcripts.mutations.initTranscript);
-  const updateStatus = useMutation(api.transcripts.mutations.updateStatus);
-  const saveSegments = useMutation(api.transcripts.mutations.saveSegments);
   const getWebmChunks = useAction(api.transcripts.actions.getWebmChunks);
 
   // Notify parent + block browser navigation when running
@@ -228,10 +226,10 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
       return;
     }
 
-    let transcriptId: Id<"transcripts"> | null = null;
+    let transcriptId: string | null = null;
     try {
-      transcriptId = await initTranscript({ docId });
-      await updateStatus({ transcriptId, status: "processing" });
+      transcriptId = await initTranscript(docId);
+      await updateTranscriptStatus(transcriptId, "processing");
 
       setProgress({ phase: "loading", message: isVideo ? "Đang phân tích file video..." : "Đang phân tích file âm thanh..." });
 
@@ -323,14 +321,14 @@ export function TranscriptButton({ docId, mimeType, hasTranscript, fileSizeBytes
         allSegments.push(...segs);
       }
 
-      await saveSegments({ transcriptId, segments: allSegments, language: detectedLanguage });
+      await saveTranscriptSegments({ transcriptId, segments: allSegments, language: detectedLanguage });
       setProgress({ phase: "done", message: "Hoàn tất!" });
       toast.success("Đã tạo transcript thành công");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Lỗi không xác định";
       console.error("[TranscriptButton] error:", err);
       if (transcriptId) {
-        await updateStatus({ transcriptId, status: "error", errorMessage: message });
+        await updateTranscriptStatus(transcriptId, "error", message);
       }
       setProgress({ phase: "error", message });
 

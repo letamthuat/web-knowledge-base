@@ -1,9 +1,10 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
-import { useQuery, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
+import { useHandbookFiles } from "@/lib/api/handbooks";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 
@@ -26,7 +27,7 @@ export function HandbookResolverProvider({
   handbookId: Id<"handbooks">;
   children: ReactNode;
 }) {
-  const files = useQuery(api.handbooks.queries.listHandbookFiles, { handbookId });
+  const files = useHandbookFiles(handbookId);
   const getAssetUrls = useAction(api.handbooks.actions.getAssetUrls);
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const { openTab } = useTabSync();
@@ -44,7 +45,7 @@ export function HandbookResolverProvider({
   const filesByPath = useMemo(() => {
     const m = new Map<string, { docId: Id<"documents">; format: string }>();
     for (const f of files ?? []) {
-      m.set(f.relPath, { docId: f.docId, format: f.format });
+      m.set(f.relPath, { docId: f.docId as Id<"documents">, format: f.format });
     }
     return m;
   }, [files]);
