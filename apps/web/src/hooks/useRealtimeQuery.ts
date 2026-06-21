@@ -10,13 +10,14 @@ export type RealtimeQueryOptions = {
   order?: { column: string; ascending?: boolean };
   limit?: number;
   enabled?: boolean; // false = "skip" (giống convex "skip")
+  select?: string;   // cột cần lấy; mặc định "*". Dùng để loại field nặng (extractedText).
 };
 
 export function useRealtimeQuery<T = Record<string, unknown>>(
   table: string,
   options: RealtimeQueryOptions = {},
 ): T[] | undefined {
-  const { filter, order, limit, enabled = true } = options;
+  const { filter, order, limit, enabled = true, select = "*" } = options;
   const [data, setData] = useState<T[] | undefined>(undefined);
 
   // Khóa ổn định cho deps (tránh re-subscribe vô hạn)
@@ -31,7 +32,7 @@ export function useRealtimeQuery<T = Record<string, unknown>>(
     let active = true;
 
     async function load() {
-      let q = supabase.from(table).select("*");
+      let q = supabase.from(table).select(select);
       if (filter) {
         for (const [k, v] of Object.entries(filter)) q = q.eq(k, v as never);
       }
@@ -64,7 +65,7 @@ export function useRealtimeQuery<T = Record<string, unknown>>(
       void supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table, filterKey, orderKey, limit, enabled]);
+  }, [table, filterKey, orderKey, limit, enabled, select]);
 
   return data;
 }
