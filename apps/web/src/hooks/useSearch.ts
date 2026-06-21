@@ -1,8 +1,10 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { useState, useEffect } from "react";
-import { api } from "@/_generated/api";
+import {
+  searchDocuments, searchNotes, searchHighlights,
+  type DocSearchRow, type NoteSearchRow, type HighlightSearchRow,
+} from "@/lib/api/search";
 
 export type FilterType = "all" | "docs" | "notes" | "highlights";
 
@@ -26,28 +28,40 @@ export function useSearch(q: string, filter?: SearchFilter) {
   const type = filter?.type ?? "all";
   const format = filter?.format;
 
-  const skipDocs = !enabled || type === "notes" || type === "highlights";
-  const skipNotes = !enabled || type === "docs" || type === "highlights";
-  const skipHighlights = !enabled || type === "docs" || type === "notes";
+  const [docs, setDocs] = useState<DocSearchRow[]>([]);
+  const [notes, setNotes] = useState<NoteSearchRow[]>([]);
+  const [highlights, setHighlights] = useState<HighlightSearchRow[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const docs = useQuery(
-    api.documents.queries.search,
-    skipDocs ? "skip" : { q: debouncedQ, ...(format ? { format } : {}) }
-  ) ?? [];
-  const notes = useQuery(api.notes.queries.search, skipNotes ? "skip" : { q: debouncedQ }) ?? [];
-  const highlights = useQuery(api.highlights.queries.search, skipHighlights ? "skip" : { q: debouncedQ }) ?? [];
+  useEffect(() => {
+    if (!enabled) {
+      setDocs([]); setNotes([]); setHighlights([]); setIsLoading(false);
+      return;
+    }
+    let active = true;
+    const wantDocs = type === "all" || type === "docs";
+    const wantNotes = type === "all" || type === "notes";
+    const wantHl = type === "all" || type === "highlights";
+    setIsLoading(true);
+    Promise.all([
+      wantDocs ? searchDocuments(debouncedQ, format) : Promise.resolve<DocSearchRow[]>([]),
+      wantNotes ? searchNotes(debouncedQ) : Promise.resolve<NoteSearchRow[]>([]),
+      wantHl ? searchHighlights(debouncedQ) : Promise.resolve<HighlightSearchRow[]>([]),
+    ])
+      .then(([d, n, h]) => {
+        if (!active) return;
+        setDocs(d); setNotes(n); setHighlights(h); setIsLoading(false);
+      })
+      .catch(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, [debouncedQ, enabled, type, format]);
 
-  const isLoading = enabled && (
-    (!skipDocs && docs === undefined) ||
-    (!skipNotes && notes === undefined) ||
-    (!skipHighlights && highlights === undefined)
-  );
   const hasResults = docs.length > 0 || notes.length > 0 || highlights.length > 0;
 
   return {
-    docs: (docs ?? []).slice(0, 5),
-    notes: (notes ?? []).slice(0, 5),
-    highlights: (highlights ?? []).slice(0, 5),
+    docs: docs.slice(0, 5),
+    notes: notes.slice(0, 5),
+    highlights: highlights.slice(0, 5),
     isLoading,
     hasResults,
     searched: enabled,
