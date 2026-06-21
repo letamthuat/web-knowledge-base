@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
-import { ConvexClientProvider } from "@/providers/ConvexClientProvider";
+import { SupabaseProvider } from "@/providers/SupabaseProvider";
 import { RecordingProvider } from "@/contexts/RecordingContext";
 import { AudioRecordingPillFloating } from "@/components/recording/AudioRecordingPill";
 import { ScreenRecordingPillFloating } from "@/components/recording/ScreenRecordingPill";
@@ -76,8 +76,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
         ` }} />
       </head>
       <body className={inter.className}>
-        {/* ConvexClientProvider bọc ConvexReactClient + Better Auth session */}
-        <ConvexClientProvider>
+        {/* SupabaseProvider — session do middleware lo, supabase client là singleton */}
+        <SupabaseProvider>
           <RecordingProvider>
             <AppShell>{children}</AppShell>
             <DataPrefetcher />
@@ -95,7 +95,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               duration: 4000,
             }}
           />
-        </ConvexClientProvider>
+        </SupabaseProvider>
       </body>
     </html>
   );
