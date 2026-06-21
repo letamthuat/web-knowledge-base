@@ -1,57 +1,50 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
 import { useCallback } from "react";
-import { api } from "@/_generated/api";
 import { Id } from "@/_generated/dataModel";
-import { Doc } from "@/_generated/dataModel";
+import {
+  useTabsWithDoc,
+  openTab as apiOpenTab,
+  closeTab as apiCloseTab,
+  closeAll as apiCloseAll,
+  setActive as apiSetActive,
+  reorderTabs as apiReorderTabs,
+  updateScrollState as apiUpdateScrollState,
+} from "@/lib/api/tabs";
 
-export type TabDoc = Doc<"tabs"> & { docTitle: string; docFormat: string };
+// Giữ kiểu Id<> cho các trang lớn (TabBar/TabDropdown/ReaderPageInner) chưa migrate.
+export type TabDoc = {
+  _id: Id<"tabs">;
+  docId: Id<"documents">;
+  order: number;
+  isActive: boolean;
+  scrollState?: string | null;
+  updatedAt: number;
+  clientMutationId?: string | null;
+  docTitle: string;
+  docFormat: string;
+};
 
 export function useTabSync() {
-  const tabsResult = useQuery(api.tabs.queries.listByUser);
-  const tabs: TabDoc[] = tabsResult ?? [];
+  const tabsResult = useTabsWithDoc();
+  const tabs = (tabsResult ?? []) as unknown as TabDoc[];
   const isLoading = tabsResult === undefined;
 
-  const openTabMutation = useMutation(api.tabs.mutations.openTab);
-  const closeTabMutation = useMutation(api.tabs.mutations.closeTab);
-  const closeAllMutation = useMutation(api.tabs.mutations.closeAll);
-  const setActiveMutation = useMutation(api.tabs.mutations.setActive);
-  const reorderTabsMutation = useMutation(api.tabs.mutations.reorderTabs);
-  const updateScrollStateMutation = useMutation(api.tabs.mutations.updateScrollState);
-
-  const openTab = useCallback(
-    (docId: Id<"documents">) => openTabMutation({ docId }),
-    [openTabMutation]
-  );
-
-  const closeTab = useCallback(
-    (tabId: Id<"tabs">) => closeTabMutation({ tabId }),
-    [closeTabMutation]
-  );
-
-  const closeAll = useCallback(
-    () => closeAllMutation({}),
-    [closeAllMutation]
-  );
-
-  const setActive = useCallback(
-    (tabId: Id<"tabs">) => setActiveMutation({ tabId }),
-    [setActiveMutation]
-  );
-
+  const openTab = useCallback((docId: Id<"documents">) => apiOpenTab(docId), []);
+  const closeTab = useCallback((tabId: Id<"tabs">) => apiCloseTab(tabId), []);
+  const closeAll = useCallback(() => apiCloseAll(), []);
+  const setActive = useCallback((tabId: Id<"tabs">) => apiSetActive(tabId), []);
   const reorderTabs = useCallback(
-    (orders: { tabId: Id<"tabs">; order: number }[]) => reorderTabsMutation({ orders }),
-    [reorderTabsMutation]
+    (orders: { tabId: Id<"tabs">; order: number }[]) => apiReorderTabs(orders),
+    []
   );
-
   const updateScrollState = useCallback(
     (tabId: Id<"tabs">, scrollState: string, clientMutationId?: string) =>
-      updateScrollStateMutation({ tabId, scrollState, clientMutationId }),
-    [updateScrollStateMutation]
+      apiUpdateScrollState(tabId, scrollState, clientMutationId),
+    []
   );
 
-  const activeTab = tabs.find((t: TabDoc) => t.isActive) ?? null;
+  const activeTab = tabs.find((t) => t.isActive) ?? null;
 
   return { tabs, activeTab, isLoading, openTab, closeTab, closeAll, setActive, reorderTabs, updateScrollState };
 }
