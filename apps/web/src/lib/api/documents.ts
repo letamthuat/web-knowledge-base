@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery, useRealtimeOne } from "@/hooks/useRealtimeQuery";
+import { subscribeTable } from "@/lib/supabase/realtime";
 
 // Cột cho danh sách — KHÔNG lấy extractedText/searchVector/clippedContent (chống đốt băng thông).
 export const DOC_LIST_COLUMNS =
@@ -92,12 +93,9 @@ export function useLooseDocsWithProgress(enabled = true): LooseDocRow[] | undefi
       setData(docs);
     }
     void load();
-    const channel = supabase
-      .channel(`rt:loose_docs:${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "documents" }, () => void load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "reading_progress" }, () => void load())
-      .subscribe();
-    return () => { active = false; void supabase.removeChannel(channel); };
+    const unsubDocs = subscribeTable("documents", () => void load());
+    const unsubProg = subscribeTable("reading_progress", () => void load());
+    return () => { active = false; unsubDocs(); unsubProg(); };
   }, [enabled]);
   return data;
 }

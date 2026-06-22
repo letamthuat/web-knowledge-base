@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
+import { subscribeTable } from "@/lib/supabase/realtime";
 
 export type TagRow = { _id: string; name: string; color: string | null; createdAt: number };
 
@@ -41,13 +42,10 @@ export function useTagsForDoc(docId: string | undefined): TagRow[] | undefined {
       setData(tags);
     }
     void load();
-    const channel = supabase
-      .channel(`rt:document_tags:${docId}:${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "document_tags" }, () => void load())
-      .subscribe();
+    const unsub = subscribeTable("document_tags", () => void load());
     return () => {
       active = false;
-      void supabase.removeChannel(channel);
+      unsub();
     };
   }, [docId]);
   return data;

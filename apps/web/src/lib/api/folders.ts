@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
+import { subscribeTable } from "@/lib/supabase/realtime";
 
 export type FolderRow = {
   _id: string;
@@ -41,11 +42,8 @@ export function useFolderForDoc(docId: string | undefined): FolderRow | null | u
       setData(folder);
     }
     void load();
-    const channel = supabase
-      .channel(`rt:doc_folder:${docId}:${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "document_folders" }, () => void load())
-      .subscribe();
-    return () => { active = false; void supabase.removeChannel(channel); };
+    const unsub = subscribeTable("document_folders", () => void load());
+    return () => { active = false; unsub(); };
   }, [docId]);
   return data;
 }
@@ -68,11 +66,8 @@ export function useDocsInFolder(folderId: string | undefined): DocLite[] | undef
       setData(docs);
     }
     void load();
-    const channel = supabase
-      .channel(`rt:docs_in_folder:${folderId}:${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "document_folders" }, () => void load())
-      .subscribe();
-    return () => { active = false; void supabase.removeChannel(channel); };
+    const unsub = subscribeTable("document_folders", () => void load());
+    return () => { active = false; unsub(); };
   }, [folderId]);
   return data;
 }

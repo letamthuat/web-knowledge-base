@@ -2,6 +2,7 @@
 // Domain reading_progress trên Supabase. RLS tự lọc theo user.
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { subscribeTable } from "@/lib/supabase/realtime";
 
 export type ReadingProgressRow = {
   _id: string;
@@ -96,13 +97,10 @@ export function useRecentHistory(limit = 10): RecentHistoryItem[] | undefined {
       setData(items);
     }
     void load();
-    const channel = supabase
-      .channel(`rt:reading_progress:recent:${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reading_progress" }, () => void load())
-      .subscribe();
+    const unsub = subscribeTable("reading_progress", () => void load());
     return () => {
       active = false;
-      void supabase.removeChannel(channel);
+      unsub();
     };
   }, [limit]);
 
