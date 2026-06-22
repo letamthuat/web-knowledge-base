@@ -189,3 +189,8 @@ export async function deleteFolderPermanent(folderId: string): Promise<void> {
   // Xoá folder gốc → parentFolderId ON DELETE CASCADE tự xoá subfolder + mapping.
   await supabase.from("folders").delete().eq("_id", folderId);
 }
+
+// Xoá vĩnh viễn TẤT CẢ folder đang ở thùng rác (dùng cho "Dọn sạch thùng rác").
+export async function emptyTrashedFolders(): Promise<void> {
+  await supabase.from("folders").delete().not("trashedAt", "is", null);
+}

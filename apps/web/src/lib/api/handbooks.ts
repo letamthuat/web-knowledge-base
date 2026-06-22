@@ -178,6 +178,11 @@ export async function removeHandbookPermanent(handbookId: string): Promise<void>
   await supabase.from("handbooks").delete().eq("_id", handbookId);
 }
 
+// Xoá vĩnh viễn TẤT CẢ handbook đang ở thùng rác (dùng cho "Dọn sạch thùng rác").
+export async function emptyTrashedHandbooks(): Promise<void> {
+  await supabase.from("handbooks").delete().not("trashedAt", "is", null);
+}
+
 // ─── ZIP IMPORT (ghi document rows; file đã upload R2 từ client) ────────────────
 export type ImportFile = {
   relPath: string;

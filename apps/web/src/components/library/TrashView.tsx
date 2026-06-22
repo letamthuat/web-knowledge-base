@@ -5,8 +5,8 @@ import { format, differenceInDays } from "date-fns";
 import { vi } from "date-fns/locale";
 import { FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, RotateCcw, Trash2, Layers, Folder } from "lucide-react";
 import { restoreDocument, deletePermanent, deleteAllTrashed } from "@/lib/api/documents";
-import { useTrashedHandbooks, restoreHandbook, removeHandbookPermanent } from "@/lib/api/handbooks";
-import { useTrashedFolders, restoreFolder, deleteFolderPermanent } from "@/lib/api/folders";
+import { useTrashedHandbooks, restoreHandbook, removeHandbookPermanent, emptyTrashedHandbooks } from "@/lib/api/handbooks";
+import { useTrashedFolders, restoreFolder, deleteFolderPermanent, emptyTrashedFolders } from "@/lib/api/folders";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,9 +91,11 @@ export function TrashView({ docs }: TrashViewProps) {
   }
 
   async function handleClearAll() {
-    const count = await deleteAllTrashed();
+    // Dọn sạch: file + handbook + folder đang ở thùng rác.
+    await deleteAllTrashed();
+    await Promise.all([emptyTrashedHandbooks(), emptyTrashedFolders()]);
     setClearAllOpen(false);
-    toast.success(`Đã xoá vĩnh viễn ${count} tài liệu`);
+    toast.success("Đã dọn sạch thùng rác");
   }
 
   if (!docs) {
@@ -118,7 +120,7 @@ export function TrashView({ docs }: TrashViewProps) {
     <>
       <div className="mb-4 flex items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">{L.autoDeleteNote}</p>
-        {docs.length > 0 && (
+        {(docs.length > 0 || containers.length > 0) && (
           <Button
             variant="destructive"
             size="sm"
@@ -298,9 +300,9 @@ export function TrashView({ docs }: TrashViewProps) {
       <AlertDialog open={clearAllOpen} onOpenChange={setClearAllOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xoá tất cả tài liệu trong thùng rác?</AlertDialogTitle>
+            <AlertDialogTitle>Dọn sạch thùng rác?</AlertDialogTitle>
             <AlertDialogDescription>
-              Hành động này sẽ xoá vĩnh viễn {docs.length} tài liệu và không thể hoàn tác.
+              Sẽ xoá vĩnh viễn TOÀN BỘ tài liệu, folder và handbook trong thùng rác. Không thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
