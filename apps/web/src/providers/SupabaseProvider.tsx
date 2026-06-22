@@ -1,8 +1,23 @@
 "use client";
-// Thay ConvexClientProvider. Không cần React context — supabase client là singleton,
-// route protection do middleware lo. Provider này chỉ giữ chỗ + có thể mở rộng sau.
-import { ReactNode } from "react";
+// Thay ConvexClientProvider. Route protection do middleware lo.
+// NHIỆM VỤ QUAN TRỌNG: đẩy JWT của user vào socket Realtime (realtime.setAuth).
+// RLS bật → postgres_changes chỉ gửi cho socket có token; không set thì UI không
+// nhận realtime (phải reload mới thấy thay đổi).
+import { ReactNode, useEffect } from "react";
+import { supabase } from "@/lib/supabase/client";
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    // Set token hiện tại (nếu đã đăng nhập) ngay khi mount.
+    supabase.auth.getSession().then(({ data }) => {
+      supabase.realtime.setAuth(data.session?.access_token ?? null);
+    });
+    // Cập nhật token cho realtime mỗi khi đăng nhập / refresh / đăng xuất.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      supabase.realtime.setAuth(session?.access_token ?? null);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
   return <>{children}</>;
 }
