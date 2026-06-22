@@ -97,10 +97,13 @@ export function useRecentHistory(limit = 10): RecentHistoryItem[] | undefined {
       setData(items);
     }
     void load();
-    const unsub = subscribeTable("reading_progress", () => void load());
+    const unsubProg = subscribeTable("reading_progress", () => void load());
+    // Cũng nghe documents: trash/xoá/đổi tên doc → cập nhật "Đọc gần đây" (lọc trashed, đổi title).
+    const unsubDocs = subscribeTable("documents", () => void load());
     return () => {
       active = false;
-      unsub();
+      unsubProg();
+      unsubDocs();
     };
   }, [limit]);
 
