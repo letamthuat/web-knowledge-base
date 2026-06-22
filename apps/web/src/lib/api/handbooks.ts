@@ -139,9 +139,14 @@ export async function renameHandbook(handbookId: string, name: string): Promise<
   if (error) throw error;
 }
 
-// Xoá handbook + toàn bộ tài liệu bên trong (cascade children qua FK documents._id).
+// Xoá handbook → đưa toàn bộ tài liệu bên trong vào THÙNG RÁC (khôi phục được),
+// rồi xoá record handbook (FK handbookId ON DELETE SET NULL → file trở thành tài liệu lẻ trong thùng rác).
 export async function removeHandbook(handbookId: string): Promise<void> {
-  await supabase.from("documents").delete().eq("handbookId", handbookId);
+  const now = Date.now();
+  await supabase
+    .from("documents")
+    .update({ status: "trashed", trashedAt: now, updatedAt: now })
+    .eq("handbookId", handbookId);
   await supabase.from("handbooks").delete().eq("_id", handbookId);
 }
 
@@ -215,13 +220,19 @@ export async function addEmptyFolder(handbookId: string, prefix: string): Promis
 export async function removeFolder(handbookId: string, prefix: string): Promise<void> {
   const p = normalizeFolderPrefix(prefix);
   if (!p) throw new Error("Tên folder không hợp lệ");
-  // Xoá tài liệu nằm trong folder (relPath bắt đầu bằng prefix/).
+  // Tài liệu trong folder (relPath bắt đầu bằng prefix/) → vào THÙNG RÁC (không xoá vĩnh viễn).
   const { data: docs } = await supabase
     .from("documents").select("_id, relPath").eq("handbookId", handbookId);
-  const toDelete = ((docs ?? []) as { _id: string; relPath: string | null }[])
+  const toTrash = ((docs ?? []) as { _id: string; relPath: string | null }[])
     .filter((d) => (d.relPath ?? "").startsWith(p + "/"))
     .map((d) => d._id);
-  if (toDelete.length) await supabase.from("documents").delete().in("_id", toDelete);
+  if (toTrash.length) {
+    const now = Date.now();
+    await supabase
+      .from("documents")
+      .update({ status: "trashed", trashedAt: now, updatedAt: now })
+      .in("_id", toTrash);
+  }
 
   const folders = (await getHandbookEmptyFolders(handbookId)).filter(
     (x) => x !== p && !x.startsWith(p + "/"),

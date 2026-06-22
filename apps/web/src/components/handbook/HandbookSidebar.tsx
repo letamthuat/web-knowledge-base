@@ -18,7 +18,7 @@ import {
   renameFolder as apiRenameDocFolder, assignDocToFolder as apiAssignDoc,
 } from "@/lib/api/folders";
 import {
-  useLooseDocsWithProgress, deletePermanent as apiDeletePermanent,
+  useLooseDocsWithProgress, trashDocument as apiTrashDoc,
   renameDocument as apiRenameDoc, requestUploadUrl as apiRequestUploadUrl, finalizeUpload as apiFinalizeUpload,
 } from "@/lib/api/documents";
 import { useTabSync } from "@/hooks/useTabSync";
@@ -520,7 +520,7 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
   const removeHb = (a: { handbookId: string }) => apiRemoveHandbook(a.handbookId);
   const addEmptyFolder = (a: { handbookId: string; prefix: string }) => apiAddEmptyFolder(a.handbookId, a.prefix);
   const removeFolder = (a: { handbookId: string; prefix: string }) => apiRemoveHbFolder(a.handbookId, a.prefix);
-  const deleteDoc = (a: { docId: string }) => apiDeletePermanent(a.docId);
+  const deleteDoc = (a: { docId: string }) => apiTrashDoc(a.docId);
   const renameFolder = (a: { handbookId: string; oldPrefix: string; newPrefix: string }) => apiRenameHbFolder(a.handbookId, a.oldPrefix, a.newPrefix);
   const renameHandbookFile = (a: { docId: string; newName: string }) => apiRenameHandbookFile(a.docId, a.newName);
   const requestUploadUrl = (a: { fileName: string; fileSizeBytes?: number; format?: string; mimeType?: string }) => apiRequestUploadUrl(a.fileName);
@@ -952,7 +952,7 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
   const renameFolder = (a: { folderId: string; name: string }) => apiRenameDocFolder(a.folderId, a.name);
   const assignDoc = (a: { docId: string; folderId: string }) => apiAssignDoc(a.docId, a.folderId);
   const renameDoc = (a: { docId: string; newTitle: string }) => apiRenameDoc(a.docId, a.newTitle);
-  const deleteDoc = (a: { docId: string }) => apiDeletePermanent(a.docId);
+  const deleteDoc = (a: { docId: string }) => apiTrashDoc(a.docId);
   const requestUploadUrl = (a: { fileName: string; fileSizeBytes?: number; format?: string; mimeType?: string }) => apiRequestUploadUrl(a.fileName);
   const finalizeUpload = apiFinalizeUpload;
 
