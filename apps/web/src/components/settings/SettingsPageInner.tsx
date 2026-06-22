@@ -39,8 +39,7 @@ function UsageBar({ used, total, label }: { used: number; total: number; label: 
   );
 }
 
-const CONVEX_DB_LIMIT = 1 * 1024 * 1024 * 1024;
-const CONVEX_FILE_LIMIT = 1 * 1024 * 1024 * 1024;
+const SUPABASE_DB_LIMIT = 500 * 1024 * 1024; // Supabase free Postgres = 500 MB
 const R2_STORAGE_LIMIT = 10 * 1024 * 1024 * 1024;
 
 function AiSettingsSection() {
@@ -385,7 +384,7 @@ export function SettingsPageInner() {
                     <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Tổng file</span>
                   </div>
-                  <p className="text-xl font-bold">{formatBytes(stats.r2Bytes + stats.convexFileBytes)}</p>
+                  <p className="text-xl font-bold">{formatBytes(stats.r2Bytes)}</p>
                 </div>
               </div>
               <div className="space-y-5">
@@ -398,23 +397,13 @@ export function SettingsPageInner() {
                   <p className="text-xs text-muted-foreground">Free tier: 10 GB lưu trữ · 1M lượt upload · 10M lượt đọc /tháng</p>
                 </div>
                 <div className="border-t" />
-                {stats.convexFileBytes > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium flex items-center gap-1.5">
-                      <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
-                      Convex File Storage — File nhỏ (≤ 5 MB)
-                    </p>
-                    <UsageBar used={stats.convexFileBytes} total={CONVEX_FILE_LIMIT} label="File storage" />
-                    <p className="text-xs text-muted-foreground">Free tier: 1 GB</p>
-                  </div>
-                )}
                 <div className="space-y-2">
                   <p className="text-sm font-medium flex items-center gap-1.5">
-                    <span className="inline-block h-2 w-2 rounded-full bg-violet-400" />
-                    Convex Database — Ghi chú & metadata
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                    Supabase Database — Ghi chú & metadata
                   </p>
-                  <UsageBar used={stats.convexDbBytes} total={CONVEX_DB_LIMIT} label="Database" />
-                  <p className="text-xs text-muted-foreground">Free tier: 1 GB · Ước tính từ nội dung ghi chú</p>
+                  <UsageBar used={stats.convexDbBytes} total={SUPABASE_DB_LIMIT} label="Database" />
+                  <p className="text-xs text-muted-foreground">Free tier: 500 MB · Ước tính từ nội dung ghi chú</p>
                 </div>
               </div>
             </>
