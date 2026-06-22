@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { format, differenceInDays } from "date-fns";
 import { vi } from "date-fns/locale";
-import { FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, RotateCcw, Trash2 } from "lucide-react";
+import { FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, RotateCcw, Trash2, Layers, Folder } from "lucide-react";
 import { restoreDocument, deletePermanent, deleteAllTrashed } from "@/lib/api/documents";
+import { useTrashedHandbooks, restoreHandbook, removeHandbookPermanent } from "@/lib/api/handbooks";
+import { useTrashedFolders, restoreFolder, deleteFolderPermanent } from "@/lib/api/folders";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,14 +44,44 @@ interface TrashViewProps {
   docs: Doc[] | null | undefined;
 }
 
+type ContainerTarget = { kind: "handbook" | "folder"; id: string; name: string };
+
 export function TrashView({ docs }: TrashViewProps) {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [clearAllOpen, setClearAllOpen] = useState(false);
+  const [containerDeleteTarget, setContainerDeleteTarget] = useState<ContainerTarget | null>(null);
+
+  const trashedHandbooks = useTrashedHandbooks();
+  const trashedFolders = useTrashedFolders();
 
   async function handleRestore(docId: string) {
     await restoreDocument(docId);
     toast.success(L.restoreSuccess);
   }
+
+  async function handleRestoreContainer(c: ContainerTarget) {
+    if (c.kind === "handbook") await restoreHandbook(c.id);
+    else await restoreFolder(c.id);
+    toast.success(`Đã khôi phục ${c.kind === "handbook" ? "handbook" : "folder"} "${c.name}"`);
+  }
+
+  async function handleDeleteContainerPermanent() {
+    if (!containerDeleteTarget) return;
+    const c = containerDeleteTarget;
+    if (c.kind === "handbook") await removeHandbookPermanent(c.id);
+    else await deleteFolderPermanent(c.id);
+    setContainerDeleteTarget(null);
+    toast.success(L.deletePermanentSuccess);
+  }
+
+  // Đếm số file trong handbook (từ danh sách doc đã trash).
+  const handbookFileCount = (hbId: string) =>
+    (docs ?? []).filter((d) => (d as { handbookId?: string | null }).handbookId === hbId).length;
+
+  const containers: ContainerTarget[] = [
+    ...(trashedHandbooks ?? []).map((h) => ({ kind: "handbook" as const, id: h._id, name: h.name })),
+    ...(trashedFolders ?? []).map((f) => ({ kind: "folder" as const, id: f._id, name: f.name })),
+  ];
 
   async function handleDeletePermanent() {
     if (!deleteTarget) return;
@@ -72,7 +104,7 @@ export function TrashView({ docs }: TrashViewProps) {
     );
   }
 
-  if (docs.length === 0) {
+  if (docs.length === 0 && containers.length === 0) {
     return (
       <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 text-center p-8">
         <Trash2 className="mb-4 h-12 w-12 text-muted-foreground" aria-hidden />
@@ -97,6 +129,50 @@ export function TrashView({ docs }: TrashViewProps) {
           </Button>
         )}
       </div>
+
+      {/* Folder & Handbook đã xoá — khôi phục/xoá vĩnh viễn cả container */}
+      {containers.length > 0 && (
+        <div className="mb-5 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Folder &amp; Handbook đã xoá</p>
+          {containers.map((c) => (
+            <div
+              key={`${c.kind}:${c.id}`}
+              className="group relative flex items-center gap-3 rounded-xl border bg-card p-4 transition-all hover:bg-muted/5"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400">
+                {c.kind === "handbook" ? <Layers className="h-5 w-5" /> : <Folder className="h-5 w-5" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground" title={c.name}>{c.name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {c.kind === "handbook" ? `Handbook · ${handbookFileCount(c.id)} file` : "Folder"}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline" size="sm"
+                  className="h-8 gap-1.5 rounded-lg border-muted-foreground/20 text-xs hover:bg-muted"
+                  onClick={() => handleRestoreContainer(c)}
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" /> {L.restore}
+                </Button>
+                <Button
+                  variant="ghost" size="icon"
+                  className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setContainerDeleteTarget(c)}
+                  aria-label={`Xoá vĩnh viễn ${c.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {docs.length > 0 && (
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tài liệu đã xoá</p>
+      )}
       <div className="space-y-2">
         {docs.map((doc) => {
           const config = FORMAT_CONFIG[doc.format] ?? FALLBACK_CONFIG;
@@ -196,6 +272,23 @@ export function TrashView({ docs }: TrashViewProps) {
               onClick={handleDeletePermanent}
               className="bg-destructive hover:bg-destructive/90"
             >
+              {L.deletePermanentConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!containerDeleteTarget} onOpenChange={(v) => !v && setContainerDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xoá vĩnh viễn {containerDeleteTarget?.kind === "handbook" ? "handbook" : "folder"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sẽ xoá vĩnh viễn &ldquo;{containerDeleteTarget?.name}&rdquo; và TOÀN BỘ file bên trong. Không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{L.deletePermanentCancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteContainerPermanent} className="bg-destructive hover:bg-destructive/90">
               {L.deletePermanentConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1085,7 +1085,7 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
                     onClick: () => {
                       setConfirmDialog({
                         open: true, title: "Xóa folder",
-                        description: `Xóa folder "${node.name}" và TOÀN BỘ tài liệu/thư mục con bên trong? Hành động này không thể hoàn tác.`,
+                        description: `Xóa folder "${node.name}"? Tài liệu/thư mục con bên trong sẽ vào Thùng rác (khôi phục được).`,
                         onConfirm: async () => {
                           setConfirmDialog({ open: false });
                           try {

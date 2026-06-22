@@ -152,7 +152,38 @@ export async function trashDocument(docId: string): Promise<void> {
 
 export async function restoreDocument(docId: string): Promise<void> {
   const now = Date.now();
-  await supabase.from("documents").update({ status: "ready", trashedAt: null, restoredAt: now, updatedAt: now }).eq("_id", docId);
+  const { data: doc } = await supabase
+    .from("documents")
+    .update({ status: "ready", trashedAt: null, restoredAt: now, updatedAt: now })
+    .eq("_id", docId)
+    .select("handbookId")
+    .maybeSingle();
+
+  // Quyết định A: nếu handbook chứa file đang ở thùng rác → khôi phục luôn record handbook (để file có chỗ về).
+  if (doc?.handbookId) {
+    await supabase.from("handbooks").update({ trashedAt: null, updatedAt: now }).eq("_id", doc.handbookId);
+  }
+
+  // Tương tự cho folder lẻ: khôi phục folder + tổ tiên.
+  const { data: dfs } = await supabase.from("document_folders").select("folderId").eq("docId", docId);
+  const folderIds = (dfs ?? []).map((d) => (d as { folderId: string }).folderId);
+  if (folderIds.length) {
+    const { data: allFolders } = await supabase.from("folders").select("_id, parentFolderId");
+    const parentOf = new Map(
+      (allFolders ?? []).map((f) => [(f as { _id: string })._id, (f as { parentFolderId: string | null }).parentFolderId]),
+    );
+    const toRestore = new Set<string>();
+    for (const fid of folderIds) {
+      let cur: string | null | undefined = fid;
+      while (cur && parentOf.has(cur) && !toRestore.has(cur)) {
+        toRestore.add(cur);
+        cur = parentOf.get(cur);
+      }
+    }
+    if (toRestore.size) {
+      await supabase.from("folders").update({ trashedAt: null, updatedAt: now }).in("_id", [...toRestore]);
+    }
+  }
 }
 
 export async function renameDocument(docId: string, newTitle: string): Promise<void> {

@@ -151,7 +151,7 @@ export function LibraryPageInner() {
   }
 
   async function handleDeleteFolder(folderId: Id<"folders">, name: string) {
-    if (!confirm(`Xóa folder "${name}" và TOÀN BỘ tài liệu/thư mục con bên trong? Hành động này không thể hoàn tác.`)) return;
+    if (!confirm(`Xóa folder "${name}"? Tài liệu/thư mục con bên trong sẽ vào Thùng rác (khôi phục được).`)) return;
     try {
       await deleteFolder(folderId);
       if (scope === folderId) { setScope("all"); setBreadcrumbs([]); }

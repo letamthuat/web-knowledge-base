@@ -1,6 +1,6 @@
 "use client";
 // Domain folders + document_folders trên Supabase.
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { subscribeTable } from "@/lib/supabase/realtime";
@@ -9,15 +9,23 @@ export type FolderRow = {
   _id: string;
   name: string;
   parentFolderId: string | null;
+  trashedAt: number | null;
   createdAt: number;
   updatedAt: number;
 };
 export type DocFolderRow = { _id: string; docId: string; folderId: string };
 type DocLite = { _id: string; title: string; format: string; status: string; createdAt: number; fileSizeBytes: number | null };
 
-// Tất cả folder của user.
+// Tất cả folder của user (ẩn folder đã ở thùng rác).
 export function useFoldersList(enabled = true): FolderRow[] | undefined {
-  return useRealtimeQuery<FolderRow>("folders", { order: { column: "name", ascending: true }, enabled });
+  const rows = useRealtimeQuery<FolderRow>("folders", { order: { column: "name", ascending: true }, enabled });
+  return useMemo(() => rows?.filter((f) => !f.trashedAt), [rows]);
+}
+
+// Folder đang ở thùng rác (cho trang Thùng rác).
+export function useTrashedFolders(): FolderRow[] | undefined {
+  const rows = useRealtimeQuery<FolderRow>("folders", { order: { column: "updatedAt", ascending: false } });
+  return useMemo(() => rows?.filter((f) => !!f.trashedAt), [rows]);
 }
 
 // Tất cả mapping document_folders (dựng cây sidebar).
@@ -105,30 +113,79 @@ export async function renameFolder(folderId: string, name: string): Promise<void
   await supabase.from("folders").update({ name: name.trim(), updatedAt: Date.now() }).eq("_id", folderId);
 }
 
-// Xoá folder + TOÀN BỘ tài liệu bên trong + subfolder (đệ quy) — giống Convex.
-// Document bị xoá sẽ cascade related data qua FK ON DELETE CASCADE.
-// (File R2 mồ côi sẽ dọn ở Phase 4.)
-export async function deleteFolder(folderId: string): Promise<void> {
-  const { data: allFolders } = await supabase.from("folders").select("_id, parentFolderId");
-  // Gom toàn bộ folder trong subtree
-  const subtree = new Set<string>([folderId]);
+type FolderLite = { _id: string; parentFolderId: string | null };
+
+// Gom subtree (folder + mọi con cháu).
+function gatherSubtree(all: FolderLite[], rootId: string): string[] {
+  const set = new Set<string>([rootId]);
   let changed = true;
   while (changed) {
     changed = false;
-    for (const f of allFolders ?? []) {
-      const row = f as { _id: string; parentFolderId: string | null };
-      if (row.parentFolderId && subtree.has(row.parentFolderId) && !subtree.has(row._id)) {
-        subtree.add(row._id);
+    for (const f of all) {
+      if (f.parentFolderId && set.has(f.parentFolderId) && !set.has(f._id)) {
+        set.add(f._id);
         changed = true;
       }
     }
   }
-  const folderIds = Array.from(subtree);
-  // Xoá tài liệu trong các folder đó
-  const { data: dfs } = await supabase
-    .from("document_folders").select("docId").in("folderId", folderIds);
-  const docIds = Array.from(new Set((dfs ?? []).map((d) => (d as { docId: string }).docId)));
+  return [...set];
+}
+
+// Gom chuỗi tổ tiên (lên tới gốc).
+function gatherAncestors(all: FolderLite[], id: string): string[] {
+  const byId = new Map(all.map((f) => [f._id, f]));
+  const out: string[] = [];
+  let cur = byId.get(id)?.parentFolderId ?? null;
+  while (cur && byId.has(cur)) {
+    out.push(cur);
+    cur = byId.get(cur)!.parentFolderId;
+  }
+  return out;
+}
+
+async function docIdsInFolders(folderIds: string[]): Promise<string[]> {
+  if (!folderIds.length) return [];
+  const { data } = await supabase.from("document_folders").select("docId").in("folderId", folderIds);
+  return [...new Set((data ?? []).map((d) => (d as { docId: string }).docId))];
+}
+
+// Xoá folder → xoá MỀM (đệ quy subtree): trash file + đánh dấu folder.trashedAt, GIỮ mapping để khôi phục.
+export async function deleteFolder(folderId: string): Promise<void> {
+  const now = Date.now();
+  const { data: allFolders } = await supabase.from("folders").select("_id, parentFolderId");
+  const subtree = gatherSubtree((allFolders ?? []) as FolderLite[], folderId);
+  const docIds = await docIdsInFolders(subtree);
+  if (docIds.length) {
+    await supabase.from("documents").update({ status: "trashed", trashedAt: now, updatedAt: now }).in("_id", docIds);
+  }
+  await supabase.from("folders").update({ trashedAt: now, updatedAt: now }).in("_id", subtree);
+}
+
+// Khôi phục folder: un-trash folder + subtree + tổ tiên (để có đường về) + các file trong subtree.
+export async function restoreFolder(folderId: string): Promise<void> {
+  const now = Date.now();
+  const { data: allFolders } = await supabase.from("folders").select("_id, parentFolderId");
+  const all = (allFolders ?? []) as FolderLite[];
+  const subtree = gatherSubtree(all, folderId);
+  const ancestors = gatherAncestors(all, folderId);
+  const ids = [...new Set([...subtree, ...ancestors])];
+  await supabase.from("folders").update({ trashedAt: null, updatedAt: now }).in("_id", ids);
+  const docIds = await docIdsInFolders(subtree);
+  if (docIds.length) {
+    await supabase
+      .from("documents")
+      .update({ status: "ready", trashedAt: null, restoredAt: now, updatedAt: now })
+      .in("_id", docIds)
+      .eq("status", "trashed");
+  }
+}
+
+// Xoá vĩnh viễn folder + subtree + tài liệu bên trong.
+export async function deleteFolderPermanent(folderId: string): Promise<void> {
+  const { data: allFolders } = await supabase.from("folders").select("_id, parentFolderId");
+  const subtree = gatherSubtree((allFolders ?? []) as FolderLite[], folderId);
+  const docIds = await docIdsInFolders(subtree);
   if (docIds.length) await supabase.from("documents").delete().in("_id", docIds);
-  // Xoá folder gốc → parentFolderId ON DELETE CASCADE tự xoá subfolder + mapping
+  // Xoá folder gốc → parentFolderId ON DELETE CASCADE tự xoá subfolder + mapping.
   await supabase.from("folders").delete().eq("_id", folderId);
 }

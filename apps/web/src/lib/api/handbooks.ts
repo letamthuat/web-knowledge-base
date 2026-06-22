@@ -1,7 +1,7 @@
 "use client";
 // Domain handbooks trên Supabase (phần đọc + CRUD/folder ops thuần DB).
 // ZIP ingest (finalizeImport) + getAssetUrls = Phase 4 (server routes).
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { subscribeTable } from "@/lib/supabase/realtime";
@@ -14,6 +14,7 @@ export type HandbookRow = {
   color: string | null;
   order: number;
   emptyFolders: string[] | null;
+  trashedAt: number | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -28,11 +29,21 @@ export type HandbookFile = {
 
 // ─── READS ──────────────────────────────────────────────────────────────────
 export function useHandbooks(domainId: string | undefined, enabled = true): HandbookRow[] | undefined {
-  return useRealtimeQuery<HandbookRow>("handbooks", {
+  const rows = useRealtimeQuery<HandbookRow>("handbooks", {
     filter: domainId ? { domainId } : undefined,
     order: { column: "order", ascending: true },
     enabled,
   });
+  // Ẩn handbook đã ở thùng rác.
+  return useMemo(() => rows?.filter((h) => !h.trashedAt), [rows]);
+}
+
+// Handbook đang ở thùng rác (cho trang Thùng rác).
+export function useTrashedHandbooks(): HandbookRow[] | undefined {
+  const rows = useRealtimeQuery<HandbookRow>("handbooks", {
+    order: { column: "updatedAt", ascending: false },
+  });
+  return useMemo(() => rows?.filter((h) => !!h.trashedAt), [rows]);
 }
 
 type FileJoinRow = {
@@ -139,14 +150,31 @@ export async function renameHandbook(handbookId: string, name: string): Promise<
   if (error) throw error;
 }
 
-// Xoá handbook → đưa toàn bộ tài liệu bên trong vào THÙNG RÁC (khôi phục được),
-// rồi xoá record handbook (FK handbookId ON DELETE SET NULL → file trở thành tài liệu lẻ trong thùng rác).
+// Xoá handbook → xoá MỀM: trash toàn bộ file bên trong + đánh dấu handbook.trashedAt
+// (GIỮ record + handbookId để khôi phục nguyên cấu trúc).
 export async function removeHandbook(handbookId: string): Promise<void> {
   const now = Date.now();
   await supabase
     .from("documents")
     .update({ status: "trashed", trashedAt: now, updatedAt: now })
     .eq("handbookId", handbookId);
+  await supabase.from("handbooks").update({ trashedAt: now, updatedAt: now }).eq("_id", handbookId);
+}
+
+// Khôi phục handbook + toàn bộ file đã bị trash cùng nó.
+export async function restoreHandbook(handbookId: string): Promise<void> {
+  const now = Date.now();
+  await supabase.from("handbooks").update({ trashedAt: null, updatedAt: now }).eq("_id", handbookId);
+  await supabase
+    .from("documents")
+    .update({ status: "ready", trashedAt: null, restoredAt: now, updatedAt: now })
+    .eq("handbookId", handbookId)
+    .eq("status", "trashed");
+}
+
+// Xoá vĩnh viễn handbook + toàn bộ file (cascade children qua FK).
+export async function removeHandbookPermanent(handbookId: string): Promise<void> {
+  await supabase.from("documents").delete().eq("handbookId", handbookId);
   await supabase.from("handbooks").delete().eq("_id", handbookId);
 }
 
