@@ -20,7 +20,19 @@ function getMermaid() {
         startOnLoad: false,
         theme: "neutral",
         securityLevel: "loose",
-        fontFamily: "inherit",
+        // Pin a concrete font (NOT "inherit"): mermaid renders detached on <body>
+        // to measure node widths, then the SVG is injected into the prose container
+        // which has its own typography font. With "inherit" the display font differs
+        // from the measured font → boxes sized wrong → node text clips instead of
+        // wrapping. A fixed stack keeps measure-time == display-time.
+        fontFamily:
+          'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        flowchart: {
+          htmlLabels: true,
+          useMaxWidth: true,
+          wrappingWidth: 220,
+          padding: 10,
+        },
       });
       return m.default;
     });
