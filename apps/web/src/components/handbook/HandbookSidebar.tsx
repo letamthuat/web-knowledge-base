@@ -25,13 +25,14 @@ import { useTabSync } from "@/hooks/useTabSync";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { toast } from "sonner";
 import {
-  ChevronRight, Plus, Layers, BookText, FolderArchive, MoreHorizontal,
+  ChevronRight, Plus, Layers, BookText, FolderArchive,
   Trash2, Pencil, FilePlus2, FolderPlus, FileText, Files,
   Image as ImageIcon, FileAudio, FileVideo, Presentation, BookOpen,
   Circle, CheckCircle2, CircleDot, Folder, FolderOpen, SplitSquareHorizontal,
-  AlertTriangle, X, Check,
+  AlertTriangle, X, Check, Search,
 } from "lucide-react";
 import { HandbookTree } from "./HandbookTree";
+import { RowMenu } from "./RowMenu";
 import { ImportZipDialog } from "./ImportZipDialog";
 import type { HandbookFile } from "@/lib/handbook/buildTree";
 import { extToFormat } from "@/lib/handbook/zipImport";
@@ -256,6 +257,7 @@ export function HandbookSidebarContent({ onLinkClick }: { onLinkClick?: () => vo
   const createDomain = (a: { name: string; color?: string }) => apiCreateDomain(a.name, a.color);
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
+  const [filter, setFilter] = useState("");
 
   const activeDocId = activePanel?.startsWith("reader:") ? activePanel.slice("reader:".length) : null;
 
@@ -293,31 +295,68 @@ export function HandbookSidebarContent({ onLinkClick }: { onLinkClick?: () => vo
         />
       )}
 
-      <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
-        <span className="flex items-center gap-1.5 text-sm font-semibold"><Layers className="h-4 w-4" /> Thư viện</span>
-        <button onClick={handleCreateDomain} title="Thêm Domain" className="rounded p-1 hover:bg-muted">
+      <div className="flex shrink-0 items-center justify-between px-2 py-2.5">
+        <button
+          onClick={() => {
+            setActivePanel("library");
+            window.history.pushState(null, "", "/library");
+            if (onLinkClick) onLinkClick();
+          }}
+          title="Về Thư viện"
+          className="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm font-semibold transition-colors hover:bg-muted"
+        >
+          <Layers className="h-4 w-4 text-primary" /> Thư viện
+        </button>
+        <button
+          onClick={handleCreateDomain}
+          title="Thêm Domain"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
           <Plus className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-1">
+      {/* Quick filter */}
+      <div className="shrink-0 px-2 pb-2">
+        <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-2.5 focus-within:border-ring focus-within:bg-background transition-colors">
+          <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Lọc theo tên…"
+            className="min-w-0 flex-1 bg-transparent py-1.5 text-[13px] outline-none placeholder:text-muted-foreground/60"
+            data-no-autozoom-fix
+          />
+          {filter && (
+            <button
+              onClick={() => setFilter("")}
+              title="Xóa bộ lọc"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-1 pb-2">
         {domains === undefined && <p className="px-3 py-2 text-xs text-muted-foreground">Đang tải…</p>}
         {domains && domains.length === 0 && (
           <p className="px-3 py-2 text-xs text-muted-foreground">Chưa có Domain. Bấm + để tạo.</p>
         )}
         {domains?.map((d: any) => (
-          <DomainNode key={d._id} domainId={d._id} name={d.name} activeDocId={activeDocId} onOpenFile={openDoc} onOpenSecondary={openSecondary} />
+          <DomainNode key={d._id} domainId={d._id} name={d.name} activeDocId={activeDocId} filter={filter} onOpenFile={openDoc} onOpenSecondary={openSecondary} />
         ))}
 
-        <LooseDocsSection activeDocId={activeDocId} onOpenFile={openDoc} onOpenSecondary={openSecondary} />
+        <LooseDocsSection activeDocId={activeDocId} filter={filter} onOpenFile={openDoc} onOpenSecondary={openSecondary} />
 
-        <div className="border-t border-border/40 mt-2 pt-2 px-2">
+        <div className="mt-2 border-t border-border/40 px-1 pt-2">
           <button
             onClick={() => {
               router.push("/library/trash");
               if (onLinkClick) onLinkClick();
             }}
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <Trash2 className="h-3.5 w-3.5 shrink-0 text-destructive" />
             <span>Thùng rác</span>
@@ -374,12 +413,14 @@ export function HandbookSidebar() {
 
 // ─── DomainNode ───────────────────────────────────────────────────────────────
 
-function DomainNode({ domainId, name, activeDocId, onOpenFile, onOpenSecondary }: {
-  domainId: Id<"domains">; name: string; activeDocId: string | null;
+function DomainNode({ domainId, name, activeDocId, filter = "", onOpenFile, onOpenSecondary }: {
+  domainId: Id<"domains">; name: string; activeDocId: string | null; filter?: string;
   onOpenFile: (id: Id<"documents">) => void; onOpenSecondary: (id: string) => void;
 }) {
   const [open, setOpen] = useState(true);
-  const handbooks = useHandbooks(domainId, open);
+  const filtering = filter.trim().length > 0;
+  const effectiveOpen = filtering || open;
+  const handbooks = useHandbooks(domainId, effectiveOpen);
   const createHandbook = (a: { domainId: string; name: string; color?: string }) => apiCreateHandbook(a.domainId, a.name, a.color);
   const renameDomain = (a: { domainId: string; name: string }) => apiRenameDomain(a.domainId, a.name);
   const removeDomain = (a: { domainId: string }) => apiRemoveDomain(a.domainId);
@@ -409,32 +450,7 @@ function DomainNode({ domainId, name, activeDocId, onOpenFile, onOpenSecondary }
         />
       )}
 
-      <div className="group flex min-w-0 items-center">
-        <button onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-1 px-2 py-1 text-left text-[13px] font-medium hover:bg-muted/60">
-          <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
-          <BookText className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <span className="truncate">{name}</span>
-        </button>
-        <button
-          onClick={() => {
-            setRenameDialog({
-              open: true,
-              title: "Tạo Handbook mới",
-              label: "Tên Handbook",
-              initialValue: "",
-              onConfirm: async (n) => {
-                setRenameDialog({ open: false });
-                try { await createHandbook({ domainId, name: n }); }
-                catch { toast.error("Không tạo được handbook"); }
-              },
-            });
-          }}
-          title="Thêm Handbook"
-          className="rounded p-1 opacity-0 hover:bg-muted group-hover:opacity-100"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
-        <RowMenu items={[
+      <RowMenu items={[
           {
             label: "Đổi tên Domain",
             icon: <Pencil className="h-3.5 w-3.5" />,
@@ -477,10 +493,39 @@ function DomainNode({ domainId, name, activeDocId, onOpenFile, onOpenSecondary }
               });
             },
           },
-        ]} />
-      </div>
-      {open && (
-        <div className="ml-3 border-l border-border/40">
+        ]}>
+        {(m) => (
+          <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
+            <button onClick={() => setOpen((v) => !v)} title={name} className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-muted">
+              <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${effectiveOpen ? "rotate-90" : ""}`} />
+              <BookText className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="truncate">{name}</span>
+            </button>
+            <button
+              onClick={() => {
+                setRenameDialog({
+                  open: true,
+                  title: "Tạo Handbook mới",
+                  label: "Tên Handbook",
+                  initialValue: "",
+                  onConfirm: async (n) => {
+                    setRenameDialog({ open: false });
+                    try { await createHandbook({ domainId, name: n }); }
+                    catch { toast.error("Không tạo được handbook"); }
+                  },
+                });
+              }}
+              title="Thêm Handbook"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-40 transition-all hover:bg-muted hover:opacity-100 group-hover:opacity-70"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+            {m.trigger}
+          </div>
+        )}
+      </RowMenu>
+      {effectiveOpen && (
+        <div className="ml-3 border-l border-border/40 pl-0.5">
           {handbooks?.map((h: any) => (
             <HandbookNode
               key={h._id}
@@ -488,6 +533,7 @@ function DomainNode({ domainId, name, activeDocId, onOpenFile, onOpenSecondary }
               name={h.name}
               emptyFolders={h.emptyFolders ?? []}
               activeDocId={activeDocId}
+              filter={filter}
               onOpenFile={onOpenFile}
               onOpenSecondary={onOpenSecondary}
             />
@@ -500,12 +546,16 @@ function DomainNode({ domainId, name, activeDocId, onOpenFile, onOpenSecondary }
 
 // ─── HandbookNode ─────────────────────────────────────────────────────────────
 
-function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile, onOpenSecondary }: {
-  handbookId: Id<"handbooks">; name: string; emptyFolders: string[]; activeDocId: string | null;
+function HandbookNode({ handbookId, name, emptyFolders, activeDocId, filter = "", onOpenFile, onOpenSecondary }: {
+  handbookId: Id<"handbooks">; name: string; emptyFolders: string[]; activeDocId: string | null; filter?: string;
   onOpenFile: (id: Id<"documents">) => void; onOpenSecondary: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const q = filter.trim().toLowerCase();
+  const filtering = q.length > 0;
+  const nameMatch = name.toLowerCase().includes(q);
+  const effectiveOpen = filtering || open;
 
   const [uploading, setUploading] = useState(false);
   const [uploadPrefix, setUploadPrefix] = useState("");
@@ -515,7 +565,7 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false });
 
-  const files = useHandbookFiles(handbookId, open);
+  const files = useHandbookFiles(handbookId, effectiveOpen);
   const renameHb = (a: { handbookId: string; name: string }) => apiRenameHandbook(a.handbookId, a.name);
   const removeHb = (a: { handbookId: string }) => apiRemoveHandbook(a.handbookId);
   const addEmptyFolder = (a: { handbookId: string; prefix: string }) => apiAddEmptyFolder(a.handbookId, a.prefix);
@@ -530,6 +580,13 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
     () => (files ?? []).map((f: any) => ({ ...f })) as HandbookFile[],
     [files]
   );
+
+  // While filtering: hide handbooks whose name doesn't match and that contain
+  // no matching file (once files have loaded).
+  if (filtering && !nameMatch && files !== undefined &&
+      !fileList.some((f) => f.relPath.toLowerCase().includes(q))) {
+    return null;
+  }
 
   return (
     <div>
@@ -553,13 +610,7 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
         />
       )}
 
-      <div className="group flex min-w-0 items-center">
-        <button onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-1 px-2 py-1 text-left text-[13px] hover:bg-muted/60">
-          <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
-          <FolderArchive className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-          <span className="truncate">{name}</span>
-        </button>
-        <RowMenu items={[
+      <RowMenu items={[
           { label: "Import ZIP", icon: <FilePlus2 className="h-3.5 w-3.5" />, onClick: () => setImportOpen(true) },
           {
             label: "Thêm file",
@@ -629,10 +680,20 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
               });
             },
           },
-        ]} />
-      </div>
-      {open && (
-        <div className="ml-3 border-l border-border/40">
+        ]}>
+        {(m) => (
+          <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
+            <button onClick={() => setOpen((v) => !v)} title={name} className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-muted">
+              <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${effectiveOpen ? "rotate-90" : ""}`} />
+              <FolderArchive className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+              <span className="truncate">{name}</span>
+            </button>
+            {m.trigger}
+          </div>
+        )}
+      </RowMenu>
+      {effectiveOpen && (
+        <div className="ml-3 border-l border-border/40 pl-0.5">
           {files === undefined ? (
             <p className="px-4 py-1 text-xs text-muted-foreground">Đang tải…</p>
           ) : (
@@ -641,6 +702,7 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, onOpenFile,
               files={fileList}
               emptyFolders={emptyFolders}
               activeDocId={activeDocId}
+              filter={filter}
               onOpenFile={onOpenFile}
               onOpenSecondary={(id) => onOpenSecondary(id)}
               onDeleteFile={(docId, title) => {
@@ -927,13 +989,34 @@ function statusIcon(format: string, pct: number | null) {
 
 // ─── LooseDocsSection ─────────────────────────────────────────────────────────
 
-function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
+function filterLooseNodes(nodes: LooseTreeNode[], q: string): LooseTreeNode[] {
+  if (!q) return nodes;
+  const out: LooseTreeNode[] = [];
+  for (const n of nodes) {
+    if (n.type === "folder") {
+      if (n.name.toLowerCase().includes(q)) out.push(n);
+      else {
+        const kids = filterLooseNodes(n.children ?? [], q);
+        if (kids.length) out.push({ ...n, children: kids });
+      }
+    } else if (n.name.toLowerCase().includes(q)) {
+      out.push(n);
+    }
+  }
+  return out;
+}
+
+function LooseDocsSection({ activeDocId, filter = "", onOpenFile, onOpenSecondary }: {
   activeDocId: string | null;
+  filter?: string;
   onOpenFile: (id: Id<"documents">) => void;
   onOpenSecondary?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const q = filter.trim().toLowerCase();
+  const filtering = q.length > 0;
+  const effectiveOpen = filtering || open;
 
   const [uploadFolderId, setUploadFolderId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -943,9 +1026,9 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false });
 
-  const docs = useLooseDocsWithProgress(open);
-  const folders = useFoldersList(open);
-  const docFolders = useAllDocFolders(open);
+  const docs = useLooseDocsWithProgress(effectiveOpen);
+  const folders = useFoldersList(effectiveOpen);
+  const docFolders = useAllDocFolders(effectiveOpen);
 
   const createFolder = (a: { name: string; parentFolderId?: string }) => apiCreateFolder(a.name, a.parentFolderId);
   const deleteFolder = (a: { folderId: string }) => apiDeleteFolder(a.folderId);
@@ -1020,27 +1103,17 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
     return rootNodes;
   }, [folders, docs, docFolders]);
 
+  const visibleTree = useMemo(() => filterLooseNodes(tree, q), [tree, q]);
+
   const renderLooseTree = (nodes: LooseTreeNode[], depth: number) => (
     <ul>
       {nodes.map((node) => {
         const pad = depth * 12;
         if (node.type === "folder") {
-          const isExpanded = expanded.has(node.id);
+          const isExpanded = filtering || expanded.has(node.id);
           return (
             <li key={`folder:${node.id}`}>
-              <div className="group flex min-w-0 items-center">
-                <button
-                  onClick={() => toggleFolder(node.id)}
-                  style={{ paddingLeft: pad }}
-                  className="flex min-w-0 flex-1 items-center gap-1 py-1 pr-2 text-left text-[13px] text-foreground/90 hover:bg-muted/60"
-                >
-                  <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-                  {isExpanded
-                    ? <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                    : <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
-                  <span className="truncate">{node.name}</span>
-                </button>
-                <RowMenu items={[
+              <RowMenu items={[
                   {
                     label: "Thêm file", icon: <FilePlus2 className="h-3.5 w-3.5" />,
                     onClick: () => { setUploadFolderId(node.id); fileInputRef.current?.click(); },
@@ -1096,8 +1169,25 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
                       });
                     },
                   },
-                ]} />
-              </div>
+                ]}>
+                {(m) => (
+                  <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
+                    <button
+                      onClick={() => toggleFolder(node.id)}
+                      style={{ paddingLeft: pad }}
+                      title={node.name}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pr-1.5 text-left text-[13px] text-foreground/90 transition-colors hover:bg-muted"
+                    >
+                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                      {isExpanded
+                        ? <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                        : <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+                      <span className="truncate">{node.name}</span>
+                    </button>
+                    {m.trigger}
+                  </div>
+                )}
+              </RowMenu>
               {isExpanded && node.children && renderLooseTree(node.children, depth + 1)}
             </li>
           );
@@ -1107,20 +1197,7 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
         const isActive = d._id === activeDocId;
         return (
           <li key={`file:${d._id}`}>
-            <div className="group flex min-w-0 items-center">
-              <button
-                onClick={() => onOpenFile(d._id)}
-                style={{ paddingLeft: pad + 14 }}
-                className={[
-                  "flex min-w-0 flex-1 items-center gap-1.5 py-1 pr-2 text-left text-[13px]",
-                  isActive ? "bg-primary/10 font-medium text-primary" : "text-foreground/80 hover:bg-muted/60",
-                ].join(" ")}
-              >
-                {formatIcon(d.format)}
-                <span className="truncate">{d.title}</span>
-                <span className="ml-auto shrink-0">{statusIcon(d.format, d.progressPct)}</span>
-              </button>
-              <RowMenu items={[
+            <RowMenu items={[
                 ...(onOpenSecondary ? [{ label: "Mở sang phải", icon: <SplitSquareHorizontal className="h-3.5 w-3.5" />, onClick: () => onOpenSecondary(d._id) }] : []),
                 {
                   label: "Đổi tên file", icon: <Pencil className="h-3.5 w-3.5" />,
@@ -1152,8 +1229,26 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
                     });
                   },
                 },
-              ]} />
-            </div>
+              ]}>
+              {(m) => (
+                <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
+                  <button
+                    onClick={() => onOpenFile(d._id)}
+                    style={{ paddingLeft: pad + 16 }}
+                    title={d.title}
+                    className={[
+                      "flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pr-1.5 text-left text-[13px] transition-colors",
+                      isActive ? "bg-primary/10 font-medium text-primary" : "text-foreground/80 hover:bg-muted",
+                    ].join(" ")}
+                  >
+                    {formatIcon(d.format)}
+                    <span className="truncate">{d.title}</span>
+                    <span className="ml-auto shrink-0">{statusIcon(d.format, d.progressPct)}</span>
+                  </button>
+                  {m.trigger}
+                </div>
+              )}
+            </RowMenu>
           </li>
         );
       })}
@@ -1182,13 +1277,7 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
         />
       )}
 
-      <div className="group flex min-w-0 items-center">
-        <button onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-1 px-2 py-1 text-left text-[13px] font-medium hover:bg-muted/60">
-          <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
-          <Files className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate">Tài liệu lẻ</span>
-        </button>
-        <RowMenu items={[
+      <RowMenu items={[
           {
             label: "Tải file lẻ", icon: <FilePlus2 className="h-3.5 w-3.5" />,
             onClick: () => { setUploadFolderId(null); fileInputRef.current?.click(); },
@@ -1213,16 +1302,26 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
               });
             },
           },
-        ]} />
-      </div>
-      {open && (
+        ]}>
+        {(m) => (
+          <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
+            <button onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-muted">
+              <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${effectiveOpen ? "rotate-90" : ""}`} />
+              <Files className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">Tài liệu lẻ</span>
+            </button>
+            {m.trigger}
+          </div>
+        )}
+      </RowMenu>
+      {effectiveOpen && (
         <div className="ml-2">
           {folders === undefined || docs === undefined ? (
             <p className="px-3 py-1 text-xs text-muted-foreground">Đang tải…</p>
-          ) : tree.length === 0 ? (
-            <p className="px-3 py-1 text-xs text-muted-foreground">Không có tài liệu lẻ.</p>
+          ) : visibleTree.length === 0 ? (
+            <p className="px-3 py-1 text-xs text-muted-foreground">{filtering ? "Không có mục khớp bộ lọc." : "Không có tài liệu lẻ."}</p>
           ) : (
-            renderLooseTree(tree, 0)
+            renderLooseTree(visibleTree, 0)
           )}
         </div>
       )}
@@ -1417,42 +1516,3 @@ function LooseDocsSection({ activeDocId, onOpenFile, onOpenSecondary }: {
   );
 }
 
-// ─── RowMenu ──────────────────────────────────────────────────────────────────
-
-function RowMenu({ items }: { items: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }[] }) {
-  const [open, setOpen] = useState(false);
-  if (items.length === 0) return null;
-  return (
-    <div className="relative">
-      <button
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="mr-1 rounded p-1 text-muted-foreground opacity-0 hover:bg-muted group-hover:opacity-100"
-      >
-        <MoreHorizontal className="h-3.5 w-3.5" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-1 min-w-[150px] rounded-md border bg-popover p-1 shadow-md">
-            {items.map((it, i) => (
-              <button
-                key={i}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpen(false);
-                  it.onClick();
-                }}
-                className={[
-                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-muted",
-                  it.danger ? "text-destructive" : "text-foreground",
-                ].join(" ")}
-              >
-                {it.icon}{it.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}

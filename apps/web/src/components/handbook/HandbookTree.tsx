@@ -5,15 +5,18 @@ import { Id } from "@/_generated/dataModel";
 import {
   ChevronRight, Folder, FolderOpen, FileText, FileType2, Image as ImageIcon,
   FileAudio, FileVideo, Presentation, BookOpen, CheckCircle2, Circle, CircleDot,
-  MoreHorizontal, SplitSquareHorizontal, Trash2, FolderPlus, FilePlus2, Pencil,
+  SplitSquareHorizontal, Trash2, FolderPlus, FilePlus2, Pencil,
 } from "lucide-react";
 import { buildTree, ancestorPaths, type TreeNode, type HandbookFile } from "@/lib/handbook/buildTree";
+import { RowMenu } from "./RowMenu";
 
 interface HandbookTreeProps {
   handbookId: Id<"handbooks">;
   files: HandbookFile[];
   emptyFolders: string[];
   activeDocId: string | null;
+  /** Lowercase name filter; when set, matching nodes show and folders auto-expand. */
+  filter?: string;
   onOpenFile: (docId: Id<"documents">) => void;
   onOpenSecondary?: (docId: Id<"documents">) => void;
   onDeleteFile?: (docId: Id<"documents">, title: string) => void;
@@ -48,12 +51,35 @@ function statusIcon(format: string, pct: number | null) {
   return <CircleDot className="h-3 w-3 shrink-0 text-amber-500" aria-label="Đang đọc dở" />;
 }
 
+/** Keep files whose name matches, folders whose name matches (with all children)
+ *  or that contain a matching descendant. */
+function filterNodes(nodes: TreeNode[], q: string): TreeNode[] {
+  if (!q) return nodes;
+  const out: TreeNode[] = [];
+  for (const n of nodes) {
+    if (n.type === "folder") {
+      if (n.name.toLowerCase().includes(q)) {
+        out.push(n);
+      } else {
+        const kids = filterNodes(n.children, q);
+        if (kids.length > 0) out.push({ ...n, children: kids });
+      }
+    } else if (n.name.toLowerCase().includes(q)) {
+      out.push(n);
+    }
+  }
+  return out;
+}
+
 export function HandbookTree({
-  handbookId, files, emptyFolders, activeDocId,
+  handbookId, files, emptyFolders, activeDocId, filter = "",
   onOpenFile, onOpenSecondary, onDeleteFile, onDeleteFolder, onAddFile, onAddFolder, onAddEmptyFolder,
   onRenameFile, onRenameFolder,
 }: HandbookTreeProps) {
-  const tree = useMemo(() => buildTree(files, emptyFolders), [files, emptyFolders]);
+  const fullTree = useMemo(() => buildTree(files, emptyFolders), [files, emptyFolders]);
+  const q = filter.trim().toLowerCase();
+  const tree = useMemo(() => filterNodes(fullTree, q), [fullTree, q]);
+  const filtering = q.length > 0;
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -95,98 +121,79 @@ export function HandbookTree({
   const renderNodes = (nodes: TreeNode[], depth: number) => (
     <ul>
       {nodes.map((node) => {
-        const pad = 8 + depth * 12;
+        const pad = 10 + depth * 14;
         if (node.type === "folder") {
-          const open = expanded.has(node.path);
+          const open = filtering || expanded.has(node.path);
+          const folderItems = [
+            ...(onAddFile ? [{ label: "Thêm file", icon: <FilePlus2 className="h-3.5 w-3.5" />, onClick: () => onAddFile(node.path) }] : []),
+            ...(onAddFolder ? [{ label: "Import Thư mục", icon: <FolderPlus className="h-3.5 w-3.5" />, onClick: () => onAddFolder(node.path) }] : []),
+            ...(onAddEmptyFolder ? [{ label: "Tạo folder con", icon: <FolderPlus className="h-3.5 w-3.5" />, onClick: () => onAddEmptyFolder(node.path) }] : []),
+            ...(onRenameFolder ? [{ label: "Đổi tên folder", icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => onRenameFolder(node.path, node.name) }] : []),
+            ...(onDeleteFolder ? [{ label: "Xóa folder", icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => onDeleteFolder(node.path) }] : []),
+          ];
           return (
             <li key={`f:${node.path}`}>
-              <div className="group flex min-w-0 items-center">
-                <button
-                  onClick={() => toggle(node.path)}
-                  style={{ paddingLeft: pad }}
-                  className="flex min-w-0 flex-1 items-center gap-1 py-1 pr-2 text-left text-[13px] text-foreground/90 hover:bg-muted/60"
-                >
-                  <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
-                  {open ? <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" /> : <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
-                  <span className="truncate">{node.name}</span>
-                </button>
-                <NodeMenu items={[
-                  ...(onAddFile ? [{ label: "Thêm file", icon: <FilePlus2 className="h-3.5 w-3.5" />, onClick: () => onAddFile(node.path) }] : []),
-                  ...(onAddFolder ? [{ label: "Import Thư mục", icon: <FolderPlus className="h-3.5 w-3.5" />, onClick: () => onAddFolder(node.path) }] : []),
-                  ...(onAddEmptyFolder ? [{ label: "Tạo folder con", icon: <FolderPlus className="h-3.5 w-3.5" />, onClick: () => onAddEmptyFolder(node.path) }] : []),
-                  ...(onRenameFolder ? [{ label: "Đổi tên folder", icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => onRenameFolder(node.path, node.name) }] : []),
-                  ...(onDeleteFolder ? [{ label: "Xóa folder", icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => onDeleteFolder(node.path) }] : []),
-                ]} />
-              </div>
+              <RowMenu items={folderItems}>
+                {(m) => (
+                  <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
+                    <button
+                      onClick={() => toggle(node.path)}
+                      style={{ paddingLeft: pad }}
+                      title={node.name}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pr-1.5 text-left text-[13px] text-foreground/90 transition-colors hover:bg-muted"
+                    >
+                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+                      {open ? <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" /> : <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+                      <span className="truncate">{node.name}</span>
+                    </button>
+                    {m.trigger}
+                  </div>
+                )}
+              </RowMenu>
 
               {open && renderNodes(node.children, depth + 1)}
             </li>
           );
         }
         const isActive = node.docId === activeDocId;
+        const fileItems = [
+          ...(onOpenSecondary ? [{ label: "Mở sang phải", icon: <SplitSquareHorizontal className="h-3.5 w-3.5" />, onClick: () => onOpenSecondary(node.docId) }] : []),
+          ...(onRenameFile ? [{ label: "Đổi tên file", icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => onRenameFile(node.docId, node.name) }] : []),
+          ...(onDeleteFile ? [{ label: "Xóa file", icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => onDeleteFile(node.docId, node.name) }] : []),
+        ];
         return (
           <li key={`d:${node.docId}`}>
-            <div className="group flex min-w-0 items-center">
-              <button
-                onClick={() => onOpenFile(node.docId)}
-                style={{ paddingLeft: pad + 14 }}
-                className={[
-                  "flex min-w-0 flex-1 items-center gap-1.5 py-1 pr-2 text-left text-[13px]",
-                  isActive ? "bg-primary/10 font-medium text-primary" : "text-foreground/80 hover:bg-muted/60",
-                ].join(" ")}
-              >
-                {formatIcon(node.format)}
-                <span className="truncate">{node.name}</span>
-                <span className="ml-auto shrink-0">{statusIcon(node.format, node.progressPct)}</span>
-              </button>
-              <NodeMenu items={[
-                ...(onOpenSecondary ? [{ label: "Mở sang phải", icon: <SplitSquareHorizontal className="h-3.5 w-3.5" />, onClick: () => onOpenSecondary(node.docId) }] : []),
-                ...(onRenameFile ? [{ label: "Đổi tên file", icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => onRenameFile(node.docId, node.name) }] : []),
-                ...(onDeleteFile ? [{ label: "Xóa file", icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => onDeleteFile(node.docId, node.name) }] : []),
-              ]} />
-            </div>
+            <RowMenu items={fileItems}>
+              {(m) => (
+                <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
+                  <button
+                    onClick={() => onOpenFile(node.docId)}
+                    style={{ paddingLeft: pad + 16 }}
+                    title={node.name}
+                    className={[
+                      "flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pr-1.5 text-left text-[13px] transition-colors",
+                      isActive ? "bg-primary/10 font-medium text-primary" : "text-foreground/80 hover:bg-muted",
+                    ].join(" ")}
+                  >
+                    {formatIcon(node.format)}
+                    <span className="truncate">{node.name}</span>
+                    <span className="ml-auto shrink-0">{statusIcon(node.format, node.progressPct)}</span>
+                  </button>
+                  {m.trigger}
+                </div>
+              )}
+            </RowMenu>
           </li>
         );
       })}
     </ul>
   );
 
-  if (tree.length === 0) {
+  if (fullTree.length === 0) {
     return <p className="px-3 py-2 text-xs text-muted-foreground">Handbook trống — import ZIP để thêm nội dung.</p>;
   }
+  if (tree.length === 0) {
+    return <p className="px-3 py-2 text-xs text-muted-foreground">Không có mục khớp bộ lọc.</p>;
+  }
   return renderNodes(tree, 0);
-}
-
-function NodeMenu({ items }: { items: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }[] }) {
-  const [open, setOpen] = useState(false);
-  if (items.length === 0) return null;
-  return (
-    <div className="relative">
-      <button
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="mr-1 rounded p-1 text-muted-foreground opacity-0 hover:bg-muted group-hover:opacity-100"
-      >
-        <MoreHorizontal className="h-3.5 w-3.5" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-1 min-w-[140px] rounded-md border bg-popover p-1 shadow-md">
-            {items.map((it, i) => (
-              <button
-                key={i}
-                onClick={(e) => { e.stopPropagation(); setOpen(false); it.onClick(); }}
-                className={[
-                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-muted",
-                  it.danger ? "text-destructive" : "text-foreground",
-                ].join(" ")}
-              >
-                {it.icon}{it.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
 }
