@@ -9,10 +9,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Id } from "@/_generated/dataModel";
-import { useTagsForDoc } from "@/lib/api/tags";
-import { useFolderForDoc, useFoldersList, assignDocToFolder, removeDocFromFolder } from "@/lib/api/folders";
-import { useRealtimeOne } from "@/hooks/useRealtimeQuery";
-import type { ReadingProgressRow } from "@/lib/api/reading-progress";
+import type { TagRow } from "@/lib/api/tags";
+import { useFoldersList, assignDocToFolder, removeDocFromFolder, type FolderRow } from "@/lib/api/folders";
 import { trashDocument, renameDocument, getDownloadUrl } from "@/lib/api/documents";
 import { openTab } from "@/lib/api/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -59,18 +57,21 @@ interface DocumentCardProps {
   viewMode: "grid" | "list";
   isSelected?: boolean;
   onToggleSelect?: () => void;
+  /** Fix A: dữ liệu gộp từ grid — card KHÔNG tự mở subscription riêng nữa. */
+  tags?: TagRow[];
+  folder?: FolderRow | null;
+  progressPct?: number | null;
 }
 
-export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect }: DocumentCardProps) {
+export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect, tags, folder, progressPct }: DocumentCardProps) {
   const router = useRouter();
   const [showTrashDialog, setShowTrashDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [newTitle, setNewTitle] = useState(doc.title);
 
-  const docTags = useTagsForDoc(doc._id);
-  const currentFolder = useFolderForDoc(doc._id);
-  const readingProgress = useRealtimeOne<ReadingProgressRow>("reading_progress", { filter: { docId: doc._id } });
+  const docTags = tags;
+  const currentFolder = folder;
   const { exportDoc, isExporting } = useDocExport();
 
   async function handleDownload(e: React.MouseEvent) {
@@ -156,7 +157,10 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
     <>
       <TrashDialog open={showTrashDialog} onOpenChange={setShowTrashDialog} onConfirm={handleTrash} />
       <RenameDialog open={showRenameDialog} onOpenChange={setShowRenameDialog} value={newTitle} onChange={setNewTitle} onSave={handleRename} />
-      <FolderDialog open={showFolderDialog} onOpenChange={setShowFolderDialog} docId={doc._id} currentFolderId={currentFolder?._id ?? null} />
+      {/* Fix A: chỉ mount khi mở — hook useFoldersList bên trong không chạy nền cho từng card */}
+      {showFolderDialog && (
+        <FolderDialog open={showFolderDialog} onOpenChange={setShowFolderDialog} docId={doc._id} currentFolderId={currentFolder?._id ?? null} />
+      )}
     </>
   );
 
@@ -197,8 +201,8 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
               <span className="text-xs text-muted-foreground">{Lf[doc.format as keyof typeof Lf] ?? doc.format}</span>
               {doc.fileSizeBytes && <span className="text-xs text-muted-foreground">· {formatBytes(doc.fileSizeBytes)}</span>}
               <span className="text-xs text-muted-foreground">· {format(doc.createdAt, "dd/MM/yyyy", { locale: vi })}</span>
-              {readingProgress?.progressPct != null && readingProgress.progressPct > 0 && (
-                <span className="text-xs text-primary font-medium">· {Math.round(readingProgress.progressPct * 100)}%</span>
+              {progressPct != null && progressPct > 0 && (
+                <span className="text-xs text-primary font-medium">· {Math.round(progressPct * 100)}%</span>
               )}
               {currentFolder && (
                 <Badge variant="outline" className="h-4 px-1.5 text-xs gap-1">
@@ -213,7 +217,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <TagPopover docId={doc._id} />
+            <TagPopover docId={doc._id} docTags={docTags} />
             <DropdownMenu>
               <DropdownMenuTrigger className="inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-muted transition-colors" aria-label="Tuỳ chọn">
                 <MoreVertical className="h-4 w-4" aria-hidden />
@@ -298,20 +302,20 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
             </div>
           )}
 
-          {readingProgress?.progressPct != null && readingProgress.progressPct > 0 && (
+          {progressPct != null && progressPct > 0 && (
             <div className="space-y-0.5">
-              <span className="text-xs text-primary font-medium">{Math.round(readingProgress.progressPct * 100)}%</span>
+              <span className="text-xs text-primary font-medium">{Math.round(progressPct * 100)}%</span>
               <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${Math.round(readingProgress.progressPct * 100)}%` }}
+                  style={{ width: `${Math.round(progressPct * 100)}%` }}
                 />
               </div>
             </div>
           )}
 
           <div className="flex items-center gap-1 -ml-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-            <TagPopover docId={doc._id} />
+            <TagPopover docId={doc._id} docTags={docTags} />
           </div>
         </div>
       </div>

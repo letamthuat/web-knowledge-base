@@ -1,8 +1,8 @@
 "use client";
 // Domain reading_progress trên Supabase. RLS tự lọc theo user.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { subscribeTable } from "@/lib/supabase/realtime";
+import { subscribeTable, suppressEcho } from "@/lib/supabase/realtime";
 
 export type ReadingProgressRow = {
   _id: string;
@@ -37,6 +37,8 @@ export async function upsertReadingProgress(args: {
     // Idempotency + LWW: bỏ qua nếu trùng mutation id hoặc server mới hơn.
     if (existing.clientMutationId === args.clientMutationId) return;
     if (existing.updatedAt >= args.updatedAt) return;
+    // Ghi của chính mình — không cần refetch khi event echo về (Fix D)
+    suppressEcho(args.clientMutationId);
     await supabase
       .from("reading_progress")
       .update({
@@ -48,6 +50,7 @@ export async function upsertReadingProgress(args: {
       })
       .eq("_id", existing._id);
   } else {
+    suppressEcho(args.clientMutationId);
     await supabase.from("reading_progress").insert({
       userId,
       docId: args.docId,
@@ -74,9 +77,11 @@ export type RecentHistoryItem = {
 
 export function useRecentHistory(limit = 10): RecentHistoryItem[] | undefined {
   const [data, setData] = useState<RecentHistoryItem[] | undefined>(undefined);
+  const lastJsonRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    lastJsonRef.current = null;
     async function load() {
       const { data: rows, error } = await supabase
         .from("reading_progress")
@@ -94,6 +99,9 @@ export function useRecentHistory(limit = 10): RecentHistoryItem[] | undefined {
           return doc ? { progress: r as unknown as ReadingProgressRow, doc } : null;
         })
         .filter((x): x is RecentHistoryItem => x !== null && x.doc.status !== "trashed");
+      const json = JSON.stringify(items);
+      if (json === lastJsonRef.current) return; // Fix C
+      lastJsonRef.current = json;
       setData(items);
     }
     void load();
@@ -107,5 +115,36 @@ export function useRecentHistory(limit = 10): RecentHistoryItem[] | undefined {
     };
   }, [limit]);
 
+  return data;
+}
+
+// Fix A: progress của TẤT CẢ doc trong 1 query (thay vì 1 sub/card).
+// Select nhẹ — chỉ cột cần cho card thư viện.
+export type ProgressLite = { _id: string; docId: string; progressPct: number | null };
+export function useAllProgress(enabled = true): ProgressLite[] | undefined {
+  const [data, setData] = useState<ProgressLite[] | undefined>(undefined);
+  const lastJsonRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!enabled) { lastJsonRef.current = null; setData(undefined); return; }
+    let active = true;
+    lastJsonRef.current = null;
+    async function load() {
+      const { data: rows, error } = await supabase
+        .from("reading_progress")
+        .select("_id, docId, progressPct");
+      if (!active) return;
+      if (error || !rows) {
+        setData([]);
+        return;
+      }
+      const json = JSON.stringify(rows);
+      if (json === lastJsonRef.current) return;
+      lastJsonRef.current = json;
+      setData(rows as ProgressLite[]);
+    }
+    void load();
+    const unsub = subscribeTable("reading_progress", () => void load());
+    return () => { active = false; unsub(); };
+  }, [enabled]);
   return data;
 }

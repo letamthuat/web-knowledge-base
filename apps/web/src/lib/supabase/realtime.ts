@@ -19,16 +19,50 @@ let channel: any = null;
 let currentToken: string | null = null;
 let tokenInitialized = false;
 
+// ── Echo suppression ──────────────────────────────────────────────────────────
+// Ghi từ chính client này (đánh dấu bằng clientMutationId) không cần refetch:
+// UI đã có state đúng. Chỉ nuốt đúng key mình vừa ghi → thay đổi từ thiết bị
+// khác vẫn nhận bình thường. Fail-open: payload không có key thì fire như cũ.
+const ownEchoKeys = new Set<string>();
+const MAX_ECHO_KEYS = 200;
+
+export function suppressEcho(key: string) {
+  ownEchoKeys.add(key);
+  if (ownEchoKeys.size > MAX_ECHO_KEYS) {
+    // Set giữ thứ tự chèn — xoá key cũ nhất
+    const oldest = ownEchoKeys.values().next().value;
+    if (oldest !== undefined) ownEchoKeys.delete(oldest);
+  }
+}
+
+// ── Debounced fire ────────────────────────────────────────────────────────────
+// Gom nhiều event của cùng 1 bảng trong cửa sổ ngắn thành 1 lần notify.
+// Import ZIP 50 file → 1-2 đợt refetch thay vì 50 đợt.
+const FIRE_DEBOUNCE_MS = 150;
+const fireTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 function fire(table: string) {
-  const set = listeners.get(table);
-  if (set) set.forEach((fn) => fn());
+  if (fireTimers.has(table)) return; // đã có đợt chờ — event này gộp vào
+  fireTimers.set(table, setTimeout(() => {
+    fireTimers.delete(table);
+    const set = listeners.get(table);
+    if (set) set.forEach((fn) => fn());
+  }, FIRE_DEBOUNCE_MS));
 }
 
 function rebuild() {
   if (channel) { void supabase.removeChannel(channel); channel = null; }
   let ch = supabase.channel("rt:all");
   for (const t of TABLES) {
-    ch = ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => fire(t));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ch = ch.on("postgres_changes", { event: "*", schema: "public", table: t }, (payload: any) => {
+      const key = payload?.new?.clientMutationId as string | undefined;
+      if (key && ownEchoKeys.has(key)) {
+        ownEchoKeys.delete(key);
+        return; // echo của chính mình — bỏ qua
+      }
+      fire(t);
+    });
   }
   ch.subscribe();
   channel = ch;

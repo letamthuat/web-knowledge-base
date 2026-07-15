@@ -16,7 +16,10 @@ import { useDocumentsList, trashDocument } from "@/lib/api/documents";
 import {
   useFoldersList, useAllDocFolders, useDocsInFolder,
   createFolder, renameFolder, deleteFolder, assignDocToFolder,
+  type FolderRow,
 } from "@/lib/api/folders";
+import { useAllDocTags, type TagRow } from "@/lib/api/tags";
+import { useAllProgress } from "@/lib/api/reading-progress";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -94,6 +97,9 @@ export function LibraryPageInner() {
   const allFolders = useFoldersList();
   const allDocFolders = useAllDocFolders();
   const folderDocs = useDocsInFolder(scope !== "all" ? scope : undefined);
+  // Fix A: dữ liệu gộp cho card — 2 query cho CẢ trang (thay ~6 subscription/card)
+  const allDocTags = useAllDocTags();
+  const allProgress = useAllProgress();
 
   const subFolders = useMemo(
     () => scope !== "all" ? (allFolders?.filter((f: any) => f.parentFolderId === scope) ?? []) : [],
@@ -103,15 +109,44 @@ export function LibraryPageInner() {
   const docsByFolder = useMemo(() => {
     const map: Record<string, any[]> = {};
     if (!allDocFolders || !allDocs) return map;
+    // Map thay vì .find trong loop (O(n²) → O(n))
+    const docById = new Map((allDocs as any[]).map((d) => [d._id, d]));
     for (const df of allDocFolders as any[]) {
-      const doc = (allDocs as any[]).find((d) => d._id === df.docId && d.status === "ready");
-      if (doc) {
+      const doc = docById.get(df.docId);
+      if (doc && doc.status === "ready") {
         if (!map[df.folderId]) map[df.folderId] = [];
         map[df.folderId].push(doc);
       }
     }
     return map;
   }, [allDocFolders, allDocs]);
+
+  // Fix A: 3 map tra cứu cho DocumentCard
+  const tagsByDoc = useMemo(() => {
+    const map = new Map<string, TagRow[]>();
+    for (const e of allDocTags ?? []) {
+      const list = map.get(e.docId);
+      if (list) list.push(e.tag); else map.set(e.docId, [e.tag]);
+    }
+    return map;
+  }, [allDocTags]);
+
+  const folderByDoc = useMemo(() => {
+    const map = new Map<string, FolderRow>();
+    if (!allDocFolders || !allFolders) return map;
+    const folderById = new Map(allFolders.map((f) => [f._id, f]));
+    for (const df of allDocFolders) {
+      const folder = folderById.get(df.folderId);
+      if (folder) map.set(df.docId, folder);
+    }
+    return map;
+  }, [allDocFolders, allFolders]);
+
+  const pctByDoc = useMemo(() => {
+    const map = new Map<string, number | null>();
+    for (const p of allProgress ?? []) map.set(p.docId, p.progressPct);
+    return map;
+  }, [allProgress]);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -546,6 +581,9 @@ export function LibraryPageInner() {
             isFiltered={isFiltered}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
+            tagsByDoc={tagsByDoc}
+            folderByDoc={folderByDoc}
+            pctByDoc={pctByDoc}
           />
         </main>
       </div>

@@ -2,7 +2,7 @@
 // Thay cơ chế reactive useQuery của Convex bằng: fetch ban đầu + Supabase Realtime.
 // Trả về: undefined = đang load, [] = rỗng, [...] = dữ liệu (giống convex useQuery).
 // RLS tự lọc theo user nên đa số query không cần truyền userId.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { subscribeTable } from "@/lib/supabase/realtime";
 
@@ -20,6 +20,9 @@ export function useRealtimeQuery<T = Record<string, unknown>>(
 ): T[] | undefined {
   const { filter, order, limit, enabled = true, select = "*" } = options;
   const [data, setData] = useState<T[] | undefined>(undefined);
+  // Fix C: giữ JSON của lần trước — refetch ra dữ liệu y hệt thì bỏ qua setData
+  // (không tạo reference mới → không re-render consumer).
+  const lastJsonRef = useRef<string | null>(null);
 
   // Khóa ổn định cho deps (tránh re-subscribe vô hạn)
   const filterKey = JSON.stringify(filter ?? {});
@@ -27,10 +30,12 @@ export function useRealtimeQuery<T = Record<string, unknown>>(
 
   useEffect(() => {
     if (!enabled) {
+      lastJsonRef.current = null;
       setData(undefined);
       return;
     }
     let active = true;
+    lastJsonRef.current = null; // query đổi → so sánh lại từ đầu
 
     async function load() {
       let q = supabase.from(table).select(select);
@@ -43,9 +48,13 @@ export function useRealtimeQuery<T = Record<string, unknown>>(
       if (!active) return;
       if (error) {
         console.error(`[useRealtimeQuery] ${table}:`, error.message);
+        lastJsonRef.current = null;
         setData([]);
         return;
       }
+      const json = JSON.stringify(rows ?? []);
+      if (json === lastJsonRef.current) return; // dữ liệu không đổi — bỏ qua
+      lastJsonRef.current = json;
       setData((rows ?? []) as T[]);
     }
 

@@ -1,6 +1,6 @@
 "use client";
 // Domain tags + document_tags trên Supabase.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { subscribeTable } from "@/lib/supabase/realtime";
@@ -20,12 +20,15 @@ export function useTagsList(): TagRow[] | undefined {
 // Tag gắn với 1 document (join document_tags → tags).
 export function useTagsForDoc(docId: string | undefined): TagRow[] | undefined {
   const [data, setData] = useState<TagRow[] | undefined>(undefined);
+  const lastJsonRef = useRef<string | null>(null);
   useEffect(() => {
     if (!docId) {
+      lastJsonRef.current = null;
       setData(undefined);
       return;
     }
     let active = true;
+    lastJsonRef.current = null;
     async function load() {
       const { data: rows, error } = await supabase
         .from("document_tags")
@@ -39,6 +42,9 @@ export function useTagsForDoc(docId: string | undefined): TagRow[] | undefined {
       const tags = rows
         .map((r) => (r as unknown as { tags?: TagRow | null }).tags ?? null)
         .filter((t): t is TagRow => !!t);
+      const json = JSON.stringify(tags);
+      if (json === lastJsonRef.current) return; // Fix C: không đổi → bỏ qua
+      lastJsonRef.current = json;
       setData(tags);
     }
     void load();
@@ -48,6 +54,52 @@ export function useTagsForDoc(docId: string | undefined): TagRow[] | undefined {
       unsub();
     };
   }, [docId]);
+  return data;
+}
+
+// Fix A: TẤT CẢ mapping doc→tags trong 1 query (thay vì 1 query/card).
+// Nghe cả document_tags lẫn tags (đổi tên/màu tag cũng cập nhật).
+export type DocTagsEntry = { docId: string; tag: TagRow };
+export function useAllDocTags(enabled = true): DocTagsEntry[] | undefined {
+  const [data, setData] = useState<DocTagsEntry[] | undefined>(undefined);
+  const lastJsonRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!enabled) {
+      lastJsonRef.current = null;
+      setData(undefined);
+      return;
+    }
+    let active = true;
+    lastJsonRef.current = null;
+    async function load() {
+      const { data: rows, error } = await supabase
+        .from("document_tags")
+        .select("docId, tags(*)");
+      if (!active) return;
+      if (error || !rows) {
+        setData([]);
+        return;
+      }
+      const entries = rows
+        .map((r) => {
+          const rec = r as unknown as { docId: string; tags?: TagRow | null };
+          return rec.tags ? { docId: rec.docId, tag: rec.tags } : null;
+        })
+        .filter((e): e is DocTagsEntry => !!e);
+      const json = JSON.stringify(entries);
+      if (json === lastJsonRef.current) return;
+      lastJsonRef.current = json;
+      setData(entries);
+    }
+    void load();
+    const unsubMap = subscribeTable("document_tags", () => void load());
+    const unsubTags = subscribeTable("tags", () => void load());
+    return () => {
+      active = false;
+      unsubMap();
+      unsubTags();
+    };
+  }, [enabled]);
   return data;
 }
 

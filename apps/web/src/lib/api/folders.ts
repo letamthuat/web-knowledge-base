@@ -1,6 +1,6 @@
 "use client";
 // Domain folders + document_folders trên Supabase.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { subscribeTable } from "@/lib/supabase/realtime";
@@ -36,9 +36,11 @@ export function useAllDocFolders(enabled = true): DocFolderRow[] | undefined {
 // Folder chứa 1 doc (hoặc null).
 export function useFolderForDoc(docId: string | undefined): FolderRow | null | undefined {
   const [data, setData] = useState<FolderRow | null | undefined>(undefined);
+  const lastJsonRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!docId) { setData(undefined); return; }
+    if (!docId) { lastJsonRef.current = null; setData(undefined); return; }
     let active = true;
+    lastJsonRef.current = null;
     async function load() {
       const { data: row } = await supabase
         .from("document_folders")
@@ -47,6 +49,9 @@ export function useFolderForDoc(docId: string | undefined): FolderRow | null | u
         .maybeSingle();
       if (!active) return;
       const folder = (row as unknown as { folders?: FolderRow | null })?.folders ?? null;
+      const json = JSON.stringify(folder);
+      if (json === lastJsonRef.current) return; // Fix C
+      lastJsonRef.current = json;
       setData(folder);
     }
     void load();
@@ -59,9 +64,11 @@ export function useFolderForDoc(docId: string | undefined): FolderRow | null | u
 // Tài liệu trong 1 folder (status ready).
 export function useDocsInFolder(folderId: string | undefined): DocLite[] | undefined {
   const [data, setData] = useState<DocLite[] | undefined>(undefined);
+  const lastJsonRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!folderId) { setData(undefined); return; }
+    if (!folderId) { lastJsonRef.current = null; setData(undefined); return; }
     let active = true;
+    lastJsonRef.current = null;
     async function load() {
       const { data: rows } = await supabase
         .from("document_folders")
@@ -71,6 +78,9 @@ export function useDocsInFolder(folderId: string | undefined): DocLite[] | undef
       const docs = (rows ?? [])
         .map((r) => (r as unknown as { documents?: DocLite | null }).documents ?? null)
         .filter((d): d is DocLite => !!d && d.status === "ready");
+      const json = JSON.stringify(docs);
+      if (json === lastJsonRef.current) return; // Fix C
+      lastJsonRef.current = json;
       setData(docs);
     }
     void load();

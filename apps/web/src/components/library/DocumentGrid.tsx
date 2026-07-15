@@ -6,6 +6,8 @@ import { DocumentCard } from "./DocumentCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { labels } from "@/lib/i18n/labels";
+import type { TagRow } from "@/lib/api/tags";
+import type { FolderRow } from "@/lib/api/folders";
 
 const L = labels.library;
 
@@ -26,11 +28,15 @@ interface DocumentGridProps {
   isFiltered?: boolean;
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
+  /** Fix A: dữ liệu gộp — 3 query cho cả trang thay vì 3 subscription/card. */
+  tagsByDoc?: Map<string, TagRow[]>;
+  folderByDoc?: Map<string, FolderRow>;
+  pctByDoc?: Map<string, number | null>;
 }
 
 export function DocumentGrid({
   docs, viewMode, onViewModeChange, onUploadClick, isFiltered,
-  selectedIds, onToggleSelect,
+  selectedIds, onToggleSelect, tagsByDoc, folderByDoc, pctByDoc,
 }: DocumentGridProps) {
   if (docs === undefined) {
     return <DocumentGridSkeleton viewMode={viewMode} />;
@@ -73,6 +79,9 @@ export function DocumentGrid({
                 viewMode="grid"
                 isSelected={selectedIds.has(doc._id)}
                 onToggleSelect={() => onToggleSelect(doc._id)}
+                tags={tagsByDoc?.get(doc._id) ?? []}
+                folder={folderByDoc?.get(doc._id) ?? null}
+                progressPct={pctByDoc?.get(doc._id) ?? null}
               />
             </div>
           ))}
@@ -86,6 +95,9 @@ export function DocumentGrid({
                 viewMode="list"
                 isSelected={selectedIds.has(doc._id)}
                 onToggleSelect={() => onToggleSelect(doc._id)}
+                tags={tagsByDoc?.get(doc._id) ?? []}
+                folder={folderByDoc?.get(doc._id) ?? null}
+                progressPct={pctByDoc?.get(doc._id) ?? null}
               />
             </div>
           ))}
