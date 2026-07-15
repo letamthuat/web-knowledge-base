@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — single source of truth
+   ---------------------------------------------------------------------------
+   • :root ............ light (default)
+   • .dark, .rm-dark .. dark  (the app toggles .rm-dark; .dark kept for convention)
+   • .rm-sepia ........ warm reading theme
+   Every theme defines the FULL token set so buttons / inputs / rings / code
+   surfaces stay consistent in every mode. `dark:` utilities fire under
+   .rm-dark via the tailwind.config darkMode variant.
+   ═════════════════════════════════════════════════════════════════════════ */
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -24,28 +35,72 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+
+    /* Code surfaces (markdown) — token-driven so they adapt per theme */
+    --code-bg: 210 40% 98%;
+    --code-fg: 215 25% 27%;
+    --code-border: 214 32% 91%;
+    --code-inline-bg: 210 40% 96%;
+    --code-inline-fg: 222 47% 11%;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+  /* Dark — driven by both .dark (convention) and .rm-dark (app toggle) */
+  .dark,
+  html.rm-dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 91%;
+    --card: 0 0% 13%;
+    --card-foreground: 0 0% 91%;
+    --popover: 0 0% 14%;
+    --popover-foreground: 0 0% 91%;
     --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 91%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 62%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 91%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 22%;
+    --input: 0 0% 22%;
+    --ring: 217.2 91.2% 59.8%;
+
+    --code-bg: 222 47% 11%;
+    --code-fg: 213 27% 84%;
+    --code-border: 217 33% 17%;
+    --code-inline-bg: 217 33% 17%;
+    --code-inline-fg: 213 27% 84%;
+  }
+
+  /* Sepia — warm reading theme (light-family, does NOT trigger dark:) */
+  html.rm-sepia {
+    --background: 39 60% 90%;
+    --foreground: 20 30% 20%;
+    --card: 39 55% 92%;
+    --card-foreground: 20 30% 20%;
+    --popover: 39 55% 92%;
+    --popover-foreground: 20 30% 20%;
+    --primary: 25 58% 40%;
+    --primary-foreground: 39 60% 96%;
+    --secondary: 39 40% 83%;
+    --secondary-foreground: 20 30% 20%;
+    --muted: 39 40% 83%;
+    --muted-foreground: 20 20% 40%;
+    --accent: 39 45% 80%;
+    --accent-foreground: 20 30% 20%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 39 60% 96%;
+    --border: 39 30% 78%;
+    --input: 39 30% 78%;
+    --ring: 25 58% 40%;
+
+    --code-bg: 39 45% 85%;
+    --code-fg: 20 30% 22%;
+    --code-border: 39 30% 75%;
+    --code-inline-bg: 39 45% 84%;
+    --code-inline-fg: 20 30% 22%;
   }
 }
 
@@ -53,9 +108,16 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+}
+
+/* Document surface + default text color.
+   Unlayered (not inside @layer) so it reliably beats Tailwind's base layer AND
+   the CSS cascade layers that Mantine/BlockNote register — otherwise elements
+   that only inherit their color (e.g. ghost buttons) fall back to black and
+   become unreadable in dark mode. */
+html body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 /* ─── PWA / Mobile Foundation ─────────────────────────────────────────────── */
@@ -92,9 +154,8 @@
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-/* Highlight colors — !important overrides Tailwind Typography prose mark reset */
+/* ─── Highlight colors ────────────────────────────────────────────────────── */
+/* Fixed semantic colors — !important overrides Tailwind Typography mark reset */
 mark.hl-yellow { background: #fef08a !important; color: inherit !important; border-radius: 2px; }
 mark.hl-green  { background: #bbf7d0 !important; color: inherit !important; border-radius: 2px; }
 mark.hl-blue   { background: #bfdbfe !important; color: inherit !important; border-radius: 2px; }
@@ -102,20 +163,22 @@ mark.hl-pink   { background: #fbcfe8 !important; color: inherit !important; bord
 mark.hl-purple { background: #e9d5ff !important; color: inherit !important; border-radius: 2px; }
 /* hl-custom: background set inline via style attribute */
 mark.hl-custom { color: inherit !important; border-radius: 2px; }
+/* Note indicator — dashed violet underline on any highlight that has a note */
+mark.hl-has-note {
+  border-bottom: 2px dashed #7c3aed;
+  padding-bottom: 1px;
+}
 
-/* BlockNote editor — links styled with blue + underline */
+/* ─── BlockNote editor (third-party) ──────────────────────────────────────── */
+/* Links styled with the primary token + underline */
 .bn-editor a,
 .bn-block-content a {
-  color: #2563eb !important;
+  color: hsl(var(--primary)) !important;
   text-decoration: underline !important;
   text-underline-offset: 2px;
 }
-.bn-editor a:hover,
-.bn-block-content a:hover {
-  color: #1d4ed8 !important;
-}
 
-/* BlockNote — remove horizontal padding on mobile so editor fills full width */
+/* Remove horizontal padding on mobile so the editor fills full width */
 @media (max-width: 767px) {
   .bn-editor {
     padding-left: 12px !important;
@@ -128,187 +191,35 @@ mark.hl-custom { color: inherit !important; border-radius: 2px; }
   }
 }
 
-/* Note indicator — dashed violet underline on any highlight that has a note */
-mark.hl-has-note {
-  border-bottom: 2px dashed #7c3aed;
-  padding-bottom: 1px;
-}
-
-/* Reading Mode themes — class on <html> overrides Tailwind CSS variables */
-html.rm-sepia {
-  --background: 39 60% 90%;
-  --foreground: 20 30% 20%;
-  --card: 39 60% 90%;
-  --card-foreground: 20 30% 20%;
-  --popover: 39 60% 90%;
-  --popover-foreground: 20 30% 20%;
-  --muted: 39 40% 83%;
-  --muted-foreground: 20 20% 40%;
-  --border: 39 30% 78%;
-}
-html.rm-dark {
-  --background: 0 0% 10%;
-  --foreground: 0 0% 91%;
-  --card: 0 0% 10%;
-  --card-foreground: 0 0% 91%;
-  --popover: 0 0% 10%;
-  --popover-foreground: 0 0% 91%;
-  --muted: 0 0% 18%;
-  --muted-foreground: 0 0% 60%;
-  --border: 0 0% 22%;
-}
-html.rm-light {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --border: 214.3 31.8% 91.4%;
-}
-
-html.rm-sepia .prose { --tw-prose-body: #3b2f2f; --tw-prose-headings: #2a1f1f; --tw-prose-links: #6b4c2a; --tw-prose-code: #5a3e2b; }
-html.rm-dark  .prose { --tw-prose-body: #e8e8e8; --tw-prose-headings: #ffffff; --tw-prose-links: #93c5fd; --tw-prose-code: #f9a8d4; }
-
-/* BlockNote editor — override inline background injected by Mantine/BlockNote */
+/* Override the inline background BlockNote/Mantine injects in sepia mode */
 html.rm-sepia .bn-editor,
 html.rm-sepia [data-color-scheme],
 html.rm-sepia .bn-container { background-color: #f4ecd8 !important; color: #3b2f2f !important; }
 html.rm-sepia .bn-block-content,
 html.rm-sepia .ProseMirror { color: #3b2f2f !important; }
 
-/* ─── Markdown Prose Refinements ─── */
-.prose {
-  font-size: inherit !important;
-  color: hsl(var(--foreground)) !important;
-  max-width: none !important;
+/* ─── highlight.js (third-party) ──────────────────────────────────────────── */
+/* MarkdownViewer imports the light `github.css` theme. Let the code block box
+   come from our --code-bg token (set on <pre>) instead of the theme's own bg,
+   and supply a readable syntax palette in dark mode. */
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
 }
-
-.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-  color: hsl(var(--foreground)) !important;
-  font-weight: 700;
-}
-
-.prose h1 {
-  border-bottom: 1px solid hsl(var(--border) / 0.8);
-  padding-bottom: 0.3em;
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
-}
-
-.prose h2 {
-  border-bottom: 1px solid hsl(var(--border) / 0.8);
-  padding-bottom: 0.3em;
-  margin-top: 1.4em;
-  margin-bottom: 0.5em;
-}
-
-.prose h3 {
-  margin-top: 1.3em;
-  margin-bottom: 0.4em;
-}
-
-.prose p {
-  margin-top: 0.8em;
-  margin-bottom: 0.8em;
-}
-
-.prose ul, .prose ol {
-  margin-top: 0.6em;
-  margin-bottom: 0.6em;
-  padding-left: 1.5em;
-}
-
-.prose li {
-  margin-top: 0.25em;
-  margin-bottom: 0.25em;
-}
-
-.prose hr {
-  margin: 2em 0;
-  border-color: hsl(var(--border));
-}
-
-/* Disable automatic quotes on blockquotes added by Tailwind */
-.prose blockquote::before,
-.prose blockquote::after,
-.prose blockquote p::before,
-.prose blockquote p::after {
-  content: "" !important;
-}
-
-/* Academic Table Grid overrides */
-.prose table {
-  width: 100% !important;
-  border-collapse: collapse !important;
-  margin: 1.5em 0 !important;
-}
-
-.prose th,
-.prose td {
-  border: 1px solid #d1d5db !important; /* light mode */
-  padding: 10px 14px !important;
-}
-
-.dark .prose th,
-.dark .prose td {
-  border: 1px solid #374151 !important; /* dark mode */
-}
-
-.prose thead {
-  background-color: #f3f4f6 !important;
-}
-
-.dark .prose thead {
-  background-color: #1f2937 !important;
-}
-
-.prose tr:nth-child(even) {
-  background-color: #f9fafb !important;
-}
-
-.dark .prose tr:nth-child(even) {
-  background-color: rgba(17, 24, 39, 0.4) !important;
-}
-
-/* Clean block code styles */
-pre {
-  background-color: #f8fafc !important;
-  color: #334155 !important;
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 0.5rem !important;
-  padding: 1.25rem !important;
-  margin: 1.5rem 0 !important;
-}
-
-pre code {
-  color: inherit !important;
-}
-
-.dark pre {
-  background-color: #0f172a !important;
-  color: #e2e8f0 !important;
-  border: 1px solid #1e293b !important;
-}
-
-/* Disable default backticks on inline code in Tailwind Typography */
-.prose code::before,
-.prose code::after {
-  content: "" !important;
-}
-
-:not(pre) > code {
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
-  padding: 0.2rem 0.4rem !important;
-  border-radius: 0.25rem !important;
-  font-size: 0.875em !important;
-  font-weight: 500 !important;
-}
-
-.dark :not(pre) > code {
-  background-color: #1e293b !important;
-  color: #e2e8f0 !important;
-}
+.dark .hljs,
+html.rm-dark .hljs { color: hsl(var(--code-fg)); }
+.dark .hljs-comment,     html.rm-dark .hljs-comment,
+.dark .hljs-quote,       html.rm-dark .hljs-quote        { color: #8b949e; }
+.dark .hljs-keyword,     html.rm-dark .hljs-keyword,
+.dark .hljs-selector-tag,html.rm-dark .hljs-selector-tag,
+.dark .hljs-literal,     html.rm-dark .hljs-literal,
+.dark .hljs-type,        html.rm-dark .hljs-type         { color: #ff7b72; }
+.dark .hljs-string,      html.rm-dark .hljs-string       { color: #a5d6ff; }
+.dark .hljs-number,      html.rm-dark .hljs-number,
+.dark .hljs-variable,    html.rm-dark .hljs-variable     { color: #79c0ff; }
+.dark .hljs-title,       html.rm-dark .hljs-title,
+.dark .hljs-name,        html.rm-dark .hljs-name,
+.dark .hljs-attr,        html.rm-dark .hljs-attr         { color: #d2a8ff; }
+.dark .hljs-built_in,    html.rm-dark .hljs-built_in,
+.dark .hljs-symbol,      html.rm-dark .hljs-symbol,
+.dark .hljs-addition,    html.rm-dark .hljs-addition     { color: #ffa657; }
