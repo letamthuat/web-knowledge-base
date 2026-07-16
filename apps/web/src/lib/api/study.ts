@@ -373,7 +373,8 @@ export async function setSpaceSources(spaceId: string, docIds: string[]): Promis
 }
 
 // ─── UNITS (materialize B2 dùng insert bulk) ──────────────────────────────────
-export type NewStudyUnit = Omit<StudyUnitRow, "_id" | "createdAt" | "updatedAt" | "userId">;
+// _id client-gen (crypto.randomUUID) để link parentUnitId trong 1 lần bulk insert.
+export type NewStudyUnit = Omit<StudyUnitRow, "createdAt" | "updatedAt" | "userId" | "spaceId"> & { _id: string };
 
 export async function insertStudyUnits(spaceId: string, units: NewStudyUnit[]): Promise<void> {
   const userId = await currentUserId();
