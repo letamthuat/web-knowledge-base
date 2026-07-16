@@ -6,6 +6,7 @@
 import GithubSlugger from "github-slugger";
 import { insertStudyUnits, setSpaceSources, type NewStudyUnit, type UnitStatus } from "@/lib/api/study";
 import { getAssetUrls } from "@/lib/api/handbooks";
+import { getDownloadUrl } from "@/lib/api/documents";
 
 const DEFAULT_UNIT_CHARS = 43_000; // khớp rule engine (SPEC §3.1)
 
@@ -207,6 +208,51 @@ export async function materializeHandbookSpace(input: {
       } catch {
         markdown = "";
       }
+    }
+    const { units, nextOrder } = parseUnitsFromMarkdown({
+      markdown,
+      moduleKey,
+      moduleTitle: d.title,
+      docId: d.docId,
+      startOrder: order,
+    });
+    order = nextOrder;
+    allUnits.push(...units);
+    moduleCount++;
+  }
+
+  if (allUnits.length) await insertStudyUnits(spaceId, allUnits);
+  await setSpaceSources(
+    spaceId,
+    selectedDocs.map((d) => d.docId),
+  );
+  return { unitCount: allUnits.length, moduleCount };
+}
+
+/**
+ * Materialize space từ TÀI LIỆU LẺ (cherry-pick, sourceType='docs'). Mỗi doc = 1 module.
+ * Fetch raw markdown qua getDownloadUrl (dùng được cho mọi doc, kể cả không thuộc handbook).
+ * moduleKey theo số đầu tên file nếu có, không thì M{vị trí}.
+ */
+export async function materializeDocsSpace(input: {
+  spaceId: string;
+  selectedDocs: { docId: string; title: string; relPath?: string }[];
+}): Promise<{ unitCount: number; moduleCount: number }> {
+  const { spaceId, selectedDocs } = input;
+  let order = 0;
+  const allUnits: ParsedUnit[] = [];
+  let moduleCount = 0;
+
+  for (let i = 0; i < selectedDocs.length; i++) {
+    const d = selectedDocs[i];
+    const moduleKey = moduleKeyFromRelPath(d.relPath ?? d.title, i + 1);
+    let markdown = "";
+    try {
+      const url = await getDownloadUrl(d.docId);
+      const res = await fetch(url);
+      if (res.ok) markdown = await res.text();
+    } catch {
+      markdown = "";
     }
     const { units, nextOrder } = parseUnitsFromMarkdown({
       markdown,
