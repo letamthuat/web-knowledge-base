@@ -5,11 +5,14 @@
 // các hook đăng ký callback theo bảng qua emitter JS (không tạo channel mới).
 import { supabase } from "@/lib/supabase/client";
 
-// Mọi bảng có trong publication supabase_realtime (0002 + profiles ở 0003).
+// Mọi bảng có trong publication supabase_realtime (0002 + profiles ở 0003 + study ở 0005).
 const TABLES = [
   "documents", "domains", "handbooks", "folders", "tags",
   "document_tags", "document_folders", "reading_progress", "reading_history",
   "tabs", "note_tabs", "highlights", "notes", "transcripts", "userAiSettings", "profiles",
+  // Module Học tập (0005) — realtime để tạo space/đổi tiến độ hiện ngay, đồng bộ đa thiết bị.
+  "study_spaces", "study_units", "study_checkpoints", "flashcards", "review_logs",
+  "quiz_attempts", "feynman_sessions", "study_sessions", "study_plans", "study_plan_tasks",
 ] as const;
 
 type Listener = () => void;
