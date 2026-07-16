@@ -7,7 +7,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-3.1-flash-lite"];
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
+
+// Loại model KHÔNG sinh text/JSON được (tts=audio, image=ảnh, embedding, vision-only).
+function textModels(models?: string[]): string[] {
+  const list = (models ?? []).filter((m) => !/tts|image|embedding|imagen|veo/i.test(m));
+  return list.length > 0 ? list : GEMINI_MODELS;
+}
 
 type GenCard = { type: "concept" | "apply" | "link"; front: string; back: string; quote: string };
 
@@ -66,7 +72,7 @@ export async function POST(req: NextRequest) {
 
   const apiKey = body.geminiApiKey?.trim() || process.env.GEMINI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Chưa cấu hình Gemini API key (Cài đặt)" }, { status: 400 });
-  const models = body.geminiModels && body.geminiModels.length > 0 ? body.geminiModels : GEMINI_MODELS;
+  const models = textModels(body.geminiModels);
 
   // Cắt scope quá dài để an toàn TPM (~ giữ 24k ký tự đầu).
   const scopeClipped = scope.length > 24_000 ? scope.slice(0, 24_000) : scope;
