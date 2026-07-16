@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/study";
 import { getUnitScopeText } from "@/lib/study/materialize";
 import { requestGeneratedCards, type GenCard } from "@/lib/study/generate";
+import { StudyMarkdown } from "./StudyMarkdown";
 
 const TYPE_META: Record<CardType, { label: string; icon: typeof Lightbulb; cls: string }> = {
   concept: { label: "Khái niệm", icon: Lightbulb, cls: "bg-blue-500/10 text-blue-500" },
@@ -228,9 +229,9 @@ function GeneratePanel({ spaceId, leaf }: { spaceId: string; leaf: Leaf }) {
                       <span className={`mb-1 flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.cls}`}>
                         <TypeIcon className="h-2.5 w-2.5" /> {meta.label}
                       </span>
-                      <p className="text-[12.5px] font-medium leading-snug">{c.front}</p>
-                      <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{c.back}</p>
-                      {c.quote && <p className="mt-1 text-[11px] italic text-muted-foreground/80">“{c.quote}”</p>}
+                      <StudyMarkdown className="text-[12.5px] font-medium leading-snug">{c.front}</StudyMarkdown>
+                      <StudyMarkdown className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{c.back}</StudyMarkdown>
+                      {c.quote && <StudyMarkdown className="mt-1 text-[11px] italic text-muted-foreground/80">{c.quote}</StudyMarkdown>}
                     </div>
                   </div>
                 </div>
@@ -294,27 +295,33 @@ function BrowseCard({ card }: { card: FlashcardRow }) {
   const due = isDue(card);
   return (
     <div className="rounded-lg bg-muted/40">
-      <button onClick={() => setOpen(!open)} className="flex w-full items-start gap-2.5 p-2.5 text-left">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen(!open); }}
+        className="flex w-full cursor-pointer items-start gap-2.5 p-2.5 text-left"
+      >
         {open ? <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
         <div className="min-w-0 flex-1">
           <span className={`mb-1 flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.cls}`}>
             <TypeIcon className="h-2.5 w-2.5" /> {meta.label}
           </span>
-          <p className="text-[12.5px] font-medium leading-snug">{card.front}</p>
+          <StudyMarkdown className="text-[12.5px] font-medium leading-snug">{card.front}</StudyMarkdown>
         </div>
         {due ? (
           <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">đến hạn</span>
         ) : (
           <span className="shrink-0 text-[10px] text-muted-foreground">ôn lại sau {card.intervalDays}d</span>
         )}
-      </button>
+      </div>
       {open && (
         <div className="border-t border-border/50 p-2.5">
-          <p className="text-[12.5px] leading-relaxed">{card.back}</p>
+          <StudyMarkdown className="text-[12.5px] leading-relaxed">{card.back}</StudyMarkdown>
           {card.quote && (
             <div className="mt-2 flex gap-2 rounded-lg bg-background p-2.5">
               <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <p className="text-[11.5px] italic leading-snug text-muted-foreground">{card.quote}</p>
+              <StudyMarkdown className="text-[11.5px] italic leading-snug text-muted-foreground">{card.quote}</StudyMarkdown>
             </div>
           )}
         </div>
@@ -385,30 +392,33 @@ function ReviewSession({
         <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(idx / total) * 100}%` }} />
       </div>
 
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setFlipped(!flipped)}
-        className="mt-4 flex min-h-[260px] w-full flex-col rounded-2xl border bg-card p-5 text-left shadow-sm transition-shadow hover:shadow-md"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setFlipped(!flipped); }}
+        className="mt-4 flex min-h-[260px] w-full cursor-pointer flex-col rounded-2xl border bg-card p-5 text-left shadow-sm transition-shadow hover:shadow-md"
       >
         <span className={`flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${meta.cls}`}>
           <TypeIcon className="h-3 w-3" /> {meta.label}
         </span>
         {!flipped ? (
           <>
-            <p className="mt-4 flex-1 text-[15px] font-medium leading-relaxed">{card!.front}</p>
+            <StudyMarkdown className="mt-4 flex-1 text-[15px] font-medium leading-relaxed">{card!.front}</StudyMarkdown>
             <p className="mt-4 text-center text-[11.5px] text-muted-foreground">Chạm để xem đáp án</p>
           </>
         ) : (
           <>
-            <p className="mt-4 text-[14px] leading-relaxed">{card!.back}</p>
+            <StudyMarkdown className="mt-4 text-[14px] leading-relaxed">{card!.back}</StudyMarkdown>
             {card!.quote && (
               <div className="mt-4 flex gap-2 rounded-lg bg-muted/60 p-2.5">
                 <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
-                <p className="text-[12px] italic leading-snug text-muted-foreground">{card!.quote}</p>
+                <StudyMarkdown className="text-[12px] italic leading-snug text-muted-foreground">{card!.quote}</StudyMarkdown>
               </div>
             )}
           </>
         )}
-      </button>
+      </div>
 
       {flipped ? (
         <div className="mt-4 grid grid-cols-2 gap-3">
