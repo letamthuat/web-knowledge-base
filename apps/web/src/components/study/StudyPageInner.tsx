@@ -167,7 +167,7 @@ export function StudyPageInner() {
               <div className="mt-4 flex-1 overflow-y-auto">
                 {tab === "overview" && <SpaceOverview space={space} onGoTab={goTab} />}
                 {tab === "plan" && <PlanTab key={space.id} space={space} onGoTab={goTab} />}
-                {tab === "review" && <ReviewTab focusUnitKey={focusCtx?.unitKey} />}
+                {tab === "review" && <ReviewTab spaceId={space.id} space={space} focusUnitKey={focusCtx?.unitKey} />}
                 {tab === "quiz" && <QuizTab focusSectionId={focusCtx?.sectionId} />}
                 {tab === "feynman" && <FeynmanTab focusUnitKey={focusCtx?.unitKey} />}
               </div>
