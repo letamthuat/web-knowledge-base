@@ -59,6 +59,38 @@ function collectHeadings(markdown: string): Heading[] {
   return out;
 }
 
+/**
+ * Trích text scope của 1 tiểu mục/mục (từ heading của nó tới heading structural kế cùng/cao cấp hơn).
+ * Gồm cả nội dung #### 4-tier bên trong. Dùng làm input cho AI sinh quiz/card/pre.
+ */
+export function sliceUnitText(markdown: string, unitKey: string): string {
+  const structural = collectHeadings(markdown).filter((h) => h.level === 2 || h.level === 3);
+  const idx = structural.findIndex((h) => extractDottedKey(h.text) === unitKey);
+  if (idx === -1) return markdown; // module coarse / không tìm thấy → cả doc
+  const lvl = structural[idx].level;
+  let end = markdown.length;
+  for (let j = idx + 1; j < structural.length; j++) {
+    if (structural[j].level <= lvl) {
+      end = structural[j].offset;
+      break;
+    }
+  }
+  return markdown.slice(structural[idx].offset, end).trim();
+}
+
+/** Fetch raw markdown của doc (getDownloadUrl) rồi cắt scope của tiểu mục. "" nếu lỗi. */
+export async function getUnitScopeText(docId: string, unitKey: string): Promise<string> {
+  try {
+    const url = await getDownloadUrl(docId);
+    const res = await fetch(url);
+    if (!res.ok) return "";
+    const md = await res.text();
+    return sliceUnitText(md, unitKey);
+  } catch {
+    return "";
+  }
+}
+
 export type ParsedUnit = NewStudyUnit;
 
 /**
