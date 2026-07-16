@@ -4,18 +4,19 @@
  * Module Học tập — UI PROTOTYPE chạy trên seed data (mock.ts).
  * Sau khi chốt giao diện sẽ viết spec chi tiết rồi mới nối Supabase.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Clock, Flame, GraduationCap, Layers3, Menu, Plus, RotateCcw } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowLeft, CheckCircle2, Clock, Flame, GraduationCap, Layers3, Loader2, Menu, Plus, RotateCcw } from "lucide-react";
 import { AppLogo } from "@/components/AppLogo";
 import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
-import { SPACES, type StudySpace } from "./mock";
+import type { StudySpace } from "./mock";
+import { useStudyData, buildAllSpaceModels } from "@/lib/study/spaceModel";
 import { Heatmap, SpaceOverview, TodayMenu, WeakSpots, type GoTab } from "./SpaceOverview";
 import { ReviewTab } from "./ReviewTab";
 import { QuizTab } from "./QuizTab";
 import { FeynmanTab } from "./FeynmanTab";
 import { PlanTab } from "./PlanTab";
+import { CreateSpaceModal } from "./CreateSpaceModal";
 
 type TabKey = "overview" | "plan" | "review" | "quiz" | "feynman";
 
@@ -28,9 +29,10 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 // URL ↔ state: /study · /study/:spaceId (Tổng quan) · /study/:spaceId/:tab
+// spaceId nhận thô từ URL; tính hợp lệ resolve ở component (khớp model đã load).
 function parseStudyPath(path: string): { spaceId: string | null; tab: TabKey } {
   const m = path.match(/^\/study(?:\/([^/]+))?(?:\/([^/]+))?/);
-  const sid = m?.[1] && SPACES.some((s) => s.id === m[1]) ? m[1] : null;
+  const sid = m?.[1] ?? null;
   const raw = m?.[2] ?? "overview";
   const tab = TABS.some((t) => t.key === raw) ? (raw as TabKey) : "overview";
   return { spaceId: sid, tab };
@@ -43,12 +45,18 @@ function studyPath(spaceId: string | null, tab: TabKey): string {
 
 export function StudyPageInner() {
   const pathname = usePathname() ?? "/study";
+  const data = useStudyData();
+  const models = useMemo(
+    () => buildAllSpaceModels(data),
+    [data.spaces, data.units, data.cards, data.attempts, data.feyn, data.sessions],
+  );
   const initial = parseStudyPath(pathname);
   const [spaceId, setSpaceId] = useState<string | null>(initial.spaceId);
   const [tab, setTab] = useState<TabKey>(initial.tab);
   // Điều phối có ngữ cảnh: sang tab nào thì biết highlight nội dung của tiểu mục nào
   const [focusCtx, setFocusCtx] = useState<{ sectionId?: string; unitKey?: string } | null>(null);
   const [navOpen, setNavOpen] = useState(false); // drawer điều hướng mobile
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   // Điều hướng nội bộ = đổi state + đẩy URL tương ứng (share/bookmark/back được)
   const navigate = (sid: string | null, t: TabKey, ctx?: { sectionId?: string; unitKey?: string }) => {
@@ -72,7 +80,8 @@ export function StudyPageInner() {
     navigate(spaceId, k as TabKey, ctx);
   };
 
-  const space = SPACES.find((s) => s.id === spaceId) ?? null;
+  const space = models.find((s) => s.id === spaceId) ?? null;
+  const loadingSpace = spaceId !== null && space === null && data.loading;
 
   return (
     // 1 cột (mobile PWA + laptop); từ 2xl nới container — cả danh sách lẫn màn trong cùng độ rộng
@@ -90,9 +99,24 @@ export function StudyPageInner() {
         <span className="font-semibold">Học tập</span>
       </header>
       <MobileSidebarDrawer open={navOpen} onClose={() => setNavOpen(false)} />
+      {wizardOpen && (
+        <CreateSpaceModal
+          onClose={() => setWizardOpen(false)}
+          onCreated={(id) => {
+            setWizardOpen(false);
+            navigate(id, "overview");
+          }}
+        />
+      )}
 
       {space === null ? (
-        <SpaceList onOpen={(id) => navigate(id, "overview")} />
+        loadingSpace ? (
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang mở không gian học…
+          </div>
+        ) : (
+          <SpaceList models={models} loading={data.loading} onOpen={(id) => navigate(id, "overview")} onCreate={() => setWizardOpen(true)} />
+        )
       ) : (
         <>
           {/* Header space */}
@@ -171,13 +195,15 @@ function StudyRail({ space, onGoTab }: { space: StudySpace; onGoTab: GoTab }) {
 
 // ─── Danh sách Space ──────────────────────────────────────────────────────────
 
-function SpaceList({ onOpen }: { onOpen: (id: string) => void }) {
+function SpaceList({ models, loading, onOpen, onCreate }: {
+  models: StudySpace[]; loading: boolean; onOpen: (id: string) => void; onCreate: () => void;
+}) {
   // Chỉ số gộp toàn bộ không gian học — cho cảm giác "bàn làm việc" ngay khi vào
-  const totalDue = SPACES.reduce((s, x) => s + x.dueCards, 0);
-  const minutesToday = SPACES.reduce((s, x) => s + x.minutesToday, 0);
-  const bestStreak = Math.max(...SPACES.map((s) => s.streak));
-  const mastered = SPACES.reduce((s, x) => s + x.unitsMastered, 0);
-  const totalUnits = SPACES.reduce((s, x) => s + x.unitsTotal, 0);
+  const totalDue = models.reduce((s, x) => s + x.dueCards, 0);
+  const minutesToday = models.reduce((s, x) => s + x.minutesToday, 0);
+  const bestStreak = models.length ? Math.max(...models.map((s) => s.streak)) : 0;
+  const mastered = models.reduce((s, x) => s + x.unitsMastered, 0);
+  const totalUnits = models.reduce((s, x) => s + x.unitsTotal, 0);
 
   return (
     <div className="overflow-y-auto">
@@ -192,7 +218,7 @@ function SpaceList({ onOpen }: { onOpen: (id: string) => void }) {
           </p>
         </div>
         <button
-          onClick={() => toast.info("Prototype — tạo Không gian học sẽ hoạt động sau khi chốt giao diện")}
+          onClick={onCreate}
           className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
         >
           <Plus className="h-4 w-4" /> Không gian học
@@ -207,12 +233,27 @@ function SpaceList({ onOpen }: { onOpen: (id: string) => void }) {
         <StatTile icon={CheckCircle2} iconCls="bg-emerald-500/10 text-emerald-600" value={`${mastered}/${totalUnits}`} label="Tiểu mục đã vững" />
       </div>
 
-      {/* Grid không gian học — tạo mới dùng nút ở hero, không lặp ghost card */}
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {SPACES.map((s) => (
-          <SpaceCard key={s.id} space={s} onOpen={() => onOpen(s.id)} />
-        ))}
-      </div>
+      {/* Grid không gian học */}
+      {loading ? (
+        <div className="mt-8 flex items-center justify-center text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang tải…
+        </div>
+      ) : models.length === 0 ? (
+        <div className="mt-8 rounded-xl border border-dashed p-8 text-center">
+          <GraduationCap className="mx-auto h-8 w-8 text-muted-foreground/50" />
+          <p className="mt-2 text-[14px] font-medium">Chưa có không gian học nào</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">Tạo không gian học đầu tiên từ một handbook để bắt đầu lộ trình.</p>
+          <button onClick={onCreate} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:opacity-90">
+            <Plus className="h-4 w-4" /> Không gian học
+          </button>
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {models.map((s) => (
+            <SpaceCard key={s.id} space={s} onOpen={() => onOpen(s.id)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -234,7 +275,7 @@ function StatTile({ icon: Icon, iconCls, value, label }: {
 }
 
 function SpaceCard({ space, onOpen }: { space: StudySpace; onOpen: () => void }) {
-  const pct = Math.round((space.unitsMastered / space.unitsTotal) * 100);
+  const pct = space.unitsTotal > 0 ? Math.round((space.unitsMastered / space.unitsTotal) * 100) : 0;
   return (
     <button
       onClick={onOpen}
