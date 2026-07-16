@@ -5,7 +5,6 @@
 // Deterministic, 0 Gemini. Anchor khớp reader (rehype-slug → github-slugger).
 import GithubSlugger from "github-slugger";
 import { insertStudyUnits, setSpaceSources, type NewStudyUnit, type UnitStatus } from "@/lib/api/study";
-import { getAssetUrls } from "@/lib/api/handbooks";
 import { getDownloadUrl } from "@/lib/api/documents";
 
 const DEFAULT_UNIT_CHARS = 43_000; // khớp rule engine (SPEC §3.1)
@@ -182,69 +181,20 @@ export function parseUnitsFromMarkdown(input: {
 }
 
 /**
- * Materialize toàn bộ space từ handbook: fetch raw markdown mỗi file được chọn → parse → insert.
- * selectedDocs theo thứ tự học (file 01,02,… hoặc thứ tự user xếp). handbookId để lấy signed url.
+ * Core: fetch raw markdown mỗi doc qua getDownloadUrl (cơ chế reader dùng lấy nội dung
+ * chính — dùng cho MỌI doc kể cả trong handbook). Parse → insert → ghi sources.
+ * getAssetUrls KHÔNG dùng được ở đây vì chỉ trả URL ảnh (format='image'), không có file .md.
  */
-export async function materializeHandbookSpace(input: {
-  spaceId: string;
-  handbookId: string;
-  selectedDocs: { docId: string; relPath: string; title: string }[];
-}): Promise<{ unitCount: number; moduleCount: number }> {
-  const { spaceId, handbookId, selectedDocs } = input;
-  const urls = await getAssetUrls(handbookId);
+async function materializeDocs(
+  spaceId: string,
+  docs: { docId: string; title: string; relPath?: string }[],
+): Promise<{ unitCount: number; moduleCount: number }> {
   let order = 0;
   const allUnits: ParsedUnit[] = [];
   let moduleCount = 0;
 
-  for (let i = 0; i < selectedDocs.length; i++) {
-    const d = selectedDocs[i];
-    const moduleKey = moduleKeyFromRelPath(d.relPath, i + 1);
-    const url = urls[d.relPath];
-    let markdown = "";
-    if (url) {
-      try {
-        const res = await fetch(url);
-        if (res.ok) markdown = await res.text();
-      } catch {
-        markdown = "";
-      }
-    }
-    const { units, nextOrder } = parseUnitsFromMarkdown({
-      markdown,
-      moduleKey,
-      moduleTitle: d.title,
-      docId: d.docId,
-      startOrder: order,
-    });
-    order = nextOrder;
-    allUnits.push(...units);
-    moduleCount++;
-  }
-
-  if (allUnits.length) await insertStudyUnits(spaceId, allUnits);
-  await setSpaceSources(
-    spaceId,
-    selectedDocs.map((d) => d.docId),
-  );
-  return { unitCount: allUnits.length, moduleCount };
-}
-
-/**
- * Materialize space từ TÀI LIỆU LẺ (cherry-pick, sourceType='docs'). Mỗi doc = 1 module.
- * Fetch raw markdown qua getDownloadUrl (dùng được cho mọi doc, kể cả không thuộc handbook).
- * moduleKey theo số đầu tên file nếu có, không thì M{vị trí}.
- */
-export async function materializeDocsSpace(input: {
-  spaceId: string;
-  selectedDocs: { docId: string; title: string; relPath?: string }[];
-}): Promise<{ unitCount: number; moduleCount: number }> {
-  const { spaceId, selectedDocs } = input;
-  let order = 0;
-  const allUnits: ParsedUnit[] = [];
-  let moduleCount = 0;
-
-  for (let i = 0; i < selectedDocs.length; i++) {
-    const d = selectedDocs[i];
+  for (let i = 0; i < docs.length; i++) {
+    const d = docs[i];
     const moduleKey = moduleKeyFromRelPath(d.relPath ?? d.title, i + 1);
     let markdown = "";
     try {
@@ -267,9 +217,23 @@ export async function materializeDocsSpace(input: {
   }
 
   if (allUnits.length) await insertStudyUnits(spaceId, allUnits);
-  await setSpaceSources(
-    spaceId,
-    selectedDocs.map((d) => d.docId),
-  );
+  await setSpaceSources(spaceId, docs.map((d) => d.docId));
   return { unitCount: allUnits.length, moduleCount };
+}
+
+/** Materialize space từ handbook (file .md được chọn). handbookId giữ cho tương thích, fetch theo docId. */
+export async function materializeHandbookSpace(input: {
+  spaceId: string;
+  handbookId: string;
+  selectedDocs: { docId: string; relPath: string; title: string }[];
+}): Promise<{ unitCount: number; moduleCount: number }> {
+  return materializeDocs(input.spaceId, input.selectedDocs);
+}
+
+/** Materialize space từ TÀI LIỆU LẺ (cherry-pick, sourceType='docs'). Mỗi doc = 1 module. */
+export async function materializeDocsSpace(input: {
+  spaceId: string;
+  selectedDocs: { docId: string; title: string; relPath?: string }[];
+}): Promise<{ unitCount: number; moduleCount: number }> {
+  return materializeDocs(input.spaceId, input.selectedDocs);
 }
