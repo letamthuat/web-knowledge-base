@@ -6,11 +6,13 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Clock, Flame, GraduationCap, Layers3, Loader2, Menu, Plus, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, Flame, GraduationCap, Layers3, Loader2, Menu, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { AppLogo } from "@/components/AppLogo";
 import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
 import type { StudySpace } from "./mock";
 import { useStudyData, buildAllSpaceModels } from "@/lib/study/spaceModel";
+import { removeStudySpace } from "@/lib/api/study";
 import { Heatmap, SpaceOverview, TodayMenu, WeakSpots, type GoTab } from "./SpaceOverview";
 import { ReviewTab } from "./ReviewTab";
 import { QuizTab } from "./QuizTab";
@@ -276,11 +278,29 @@ function StatTile({ icon: Icon, iconCls, value, label }: {
 
 function SpaceCard({ space, onOpen }: { space: StudySpace; onOpen: () => void }) {
   const pct = space.unitsTotal > 0 ? Math.round((space.unitsMastered / space.unitsTotal) * 100) : 0;
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!window.confirm(`Xoá không gian học "${space.name}"?\n\nTiến độ học (quiz, card, Feynman) sẽ mất. Handbook/tài liệu gốc KHÔNG bị xoá.`)) return;
+    try {
+      await removeStudySpace(space.id);
+      toast.success("Đã xoá không gian học");
+    } catch {
+      toast.error("Xoá thất bại — thử lại");
+    }
+  }
   return (
-    <button
-      onClick={onOpen}
-      className="group flex flex-col rounded-xl border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-    >
+    <div className="group relative">
+      <button
+        onClick={handleDelete}
+        aria-label="Xoá không gian học"
+        className="absolute right-2 top-2 z-10 hidden h-7 w-7 items-center justify-center rounded-md bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={onOpen}
+        className="flex w-full flex-col rounded-xl border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+      >
       <div className="flex items-start gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-2xl">
           {space.emoji}
@@ -323,6 +343,7 @@ function SpaceCard({ space, onOpen }: { space: StudySpace; onOpen: () => void })
           Vào học →
         </span>
       </div>
-    </button>
+      </button>
+    </div>
   );
 }
