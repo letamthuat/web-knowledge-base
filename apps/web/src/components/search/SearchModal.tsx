@@ -104,7 +104,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
 
   return (
     <div
-      className="fixed inset-x-0 top-0 bottom-14 sm:inset-0 z-50 flex flex-col sm:items-start sm:justify-center bg-black/50 sm:pt-[15vh]"
+      className="fixed inset-0 z-[70] flex flex-col sm:items-start sm:justify-center bg-black/50 sm:pt-[15vh]"
       onClick={onClose}
     >
       <div
@@ -112,7 +112,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b">
+        <div className="flex items-center gap-3 border-b px-4 py-3" style={{ paddingTop: "calc(0.75rem + var(--safe-top, 0px))" }}>
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             ref={inputRef}
@@ -122,13 +122,21 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           {q && (
-            <button onClick={() => setQ("")} className="text-muted-foreground hover:text-foreground">
+            <button onClick={() => setQ("")} aria-label="Xoá từ khoá" className="text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />
             </button>
           )}
           <kbd className="hidden sm:flex items-center gap-0.5 rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
             Esc
           </kbd>
+          {/* Nút đóng — mobile không có bàn phím Esc, cần lối thoát rõ ràng */}
+          <button
+            onClick={onClose}
+            aria-label="Đóng tìm kiếm"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Filter bar */}

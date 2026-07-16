@@ -52,7 +52,10 @@ export function InstallBanner() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-[72px] left-0 right-0 z-[45] mx-4 md:hidden">
+    <div
+      className="fixed left-0 right-0 z-[45] mx-4 md:hidden"
+      style={{ bottom: "calc(var(--safe-bottom, 0px) + 1rem)" }}
+    >
       <div className="rounded-xl bg-card border shadow-lg px-4 py-3 flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold">Cài ứng dụng</p>

@@ -36,6 +36,10 @@ const TrashPageInner = dynamic(
   () => import("@/components/library/TrashPageInner").then((m) => m.TrashPageInner),
   { ssr: false }
 );
+const StudyPageInner = dynamic(
+  () => import("@/components/study/StudyPageInner").then((m) => m.StudyPageInner),
+  { ssr: false }
+);
 
 // Preload all dynamic chunks immediately so they're ready before user taps a tab
 if (typeof window !== "undefined") {
@@ -43,12 +47,14 @@ if (typeof window !== "undefined") {
   import("@/components/notes/NotesPageInner");
   import("@/components/settings/SettingsPageInner");
   import("@/components/library/TrashPageInner");
+  import("@/components/study/StudyPageInner");
 }
 
 function pathnameToPanel(pathname: string): string | null {
   if (pathname === "/library/trash") return "trash";
   if (pathname === "/library" || pathname.startsWith("/library/")) return "library";
   if (pathname === "/notes"   || pathname.startsWith("/notes/"))   return "notes";
+  if (pathname === "/study"   || pathname.startsWith("/study/"))   return "study";
   if (pathname === "/settings"|| pathname.startsWith("/settings/"))return "settings";
   const m = pathname.match(/^\/reader\/([^/]+)/);
   if (m) return `reader:${m[1]}`;
@@ -138,6 +144,9 @@ function AppShellContent({ children }: { children: ReactNode }) {
           </TabPanel>
           <TabPanel active={current === "trash"}>
             <TrashPageInner />
+          </TabPanel>
+          <TabPanel active={current === "study"}>
+            <StudyPageInner />
           </TabPanel>
           {mountedDocIds.current.map((docId) => (
             <TabPanel

@@ -8,9 +8,11 @@ import { deleteAccount } from "@/lib/api/users";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2, ArchiveIcon, Search, Bot, Eye, EyeOff } from "lucide-react";
+import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loader2, ArchiveIcon, Search, Bot, Eye, EyeOff, Menu } from "lucide-react";
 import { useBackupDownload } from "@/hooks/useBackupDownload";
 import { SearchModal } from "@/components/search/SearchModal";
+import { AppLogo } from "@/components/AppLogo";
+import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -305,6 +307,7 @@ export function SettingsPageInner() {
   const [loading, setLoading] = useState(false);
   const [reindexing, setReindexing] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false); // drawer điều hướng mobile
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -335,6 +338,22 @@ export function SettingsPageInner() {
 
   return (
     <div className="min-h-dvh bg-background pb-14 md:pb-0">
+      {/* Thanh trên cùng chỉ cho mobile — nút ☰ mở sidebar (đồng bộ desktop) */}
+      <header className="sticky top-0 z-10 flex items-center gap-2 border-b bg-card px-4 xl:hidden" style={{ paddingTop: "var(--safe-top)" }}>
+        <div className="flex h-14 items-center gap-2">
+          <button
+            onClick={() => setNavOpen(true)}
+            aria-label="Mở menu"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <AppLogo size={28} />
+          <span className="font-semibold">Cài đặt</span>
+        </div>
+      </header>
+      <MobileSidebarDrawer open={navOpen} onClose={() => setNavOpen(false)} />
+
       <div className="mx-auto max-w-2xl px-4 py-12">
         <Button variant="ghost" size="sm" className="mb-8" onClick={() => router.push("/library")}>
           ← Quay lại thư viện

@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  BookOpen, LogOut, Settings, Trash2, Plus, Folder, FolderOpen, StickyNote,
+  LogOut, Settings, Trash2, Plus, Folder, FolderOpen,
   MoreVertical, Pencil, FolderPlus, ChevronRight, LayoutGrid,
   PanelLeftClose, PanelLeftOpen, ChevronDown, File as FileIcon, Menu, X,
   CheckSquare, FolderInput, Search,
@@ -33,7 +33,7 @@ import { UploadDropzone } from "@/components/library/UploadDropzone";
 import { SearchModal } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
-import { HandbookSidebarContent } from "../handbook/HandbookSidebar";
+import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
 
 const L = labels.library;
 const N = labels.nav;
@@ -57,7 +57,6 @@ export function LibraryPageInner() {
 
   // Sidebar — mobile drawer
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [libraryTreeOpen, setLibraryTreeOpen] = useState(true);
 
   const [scope, setScope] = useState<ViewScope>("all");
   const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([]);
@@ -340,7 +339,8 @@ export function LibraryPageInner() {
   return (
     <div className="min-h-dvh bg-background pb-14 xl:pb-0">
       {/* Navbar — full width */}
-      <header className="border-b bg-card sticky top-0 z-20" style={{ paddingTop: 'var(--safe-top)' }}>
+      {/* Header chỉ còn cho mobile — desktop mọi điều hướng đã nằm trong sidebar (user chốt 16/07) */}
+      <header className="border-b bg-card sticky top-0 z-20 xl:hidden" style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="flex h-14 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-2">
             {/* Mobile: hamburger để mở drawer */}
@@ -352,21 +352,22 @@ export function LibraryPageInner() {
               <Menu className="h-4 w-4 text-muted-foreground" />
             </button>
 
-            {/* Desktop: button to toggle sidebar */}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
-              aria-label={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
-            >
-              {sidebarOpen ? (
-                <PanelLeftClose className="h-4 w-4" />
-              ) : (
+            {/* Desktop: nút MỞ sidebar — chỉ hiện khi đang ẩn (nút đóng nằm trong sidebar) */}
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
+                aria-label="Hiện sidebar"
+              >
                 <PanelLeftOpen className="h-4 w-4" />
-              )}
-            </button>
+              </button>
+            )}
 
-            <AppLogo size={32} />
-            <span className="font-semibold">Web Knowledge Base</span>
+            {/* Brand đã chuyển vào sidebar trên desktop — chỉ còn hiện ở mobile */}
+            <div className="flex items-center gap-2 xl:hidden">
+              <AppLogo size={32} />
+              <span className="font-semibold">Web Knowledge Base</span>
+            </div>
           </div>
 
           <nav className="hidden items-center gap-1 xl:flex">
@@ -401,10 +402,9 @@ export function LibraryPageInner() {
             >
               <Search className="h-4 w-4" />
             </button>
-            <span className="hidden text-sm text-muted-foreground xl:inline">{session.user.email}</span>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
+            {/* Tài khoản + đăng xuất đã chuyển vào sidebar trên desktop — mobile giữ nút icon */}
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="xl:hidden" aria-label={N.logout}>
               <LogOut className="h-4 w-4" />
-              <span className="ml-1 hidden xl:inline">{N.logout}</span>
             </Button>
           </div>
         </div>
@@ -424,70 +424,8 @@ export function LibraryPageInner() {
         onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
       />
 
-      {/* Mobile sidebar drawer overlay */}
-      {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-30 xl:hidden">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          {/* Drawer */}
-          <aside className="absolute left-0 top-0 h-full w-72 bg-background border-r shadow-xl overflow-y-auto p-4">
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-semibold text-sm">Điều hướng</span>
-              <button
-                onClick={() => setMobileSidebarOpen(false)}
-                className="rounded p-1.5 hover:bg-muted transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            {/* Mobile nav links */}
-            <div className="flex flex-col gap-1 mb-4 border-b pb-4">
-              <div className="flex flex-col">
-                <div className="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium bg-muted text-foreground">
-                  <button
-                    onClick={() => { setMobileSidebarOpen(false); }}
-                    className="flex flex-1 items-center gap-2 text-left"
-                  >
-                    <BookOpen className="h-4 w-4" /> {N.library}
-                  </button>
-                  <button
-                    onClick={() => setLibraryTreeOpen(!libraryTreeOpen)}
-                    className="rounded p-1 hover:bg-muted-foreground/10 transition-colors"
-                  >
-                    <ChevronRight className={`h-4 w-4 transition-transform ${libraryTreeOpen ? "rotate-90" : ""}`} />
-                  </button>
-                </div>
-                {libraryTreeOpen && (
-                  <div className="ml-4 border-l pl-2 max-h-[60dvh] overflow-y-auto mt-1">
-                    <HandbookSidebarContent onLinkClick={() => setMobileSidebarOpen(false)} />
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => { setMobileSidebarOpen(false); setActivePanel("notes"); window.history.pushState(null, "", "/notes"); }}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <StickyNote className="h-4 w-4" /> {N.notes}
-              </button>
-              <button
-                onClick={() => { setMobileSidebarOpen(false); setSearchOpen(true); }}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <Search className="h-4 w-4" /> Tìm kiếm
-              </button>
-              <button
-                onClick={() => { setMobileSidebarOpen(false); router.push("/settings"); }}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <Settings className="h-4 w-4" /> {N.settings}
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
+      {/* Mobile sidebar drawer — đồng bộ với sidebar desktop */}
+      <MobileSidebarDrawer open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
       {/* Main layout — full width */}
       <div className="flex px-4 md:px-6 py-6">

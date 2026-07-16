@@ -1,45 +1,56 @@
+"use client";
+
+import { useId } from "react";
+
 export function AppLogo({ size = 32 }: { size?: number }) {
+  // ID gradient/filter phải DUY NHẤT cho mỗi instance. Nếu để id cố định, khi có
+  // nhiều <AppLogo> cùng lúc (sidebar desktop `hidden` + drawer mobile + header),
+  // trình duyệt gộp id trùng và tham chiếu vào defs nằm trong node display:none →
+  // gradient không tô → logo bị vỡ (chỉ còn các chấm, trông như spinner).
+  const raw = useId().replace(/:/g, "");
+  const id = (k: string) => `${raw}-${k}`;
+
   return (
     <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="al-bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+        <linearGradient id={id("bg")} x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#060d18"/><stop offset="100%" stopColor="#0d1f35"/>
         </linearGradient>
-        <linearGradient id="al-tL" x1="28" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+        <linearGradient id={id("tL")} x1="28" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#ffffff"/><stop offset="100%" stopColor="#dbeafe"/>
         </linearGradient>
-        <linearGradient id="al-tR" x1="52" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
+        <linearGradient id={id("tR")} x1="52" y1="28" x2="40" y2="52" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#e0f7f6"/><stop offset="100%" stopColor="#00B5AD" stopOpacity="0.7"/>
         </linearGradient>
-        <linearGradient id="al-pr" x1="0" y1="0" x2="80" y2="0" gradientUnits="userSpaceOnUse">
+        <linearGradient id={id("pr")} x1="0" y1="0" x2="80" y2="0" gradientUnits="userSpaceOnUse">
           <stop offset="0%"   stopColor="#818cf8" stopOpacity="0.5"/>
           <stop offset="33%"  stopColor="#00B5AD" stopOpacity="0.4"/>
           <stop offset="66%"  stopColor="#34d399" stopOpacity="0.3"/>
           <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.2"/>
         </linearGradient>
-        <linearGradient id="al-st" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+        <linearGradient id={id("st")} x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#1A365D"/><stop offset="100%" stopColor="#234e7a"/>
         </linearGradient>
-        <filter id="al-ng">
+        <filter id={id("ng")}>
           <feGaussianBlur stdDeviation="1.5" result="b"/>
           <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
-        <filter id="al-gw">
+        <filter id={id("gw")}>
           <feGaussianBlur stdDeviation="2.5" result="b"/>
           <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      <rect width="80" height="80" rx="18" fill="url(#al-bg)"/>
+      <rect width="80" height="80" rx="18" fill={`url(#${id("bg")})`}/>
       <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#00B5AD" strokeOpacity="0.2" strokeWidth="1" fill="none"/>
       {/* Star facets */}
-      <polygon points="40,4 23,23 40,24 57,23" fill="url(#al-st)" opacity="0.9"/>
-      <polygon points="65,15 57,23 51,29 66,40" fill="url(#al-pr)"/>
-      <polygon points="76,40 66,40 56,40 57,57" fill="url(#al-st)" opacity="0.8"/>
-      <polygon points="65,65 57,57 51,51 40,66" fill="url(#al-pr)" opacity="0.8"/>
-      <polygon points="40,76 40,66 40,56 23,57" fill="url(#al-st)" opacity="0.9"/>
-      <polygon points="15,65 23,57 29,51 14,40" fill="url(#al-pr)" opacity="0.6"/>
-      <polygon points="4,40 14,40 24,40 23,23" fill="url(#al-st)" opacity="0.85"/>
-      <polygon points="15,15 23,23 29,29 14,40" fill="url(#al-pr)" opacity="0.5"/>
+      <polygon points="40,4 23,23 40,24 57,23" fill={`url(#${id("st")})`} opacity="0.9"/>
+      <polygon points="65,15 57,23 51,29 66,40" fill={`url(#${id("pr")})`}/>
+      <polygon points="76,40 66,40 56,40 57,57" fill={`url(#${id("st")})`} opacity="0.8"/>
+      <polygon points="65,65 57,57 51,51 40,66" fill={`url(#${id("pr")})`} opacity="0.8"/>
+      <polygon points="40,76 40,66 40,56 23,57" fill={`url(#${id("st")})`} opacity="0.9"/>
+      <polygon points="15,65 23,57 29,51 14,40" fill={`url(#${id("pr")})`} opacity="0.6"/>
+      <polygon points="4,40 14,40 24,40 23,23" fill={`url(#${id("st")})`} opacity="0.85"/>
+      <polygon points="15,15 23,23 29,29 14,40" fill={`url(#${id("pr")})`} opacity="0.5"/>
       {/* Girdle highlights */}
       <polygon points="23,23 40,24 29,29" fill="white" opacity="0.12"/>
       <polygon points="57,23 40,24 51,29" fill="white" opacity="0.08"/>
@@ -50,8 +61,8 @@ export function AppLogo({ size = 32 }: { size?: number }) {
       <polygon points="14,40 24,40 29,51" fill="white" opacity="0.1"/>
       <polygon points="14,40 24,40 23,23" fill="white" opacity="0.08"/>
       {/* Book pages in table */}
-      <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill="url(#al-tL)"/>
-      <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill="url(#al-tR)"/>
+      <polygon points="40,24 29,29 24,40 29,51 40,56 40,40" fill={`url(#${id("tL")})`}/>
+      <polygon points="40,24 51,29 56,40 51,51 40,56 40,40" fill={`url(#${id("tR")})`}/>
       <line x1="40" y1="24" x2="40" y2="56" stroke="white" strokeWidth="1.2" strokeOpacity="0.8"/>
       <polyline points="29,29 40,24 51,29" fill="none" stroke="white" strokeWidth="0.9" strokeOpacity="0.6"/>
       <line x1="28" y1="35" x2="39" y2="33" stroke="#1A365D" strokeWidth="0.7" strokeOpacity="0.4"/>
@@ -71,7 +82,7 @@ export function AppLogo({ size = 32 }: { size?: number }) {
       <line x1="4"  y1="40" x2="24" y2="40" stroke="#00B5AD" strokeWidth="0.7" strokeOpacity="0.35"/>
       <line x1="15" y1="15" x2="29" y2="29" stroke="#00B5AD" strokeWidth="0.7" strokeOpacity="0.35"/>
       {/* Node dots */}
-      <g filter="url(#al-ng)">
+      <g filter={`url(#${id("ng")})`}>
         <circle cx="40" cy="4"  r="1.8" fill="#00B5AD" opacity="0.9"/>
         <circle cx="65" cy="15" r="1.5" fill="#00B5AD" opacity="0.7"/>
         <circle cx="76" cy="40" r="1.8" fill="#00B5AD" opacity="0.9"/>
@@ -90,7 +101,7 @@ export function AppLogo({ size = 32 }: { size?: number }) {
         <circle cx="29" cy="29" r="0.9" fill="white" opacity="0.7"/>
       </g>
       {/* Sparkle */}
-      <g filter="url(#al-gw)">
+      <g filter={`url(#${id("gw")})`}>
         <path d="M40,4 L40.8,7 L44,7.5 L40.8,8 L40,11 L39.2,8 L36,7.5 L39.2,7 Z" fill="white" opacity="0.95"/>
       </g>
     </svg>

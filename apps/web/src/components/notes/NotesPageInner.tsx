@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, LogOut, Settings, StickyNote, List, Upload, Download, X, Menu, Search, PanelLeftClose, PanelLeftOpen, ChevronRight } from "lucide-react";
-import { HandbookSidebarContent } from "../handbook/HandbookSidebar";
+import { LogOut, Settings, StickyNote, List, Upload, Download, Menu, Search, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
 import { AppLogo } from "@/components/AppLogo";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
@@ -44,7 +44,6 @@ export function NotesPageInner() {
   const { setActivePanel, sidebarOpen: globalSidebarOpen, setSidebarOpen: setGlobalSidebarOpen } = useActiveTab();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
-  const [libraryTreeOpen, setLibraryTreeOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   const typography = useAppTypography();
@@ -132,74 +131,32 @@ export function NotesPageInner() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-background">
-      {/* Mobile nav drawer */}
-      {navDrawerOpen && (
-        <div className="fixed inset-0 z-50 xl:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setNavDrawerOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-background border-r shadow-xl flex flex-col p-4 gap-1">
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-semibold text-sm">Menu</span>
-              <button onClick={() => setNavDrawerOpen(false)} className="rounded p-1.5 hover:bg-muted transition-colors">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
-                <button
-                  onClick={() => { setNavDrawerOpen(false); setActivePanel("library"); window.history.pushState(null, "", "/library"); }}
-                  className="flex flex-1 items-center gap-2 text-left"
-                >
-                  <BookOpen className="h-4 w-4" /> {N.library}
-                </button>
-                <button
-                  onClick={() => setLibraryTreeOpen(!libraryTreeOpen)}
-                  className="rounded p-1 hover:bg-muted-foreground/10 transition-colors"
-                >
-                  <ChevronRight className={`h-4 w-4 transition-transform ${libraryTreeOpen ? "rotate-90" : ""}`} />
-                </button>
-              </div>
-              {libraryTreeOpen && (
-                <div className="ml-4 border-l pl-2 max-h-[60dvh] overflow-y-auto mt-1">
-                  <HandbookSidebarContent onLinkClick={() => setNavDrawerOpen(false)} />
-                </div>
-              )}
-            </div>
-            <button className="flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-muted font-medium transition-colors">
-              <StickyNote className="h-4 w-4" /> {N.notes}
-            </button>
-            <button onClick={() => { setNavDrawerOpen(false); setSearchOpen(true); }}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
-              <Search className="h-4 w-4" /> Tìm kiếm
-            </button>
-            <button onClick={() => { setNavDrawerOpen(false); setActivePanel("settings"); window.history.pushState(null, "", "/settings"); }}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
-              <Settings className="h-4 w-4" /> {N.settings}
-            </button>
-          </aside>
-        </div>
-      )}
+      {/* Mobile nav drawer — đồng bộ với sidebar desktop */}
+      <MobileSidebarDrawer open={navDrawerOpen} onClose={() => setNavDrawerOpen(false)} />
 
       {/* Navbar */}
-      <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2" style={{ paddingTop: 'var(--safe-top)' }}>
+      {/* Header chỉ còn cho mobile — desktop mọi điều hướng đã nằm trong sidebar (user chốt 16/07) */}
+      <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2 xl:hidden" style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" className="xl:hidden p-1.5" onClick={() => setNavDrawerOpen(true)}>
             <Menu className="h-4 w-4" />
           </Button>
-          {/* Desktop: button to toggle sidebar */}
-          <button
-            onClick={() => setGlobalSidebarOpen(!globalSidebarOpen)}
-            className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
-            aria-label={globalSidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
-          >
-            {globalSidebarOpen ? (
-              <PanelLeftClose className="h-4 w-4" />
-            ) : (
+          {/* Desktop: nút MỞ sidebar — chỉ hiện khi đang ẩn (nút đóng nằm trong sidebar) */}
+          {!globalSidebarOpen && (
+            <button
+              onClick={() => setGlobalSidebarOpen(true)}
+              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
+              aria-label="Hiện sidebar"
+            >
               <PanelLeftOpen className="h-4 w-4" />
-            )}
-          </button>
+            </button>
+          )}
 
-          <AppLogo size={32} />
-          <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
+          {/* Brand đã chuyển vào sidebar trên desktop — chỉ còn hiện ở mobile */}
+          <div className="flex items-center gap-2 xl:hidden">
+            <AppLogo size={32} />
+            <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
+          </div>
         </div>
 
         <nav className="hidden items-center gap-1 xl:flex">
@@ -230,9 +187,9 @@ export function NotesPageInner() {
           >
             <Search className="h-4 w-4" />
           </button>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
+          {/* Đăng xuất đã chuyển vào sidebar trên desktop — mobile giữ nút icon */}
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="xl:hidden" aria-label={N.logout}>
             <LogOut className="h-4 w-4" />
-            <span className="ml-1 hidden xl:inline">{N.logout}</span>
           </Button>
         </div>
       </header>

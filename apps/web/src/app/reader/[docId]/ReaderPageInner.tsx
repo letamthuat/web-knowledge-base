@@ -13,8 +13,8 @@ import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopove
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
 import { toProgressPct } from "@/lib/position";
-import { ArrowLeft, BookOpen, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search, PanelLeftClose, PanelLeftOpen, Maximize2, ChevronRight } from "lucide-react";
-import { HandbookSidebarContent } from "@/components/handbook/HandbookSidebar";
+import { ArrowLeft, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search, PanelLeftClose, PanelLeftOpen, Maximize2 } from "lucide-react";
+import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
 import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
@@ -61,7 +61,6 @@ function ReaderShell({ doc, downloadUrl }: {
   const headerTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [libraryTreeOpen, setLibraryTreeOpen] = useState(false);
 
   const toggleFullscreen = useCallback(async () => {
     if (!document.fullscreenElement) {
@@ -293,53 +292,8 @@ function ReaderShell({ doc, downloadUrl }: {
         )}
 
 
-        {/* Mobile swipe drawer */}
-        {isMobile && drawerOpen && (
-          <div className="fixed inset-0 z-50">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-            <aside className="absolute left-0 top-0 h-full w-64 bg-background border-r shadow-xl flex flex-col p-4 gap-1 overflow-y-auto">
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-semibold text-sm">Menu</span>
-                <button onClick={() => setDrawerOpen(false)} className="rounded p-1.5 hover:bg-muted transition-colors">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
-                  <button
-                    onClick={() => confirmLeave(() => { setDrawerOpen(false); router.push("/library"); })}
-                    className="flex flex-1 items-center gap-2 text-left"
-                  >
-                    <BookOpen className="h-4 w-4" /> Thư viện
-                  </button>
-                  <button
-                    onClick={() => setLibraryTreeOpen(!libraryTreeOpen)}
-                    className="rounded p-1 hover:bg-muted-foreground/10 transition-colors"
-                  >
-                    <ChevronRight className={`h-4 w-4 transition-transform ${libraryTreeOpen ? "rotate-90" : ""}`} />
-                  </button>
-                </div>
-                {libraryTreeOpen && (
-                  <div className="ml-4 border-l pl-2 max-h-[60dvh] overflow-y-auto mt-1">
-                    <HandbookSidebarContent onLinkClick={() => setDrawerOpen(false)} />
-                  </div>
-                )}
-              </div>
-              <button onClick={() => confirmLeave(() => { setDrawerOpen(false); router.push("/notes"); })}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
-                <StickyNote className="h-4 w-4" /> Ghi chú
-              </button>
-              <button onClick={() => { setDrawerOpen(false); setSearchOpen(true); }}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
-                <Search className="h-4 w-4" /> Tìm kiếm
-              </button>
-              <button onClick={() => confirmLeave(() => { setDrawerOpen(false); router.push("/settings"); })}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
-                <Settings className="h-4 w-4" /> Cài đặt
-              </button>
-            </aside>
-          </div>
-        )}
+        {/* Mobile swipe drawer — đồng bộ với sidebar desktop */}
+        <MobileSidebarDrawer open={isMobile && drawerOpen} onClose={() => setDrawerOpen(false)} />
         {!readingMode && <header
           className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4 transition-opacity duration-300"
           style={{ paddingTop: 'var(--safe-top)' }}
@@ -348,20 +302,18 @@ function ReaderShell({ doc, downloadUrl }: {
             <Button variant="ghost" size="sm" className="p-1.5 shrink-0 xl:hidden" onClick={() => setDrawerOpen(true)}>
               <Menu className="h-4 w-4" />
             </Button>
-            {/* Desktop: button to toggle sidebar */}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
-              aria-label={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
-            >
-              {sidebarOpen ? (
-                <PanelLeftClose className="h-4 w-4" />
-              ) : (
+            {/* Desktop: nút MỞ sidebar — chỉ hiện khi đang ẩn (nút đóng nằm trong sidebar) */}
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
+                aria-label="Hiện sidebar"
+              >
                 <PanelLeftOpen className="h-4 w-4" />
-              )}
-            </button>
+              </button>
+            )}
 
-            <AppLogo size={32} />
+            <span className="xl:hidden"><AppLogo size={32} /></span>
           </div>
 
           <nav className="hidden xl:flex items-center gap-1 shrink-0">
