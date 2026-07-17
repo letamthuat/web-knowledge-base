@@ -17,6 +17,7 @@ import {
 import { getUnitScopeText } from "@/lib/study/materialize";
 import { requestGeneratedCards, type GenCard } from "@/lib/study/generate";
 import { StudyMarkdown } from "./StudyMarkdown";
+import { useOpenDoc } from "./SpaceOverview";
 
 const TYPE_META: Record<CardType, { label: string; icon: typeof Lightbulb; cls: string }> = {
   concept: { label: "Khái niệm", icon: Lightbulb, cls: "bg-blue-500/10 text-blue-500" },
@@ -24,7 +25,7 @@ const TYPE_META: Record<CardType, { label: string; icon: typeof Lightbulb; cls: 
   link:    { label: "Liên kết",  icon: Link2,     cls: "bg-teal-500/10 text-teal-600" },
 };
 
-type Leaf = { unitKey: string; moduleKey: string; title: string; docId: string | null };
+type Leaf = { unitKey: string; moduleKey: string; title: string; docId: string | null; anchor: string | null };
 
 function unitKeyOfId(id: string): string {
   return /^m\d+$/.test(id) ? "M" + id.slice(1) : id.slice(1).split("-").join(".");
@@ -38,29 +39,42 @@ function flatten(units: StudyUnit[]): { leaves: Leaf[]; titleByKey: Map<string, 
     const key = unitKeyOfId(u.id);
     titleByKey.set(key, u.title);
     if (u.children && u.children.length) u.children.forEach(walk);
-    else leaves.push({ unitKey: key, moduleKey: "M" + key.split(".")[0], title: u.title, docId: u.docId ?? null });
+    else leaves.push({ unitKey: key, moduleKey: "M" + key.split(".")[0], title: u.title, docId: u.docId ?? null, anchor: u.headingAnchor ?? null });
   };
   units.forEach(walk);
   return { leaves, titleByKey };
+}
+
+// Nút "mở tài liệu →" cạnh trích đoạn — mở reader đúng heading tiểu mục
+function OpenDocLink({ docId, anchor }: { docId: string | null | undefined; anchor: string | null | undefined }) {
+  const openDoc = useOpenDoc();
+  if (!docId) return null;
+  return (
+    <button onClick={(e) => { e.stopPropagation(); openDoc(docId, anchor); }} className="mt-1 block text-[11px] font-medium text-primary hover:underline">
+      mở tài liệu →
+    </button>
+  );
 }
 
 export function ReviewTab({ spaceId, space, focusUnitKey }: { spaceId: string; space: StudySpace; focusUnitKey?: string | null }) {
   const cards = useFlashcards(spaceId);
   const [session, setSession] = useState<FlashcardRow[] | null>(null);
   const { leaves, titleByKey } = useMemo(() => flatten(space.units), [space.units]);
+  const leafByKey = useMemo(() => new Map(leaves.map((l) => [l.unitKey, l])), [leaves]);
 
   useEffect(() => { setSession(null); }, [focusUnitKey]);
 
   if (cards === undefined) {
     return <div className="flex items-center gap-2 py-10 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Đang tải card…</div>;
   }
-  if (session) return <ReviewSession cards={session} spaceId={spaceId} titleByKey={titleByKey} onExit={() => setSession(null)} />;
+  if (session) return <ReviewSession cards={session} spaceId={spaceId} titleByKey={titleByKey} leafByKey={leafByKey} onExit={() => setSession(null)} />;
   return (
     <CardLibrary
       spaceId={spaceId}
       cards={cards}
       leaves={leaves}
       titleByKey={titleByKey}
+      leafByKey={leafByKey}
       focusUnitKey={focusUnitKey}
       onStudy={setSession}
     />
@@ -69,10 +83,10 @@ export function ReviewTab({ spaceId, space, focusUnitKey }: { spaceId: string; s
 
 // ─── Thư viện card theo lộ trình ─────────────────────────────────────────────
 function CardLibrary({
-  spaceId, cards, leaves, titleByKey, focusUnitKey, onStudy,
+  spaceId, cards, leaves, titleByKey, leafByKey, focusUnitKey, onStudy,
 }: {
   spaceId: string; cards: FlashcardRow[]; leaves: Leaf[]; titleByKey: Map<string, string>;
-  focusUnitKey?: string | null; onStudy: (cards: FlashcardRow[]) => void;
+  leafByKey: Map<string, Leaf>; focusUnitKey?: string | null; onStudy: (cards: FlashcardRow[]) => void;
 }) {
   const dueCards = cards.filter((c) => isDue(c));
   const byUnit = new Map<string, FlashcardRow[]>();
@@ -129,6 +143,7 @@ function CardLibrary({
                       key={k}
                       title={titleByKey.get(k) ?? k}
                       cards={byUnit.get(k)!}
+                      leaf={leafByKey.get(k)}
                       focused={k === focusUnitKey}
                       onStudy={onStudy}
                     />
@@ -257,9 +272,9 @@ function GeneratePanel({ spaceId, leaf }: { spaceId: string; leaf: Leaf }) {
 }
 
 function UnitCardGroup({
-  title, cards, focused, onStudy,
+  title, cards, leaf, focused, onStudy,
 }: {
-  title: string; cards: FlashcardRow[]; focused: boolean; onStudy: (cards: FlashcardRow[]) => void;
+  title: string; cards: FlashcardRow[]; leaf?: Leaf; focused: boolean; onStudy: (cards: FlashcardRow[]) => void;
 }) {
   const [open, setOpen] = useState(focused);
   useEffect(() => { if (focused) setOpen(true); }, [focused]);
@@ -281,14 +296,14 @@ function UnitCardGroup({
       </div>
       {open && (
         <div className="space-y-1.5 border-t p-2">
-          {cards.map((c) => <BrowseCard key={c._id} card={c} />)}
+          {cards.map((c) => <BrowseCard key={c._id} card={c} leaf={leaf} />)}
         </div>
       )}
     </div>
   );
 }
 
-function BrowseCard({ card }: { card: FlashcardRow }) {
+function BrowseCard({ card, leaf }: { card: FlashcardRow; leaf?: Leaf }) {
   const [open, setOpen] = useState(false);
   const meta = TYPE_META[card.type];
   const TypeIcon = meta.icon;
@@ -319,9 +334,12 @@ function BrowseCard({ card }: { card: FlashcardRow }) {
         <div className="border-t border-border/50 p-2.5">
           <StudyMarkdown className="text-[12.5px] leading-relaxed">{card.back}</StudyMarkdown>
           {card.quote && (
-            <div className="mt-2 flex gap-2 rounded-lg bg-background p-2.5">
-              <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <StudyMarkdown className="text-[11.5px] italic leading-snug text-muted-foreground">{card.quote}</StudyMarkdown>
+            <div className="mt-2 rounded-lg bg-background p-2.5">
+              <div className="flex gap-2">
+                <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <StudyMarkdown className="text-[11.5px] italic leading-snug text-muted-foreground">{card.quote}</StudyMarkdown>
+              </div>
+              <OpenDocLink docId={leaf?.docId} anchor={leaf?.anchor} />
             </div>
           )}
         </div>
@@ -332,9 +350,9 @@ function BrowseCard({ card }: { card: FlashcardRow }) {
 
 // ─── Phiên ôn (lật card, Quên/Nhớ) ───────────────────────────────────────────
 function ReviewSession({
-  cards, spaceId, titleByKey, onExit,
+  cards, spaceId, titleByKey, leafByKey, onExit,
 }: {
-  cards: FlashcardRow[]; spaceId: string; titleByKey: Map<string, string>; onExit: () => void;
+  cards: FlashcardRow[]; spaceId: string; titleByKey: Map<string, string>; leafByKey: Map<string, Leaf>; onExit: () => void;
 }) {
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -411,9 +429,12 @@ function ReviewSession({
           <>
             <StudyMarkdown className="mt-4 text-[14px] leading-relaxed">{card!.back}</StudyMarkdown>
             {card!.quote && (
-              <div className="mt-4 flex gap-2 rounded-lg bg-muted/60 p-2.5">
-                <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
-                <StudyMarkdown className="text-[12px] italic leading-snug text-muted-foreground">{card!.quote}</StudyMarkdown>
+              <div className="mt-4 rounded-lg bg-muted/60 p-2.5">
+                <div className="flex gap-2">
+                  <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <StudyMarkdown className="text-[12px] italic leading-snug text-muted-foreground">{card!.quote}</StudyMarkdown>
+                </div>
+                <OpenDocLink docId={leafByKey.get(card!.unitKey)?.docId} anchor={leafByKey.get(card!.unitKey)?.anchor} />
               </div>
             )}
           </>

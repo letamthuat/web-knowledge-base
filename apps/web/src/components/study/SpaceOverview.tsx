@@ -37,10 +37,11 @@ export function useOpenDoc() {
   const { openTab } = useTabSync();
   const { setActivePanel } = useActiveTab();
   return useCallback(
-    (docId: string) => {
+    (docId: string, anchor?: string | null) => {
       openTab(docId as Id<"documents">).catch(() => {});
       setActivePanel(`reader:${docId}`);
-      window.history.pushState(null, "", `/reader/${docId}`);
+      const hash = anchor ? `#${encodeURIComponent(anchor)}` : "";
+      window.history.pushState(null, "", `/reader/${docId}${hash}`);
     },
     [openTab, setActivePanel]
   );
@@ -240,7 +241,7 @@ function UnitRow({ unit, depth, onGoTab }: { unit: StudyUnit; depth: number; onG
 
   const goRead = () => {
     if (!unit.docId) { toast.info("Tiểu mục này chưa gắn tài liệu"); return; }
-    openDoc(unit.docId);
+    openDoc(unit.docId, unit.headingAnchor);
     // Mở ra = coi như đã đọc (rule "không khóa"); ghi tiến độ + phiên đọc (không tính streak)
     const uk = unitKeyFor(unit);
     if (spaceId && uk) {

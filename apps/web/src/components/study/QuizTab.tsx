@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 import type { StudySpace, StudyUnit } from "./mock";
 import { StudyMarkdown } from "./StudyMarkdown";
+import { useOpenDoc } from "./SpaceOverview";
 import { useAiSettings } from "@/lib/api/ai-settings";
 import {
   useQuizAttempts, getSectionQuestions, saveSectionQuestions, recordQuizAttempt, logStudySession,
@@ -17,7 +18,7 @@ import {
 import { getUnitScopeText } from "@/lib/study/materialize";
 import { requestGeneratedQuiz, requestEssayGrades, type EssayGrade } from "@/lib/study/generate";
 
-type Leaf = { unitKey: string; moduleKey: string; title: string; docId: string | null };
+type Leaf = { unitKey: string; moduleKey: string; title: string; docId: string | null; anchor: string | null };
 function unitKeyOfId(id: string): string {
   return /^m\d+$/.test(id) ? "M" + id.slice(1) : id.slice(1).split("-").join(".");
 }
@@ -28,10 +29,21 @@ function flatten(units: StudyUnit[]): { leaves: Leaf[]; titleByKey: Map<string, 
     const key = unitKeyOfId(u.id);
     titleByKey.set(key, u.title);
     if (u.children && u.children.length) u.children.forEach(walk);
-    else leaves.push({ unitKey: key, moduleKey: "M" + key.split(".")[0], title: u.title, docId: u.docId ?? null });
+    else leaves.push({ unitKey: key, moduleKey: "M" + key.split(".")[0], title: u.title, docId: u.docId ?? null, anchor: u.headingAnchor ?? null });
   };
   units.forEach(walk);
   return { leaves, titleByKey };
+}
+
+// Nút "mở tài liệu →" cạnh trích đoạn
+function OpenDocLink({ leaf }: { leaf: Leaf }) {
+  const openDoc = useOpenDoc();
+  if (!leaf.docId) return null;
+  return (
+    <button onClick={() => openDoc(leaf.docId!, leaf.anchor)} className="mt-1 block text-[11px] font-medium text-primary hover:underline">
+      mở tài liệu →
+    </button>
+  );
 }
 function fmtDate(ms: number): string {
   const d = new Date(ms);
@@ -214,14 +226,14 @@ function AttemptReview({
       <div className="mt-3 space-y-3">
         {questions.map((q, i) => {
           const grade = q.kind === "open" ? grades[++openIdx] : undefined;
-          return <ReviewQuestion key={i} index={i} q={q} answer={attempt.answers[i]} grade={grade} />;
+          return <ReviewQuestion key={i} index={i} q={q} answer={attempt.answers[i]} grade={grade} leaf={leaf} />;
         })}
       </div>
     </div>
   );
 }
 
-function ReviewQuestion({ index, q, answer, grade }: { index: number; q: QuizQuestion; answer?: AttemptAnswer; grade?: EssayGrade }) {
+function ReviewQuestion({ index, q, answer, grade, leaf }: { index: number; q: QuizQuestion; answer?: AttemptAnswer; grade?: EssayGrade; leaf: Leaf }) {
   return (
     <div className="rounded-xl border bg-card p-4">
       <span className="rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground">
@@ -267,9 +279,12 @@ function ReviewQuestion({ index, q, answer, grade }: { index: number; q: QuizQue
         </div>
       )}
       {q.quote && (
-        <div className="mt-3 flex gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
-          <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <StudyMarkdown className="text-[12px] italic leading-snug text-muted-foreground">{q.quote}</StudyMarkdown>
+        <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+          <div className="flex gap-2">
+            <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <StudyMarkdown className="text-[12px] italic leading-snug text-muted-foreground">{q.quote}</StudyMarkdown>
+          </div>
+          <OpenDocLink leaf={leaf} />
         </div>
       )}
     </div>
@@ -421,9 +436,12 @@ function QuizRunner({
         )}
 
         {a.submitted && q.quote && (
-          <div className="mt-3 flex gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
-            <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
-            <StudyMarkdown className="text-[12px] italic leading-snug text-muted-foreground">{q.quote}</StudyMarkdown>
+          <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+            <div className="flex gap-2">
+              <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <StudyMarkdown className="text-[12px] italic leading-snug text-muted-foreground">{q.quote}</StudyMarkdown>
+            </div>
+            <OpenDocLink leaf={leaf} />
           </div>
         )}
       </div>

@@ -134,6 +134,7 @@ export function buildSpaceModel(
       cardsMade: r.isLeaf ? cardsMade : undefined,
       chars: r.chars ?? undefined,
       docId: r.docId ?? undefined,
+      headingAnchor: r.headingAnchor ?? undefined,
       children,
     };
   };

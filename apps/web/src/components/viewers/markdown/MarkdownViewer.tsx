@@ -832,6 +832,24 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     requestAnimationFrame(tryScroll);
   }, [content, progress]);
 
+  // Scroll tới heading theo URL hash (mở từ module Học tập: /reader/:id#anchor)
+  const hashHandled = useRef(false);
+  useEffect(() => {
+    if (hashHandled.current || !content || !contentRef.current) return;
+    const raw = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+    if (!raw) return;
+    const id = decodeURIComponent(raw);
+    hashHandled.current = true;
+    const el = contentRef.current;
+    let attempts = 0;
+    const tryScroll = () => {
+      const heading = el.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
+      if (heading) { heading.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+      if (attempts++ < 12) requestAnimationFrame(tryScroll);
+    };
+    requestAnimationFrame(tryScroll);
+  }, [content]);
+
   // Jump to first occurrence of highlightQuery after content renders
   useEffect(() => {
     if (!highlightQuery || !content || !contentRef.current) return;

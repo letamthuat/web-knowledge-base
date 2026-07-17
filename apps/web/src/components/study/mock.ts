@@ -13,7 +13,8 @@ export type StudyUnit = {
   quizBest?: number; // điểm quiz cao nhất /100
   feynmanCount: number;
   children?: StudyUnit[]; // đệ quy: file → mục (x.y) → tiểu mục (x.y.z)
-  docId?: string; // click tiểu mục → mở reader đúng tài liệu (bản thật sẽ kèm heading anchor)
+  docId?: string; // click tiểu mục → mở reader đúng tài liệu
+  headingAnchor?: string; // slug heading (rehype-slug) để scroll đúng vị trí trong reader
   cardsMade?: boolean; // đã tạo bộ flashcard cho tiểu mục này chưa (mục checklist thứ 3)
   chars?: number; // độ dài extractedText — đầu vào rule ước tính thời gian (mặc định 43k/tiểu mục nếu thiếu)
 };
