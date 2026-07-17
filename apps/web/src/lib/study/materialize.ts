@@ -4,7 +4,8 @@
 // Parse heading ## (mục x.y) / ### (tiểu mục x.y.z = đơn vị scope). Bỏ #### (4-tier) và #.
 // Deterministic, 0 Gemini. Anchor khớp reader (rehype-slug → github-slugger).
 import GithubSlugger from "github-slugger";
-import { insertStudyUnits, setSpaceSources, type NewStudyUnit, type UnitStatus } from "@/lib/api/study";
+import { supabase } from "@/lib/supabase/client";
+import { insertStudyUnits, setSpaceSources, type NewStudyUnit, type UnitStatus, type StudyUnitRow } from "@/lib/api/study";
 import { getDownloadUrl } from "@/lib/api/documents";
 
 const DEFAULT_UNIT_CHARS = 43_000; // khớp rule engine (SPEC §3.1)
@@ -268,4 +269,83 @@ export async function materializeDocsSpace(input: {
   selectedDocs: { docId: string; title: string; relPath?: string }[];
 }): Promise<{ unitCount: number; moduleCount: number }> {
   return materializeDocs(input.spaceId, input.selectedDocs);
+}
+
+// ─── Reconcile khi handbook/tài liệu đổi (SPEC §2.3.1) ────────────────────────
+export type ReconcileDiff = { added: number; changed: number; removed: number; total: number };
+
+async function sourceDocsOf(spaceId: string): Promise<{ docId: string; title: string; relPath: string }[]> {
+  const { data: srcs } = await supabase.from("study_space_sources").select("docId, \"order\"").eq("spaceId", spaceId).order("order", { ascending: true });
+  const ids = (srcs ?? []).map((s: { docId: string }) => s.docId);
+  if (!ids.length) return [];
+  const { data: docs } = await supabase.from("documents").select("_id, relPath, title, format").in("_id", ids);
+  const byId = new Map((docs ?? []).map((d: { _id: string; relPath: string | null; title: string; format: string }) => [d._id, d]));
+  return ids
+    .map((id: string) => byId.get(id))
+    .filter((d): d is { _id: string; relPath: string | null; title: string; format: string } => !!d && d.format === "markdown")
+    .map((d) => ({ docId: d._id, title: d.title, relPath: d.relPath ?? d.title }));
+}
+
+async function desiredUnits(spaceId: string): Promise<ParsedUnit[]> {
+  const docs = await sourceDocsOf(spaceId);
+  let order = 0;
+  const all: ParsedUnit[] = [];
+  for (let i = 0; i < docs.length; i++) {
+    const d = docs[i];
+    const moduleKey = moduleKeyFromRelPath(d.relPath ?? d.title, i + 1);
+    let md = "";
+    try { const url = await getDownloadUrl(d.docId); const r = await fetch(url); if (r.ok) md = await r.text(); } catch { md = ""; }
+    const { units, nextOrder } = parseUnitsFromMarkdown({ markdown: md, moduleKey, moduleTitle: d.title, docId: d.docId, startOrder: order });
+    order = nextOrder;
+    all.push(...units);
+  }
+  return all;
+}
+
+/**
+ * So cây handbook hiện tại vs study_units. apply=false chỉ trả diff (cho banner);
+ * apply=true áp dụng: thêm unit mới, cờ contentChanged, đánh dấu orphaned unit đã gỡ,
+ * cập nhật orderIndex/title/anchor. Join theo unitKey → tiến độ (quiz/card/feynman) giữ nguyên.
+ */
+export async function reconcileSpace(spaceId: string, apply: boolean): Promise<ReconcileDiff> {
+  const desired = await desiredUnits(spaceId);
+  const { data: existingRows } = await supabase.from("study_units").select("*").eq("spaceId", spaceId);
+  const existing = (existingRows ?? []) as StudyUnitRow[];
+  const exByKey = new Map(existing.map((e) => [e.unitKey, e]));
+  const desByKey = new Map(desired.map((d) => [d.unitKey, d]));
+  const desById = new Map(desired.map((d) => [d._id, d]));
+
+  const added = desired.filter((d) => !exByKey.has(d.unitKey));
+  const changed = desired.filter((d) => { const e = exByKey.get(d.unitKey); return !!e && e.contentHash !== d.contentHash; });
+  const removed = existing.filter((e) => !desByKey.has(e.unitKey) && !e.orphaned);
+  const diff: ReconcileDiff = { added: added.length, changed: changed.length, removed: removed.length, total: desired.length };
+  if (!apply) return diff;
+
+  // Thêm unit mới — remap parentUnitId theo unitKey (parent có thể là unit đang tồn tại)
+  if (added.length) {
+    const resolveParent = (d: ParsedUnit): string | null => {
+      if (!d.parentUnitId) return null;
+      const parentKey = desById.get(d.parentUnitId)?.unitKey;
+      if (!parentKey) return null;
+      const ex = exByKey.get(parentKey);
+      return ex ? ex._id : d.parentUnitId; // parent cũng mới → giữ uuid mới (insert cùng đợt)
+    };
+    const toInsert = added
+      .slice()
+      .sort((a, b) => a.depth - b.depth) // parent (depth thấp) trước
+      .map((d) => ({ ...d, parentUnitId: resolveParent(d) }));
+    await insertStudyUnits(spaceId, toInsert);
+  }
+
+  const now = Date.now();
+  for (const d of changed) {
+    const e = exByKey.get(d.unitKey)!;
+    await supabase.from("study_units").update({
+      contentHash: d.contentHash, contentChanged: true, title: d.title, headingAnchor: d.headingAnchor, orderIndex: d.orderIndex, updatedAt: now,
+    }).eq("_id", e._id);
+  }
+  for (const e of removed) {
+    await supabase.from("study_units").update({ orphaned: true, updatedAt: now }).eq("_id", e._id);
+  }
+  return diff;
 }

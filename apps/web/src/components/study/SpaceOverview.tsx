@@ -12,7 +12,7 @@ import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { Id } from "@/_generated/dataModel";
 import { markUnitRead, logStudySession, getSectionQuestions, saveSectionQuestions } from "@/lib/api/study";
 import { useAiSettings } from "@/lib/api/ai-settings";
-import { getUnitScopeText } from "@/lib/study/materialize";
+import { getUnitScopeText, reconcileSpace } from "@/lib/study/materialize";
 import { requestPreQuestions } from "@/lib/study/generate";
 import { HEATMAP, type StudySpace, type StudyUnit, type TodayItem, type UnitStatus } from "./mock";
 
@@ -137,13 +137,43 @@ export function TodayMenu({ items, onGoTab }: { items: TodayItem[]; onGoTab: GoT
 
 // ─── Lộ trình (syllabus cây) ─────────────────────────────────────────────────
 
+// Đồng bộ lộ trình khi handbook/tài liệu đổi (SPEC §2.3.1) — chủ động, không auto
+function SyncButton() {
+  const spaceId = useContext(SpaceIdCtx);
+  const [busy, setBusy] = useState(false);
+  async function sync() {
+    if (!spaceId || busy) return;
+    setBusy(true);
+    try {
+      const diff = await reconcileSpace(spaceId, false);
+      if (diff.added === 0 && diff.changed === 0 && diff.removed === 0) {
+        toast.success("Lộ trình đã khớp tài liệu");
+      } else if (window.confirm(`Tài liệu đã thay đổi:\n+${diff.added} tiểu mục mới · ${diff.changed} mục nội dung đổi · ${diff.removed} mục đã gỡ.\n\nCập nhật lộ trình? (tiến độ học được giữ nguyên)`)) {
+        await reconcileSpace(spaceId, true);
+        toast.success("Đã đồng bộ lộ trình");
+      }
+    } catch {
+      toast.error("Đồng bộ thất bại — thử lại");
+    }
+    setBusy(false);
+  }
+  return (
+    <button onClick={sync} disabled={busy} title="Kiểm tra & đồng bộ khi tài liệu thay đổi" className="flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40">
+      <RotateCcw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} /> Đồng bộ
+    </button>
+  );
+}
+
 function Syllabus({ units, onGoTab }: { units: StudyUnit[]; onGoTab: GoTab }) {
   return (
     <section>
       <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
-          <Layers className="h-3.5 w-3.5 text-primary" /> LỘ TRÌNH
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
+            <Layers className="h-3.5 w-3.5 text-primary" /> LỘ TRÌNH
+          </h2>
+          <SyncButton />
+        </div>
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
           {(Object.keys(STATUS) as UnitStatus[]).map((k) => (
             <span key={k} className="flex items-center gap-1 text-[10px] text-muted-foreground">
