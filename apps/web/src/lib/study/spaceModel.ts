@@ -12,10 +12,11 @@ import {
   type FeynmanSessionRow,
   type StudySessionRow,
 } from "@/lib/api/study";
-import type { StudySpace, StudyUnit, TodayItem, WeakSpot } from "@/components/study/mock";
+import type { StudySpace, StudyUnit, TodayItem, WeakSpot, UnitStatus } from "@/components/study/mock";
 
 const DAY_MS = 86_400_000;
 const MASTERY_QUIZ = 80;
+const DECAY_DAYS = 21; // 🟢 quá 21 ngày không active-recall → 🔴 (SPEC §3.3)
 
 /** unitKey "2.1.3" → id component "m2-1-3"; "M2" → "m2". Khớp unitKeyFor/quizSectionIdFor. */
 function unitIdFromKey(unitKey: string): string {
@@ -85,40 +86,63 @@ export function buildSpaceModel(
   const feynCountBy = new Map<string, number>();
   for (const f of feyn) for (const k of f.scopeKeys) feynCountBy.set(k, (feynCountBy.get(k) ?? 0) + 1);
 
+  // Trạng thái leaf tính TỪ SIGNALS THẬT (không dựa status lưu, vì mastery/decay là dẫn xuất).
+  const now = Date.now();
+  const statusByKey = new Map<string, UnitStatus>();
+  function leafStatus(readPct: number, quizBest: number | undefined, cardsMade: boolean, feyn: number, lastActiveAt: number | null): UnitStatus {
+    const read = readPct >= 100;
+    const quiz80 = (quizBest ?? 0) >= MASTERY_QUIZ;
+    if (read && quiz80 && cardsMade && feyn > 0) {
+      if (lastActiveAt && now - lastActiveAt > DECAY_DAYS * DAY_MS) return "decayed";
+      return "mastered";
+    }
+    if (read) return "read"; // đọc xong nhưng chưa đủ 4
+    if (readPct > 0 || quiz80 || cardsMade || feyn > 0) return "reading";
+    return "new";
+  }
+  function parentStatus(kids: UnitStatus[]): UnitStatus {
+    if (kids.some((s) => s === "decayed")) return "decayed";
+    if (kids.length > 0 && kids.every((s) => s === "mastered")) return "mastered";
+    if (kids.some((s) => s !== "new")) return "reading";
+    return "new";
+  }
+
   // Build cây lồng theo parentUnitId (rows đã sort orderIndex)
-  const byId = new Map<string, StudyUnit & { _rowId: string }>();
+  const rowById = new Map(rows.map((r) => [r._id, r]));
   const childrenOf = new Map<string, string[]>();
   for (const r of rows) {
-    const leaf = r.isLeaf;
-    const node: StudyUnit & { _rowId: string } = {
-      _rowId: r._id,
-      id: unitIdFromKey(r.unitKey),
-      title: r.title,
-      status: r.status,
-      readPct: r.readPct,
-      feynmanCount: leaf ? feynCountBy.get(r.unitKey) ?? 0 : 0,
-      quizBest: leaf ? quizBestBy.get(r.unitKey) : undefined,
-      cardsMade: leaf ? cardsBy.has(r.unitKey) : undefined,
-      chars: r.chars ?? undefined,
-      docId: r.docId ?? undefined,
-    };
-    byId.set(r._id, node);
     const pid = r.parentUnitId ?? "__root__";
     if (!childrenOf.has(pid)) childrenOf.set(pid, []);
     childrenOf.get(pid)!.push(r._id);
   }
   const attach = (rowId: string): StudyUnit => {
-    const node = byId.get(rowId)!;
+    const r = rowById.get(rowId)!;
     const kids = childrenOf.get(rowId);
-    if (kids && kids.length) node.children = kids.map(attach);
-    return node;
+    const children = kids && kids.length ? kids.map(attach) : undefined;
+    const feyn = feynCountBy.get(r.unitKey) ?? 0;
+    const quizBest = quizBestBy.get(r.unitKey);
+    const cardsMade = cardsBy.has(r.unitKey);
+    const status: UnitStatus = children ? parentStatus(children.map((c) => c.status)) : leafStatus(r.readPct, quizBest, cardsMade, feyn, r.lastActiveAt);
+    if (r.isLeaf) statusByKey.set(r.unitKey, status);
+    return {
+      id: unitIdFromKey(r.unitKey),
+      title: r.title,
+      status,
+      readPct: r.readPct,
+      feynmanCount: r.isLeaf ? feyn : 0,
+      quizBest: r.isLeaf ? quizBest : undefined,
+      cardsMade: r.isLeaf ? cardsMade : undefined,
+      chars: r.chars ?? undefined,
+      docId: r.docId ?? undefined,
+      children,
+    };
   };
   const units: StudyUnit[] = (childrenOf.get("__root__") ?? []).map(attach);
 
-  // Stats từ leaves
+  // Stats từ leaves (dùng status dẫn xuất)
   const leaves = rows.filter((r) => r.isLeaf);
   const unitsTotal = leaves.length;
-  const unitsMastered = leaves.filter((r) => r.status === "mastered").length;
+  const unitsMastered = leaves.filter((r) => statusByKey.get(r.unitKey) === "mastered").length;
   const dueCards = cards.filter((c) => isDue(c)).length;
   const today = startOfDay(Date.now());
   const minutesToday = Math.round(
@@ -129,19 +153,20 @@ export function buildSpaceModel(
   // todayMenu (rule cơ bản — SPEC §1.2; chưa gồm carry-over/plan): due card + unit đang/đầu chưa học
   const todayMenu: TodayItem[] = [];
   if (dueCards > 0) todayMenu.push({ type: "review", label: `Ôn ${dueCards} card đến hạn`, detail: "Trộn các tiểu mục theo lịch giãn cách" });
-  const nextLeaf = leaves.find((r) => r.status === "reading") ?? leaves.find((r) => r.status === "new");
-  if (nextLeaf) todayMenu.push({ type: "read", label: `Đọc ${nextLeaf.title}`, detail: nextLeaf.status === "reading" ? `đang ở ${nextLeaf.readPct}%` : "chưa bắt đầu" });
-  const decayed = leaves.find((r) => r.status === "decayed");
+  const st = (r: StudyUnitRow) => statusByKey.get(r.unitKey) ?? "new";
+  const nextLeaf = leaves.find((r) => st(r) === "reading") ?? leaves.find((r) => st(r) === "new");
+  if (nextLeaf) todayMenu.push({ type: "read", label: `Đọc ${nextLeaf.title}`, detail: st(nextLeaf) === "reading" ? `đang ở ${nextLeaf.readPct}%` : "chưa bắt đầu" });
+  const decayed = leaves.find((r) => st(r) === "decayed");
   if (decayed) todayMenu.push({ type: "fix", label: `Quiz lại ${decayed.title}`, detail: "🔴 lâu không ôn — làm lại để xanh", quizSectionId: "q-" + unitIdFromKey(decayed.unitKey).slice(1) });
 
   // weakSpots (SPEC §1.3): decayed HOẶC quizBest<80
   const weakSpots: WeakSpot[] = leaves
-    .filter((r) => r.status === "decayed" || ((quizBestBy.get(r.unitKey) ?? 100) < MASTERY_QUIZ && quizBestBy.has(r.unitKey)))
+    .filter((r) => st(r) === "decayed" || ((quizBestBy.get(r.unitKey) ?? 100) < MASTERY_QUIZ && quizBestBy.has(r.unitKey)))
     .slice(0, 3)
     .map((r) => ({
       id: unitIdFromKey(r.unitKey),
       label: r.title,
-      reason: r.status === "decayed" ? "Lâu không ôn — kiến thức đang phai" : `Quiz mới đạt ${quizBestBy.get(r.unitKey)}% (cần ≥${MASTERY_QUIZ}%)`,
+      reason: st(r) === "decayed" ? "Lâu không ôn — kiến thức đang phai" : `Quiz mới đạt ${quizBestBy.get(r.unitKey)}% (cần ≥${MASTERY_QUIZ}%)`,
     }));
 
   const moduleCount = rows.filter((r) => r.depth === 0).length;

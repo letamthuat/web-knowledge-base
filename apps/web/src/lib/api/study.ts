@@ -390,6 +390,17 @@ export async function updateStudyUnit(unitId: string, patch: Partial<Pick<StudyU
   if (error) throw error;
 }
 
+/** Đánh dấu đã đọc 1 tiểu mục (mở reader từ checklist) — set readPct=100. Rule "không khóa": mở ra = coi như đã đọc. */
+export async function markUnitRead(spaceId: string, unitKey: string): Promise<void> {
+  const { error } = await supabase
+    .from("study_units")
+    .update({ readPct: 100, updatedAt: Date.now() })
+    .eq("spaceId", spaceId)
+    .eq("unitKey", unitKey)
+    .lt("readPct", 100);
+  if (error) throw error;
+}
+
 // ─── CHECKPOINT ────────────────────────────────────────────────────────────────
 export async function upsertCheckpoint(spaceId: string, patch: { lastReviewedUnitKey?: string; lastReadUnitKey?: string }): Promise<void> {
   const userId = await currentUserId();

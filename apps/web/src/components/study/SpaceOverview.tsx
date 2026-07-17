@@ -1,7 +1,7 @@
 "use client";
 
 // Tab Tổng quan — thực đơn hôm nay, lộ trình cây trạng thái, chỗ yếu, heatmap.
-import { useCallback, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 import {
   AlertTriangle, BookOpen, CheckCircle2, ChevronDown, ChevronRight,
   HelpCircle, Layers, Mic, RotateCcw, Sparkles,
@@ -10,7 +10,11 @@ import { toast } from "sonner";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { Id } from "@/_generated/dataModel";
+import { markUnitRead, logStudySession } from "@/lib/api/study";
 import { HEATMAP, type StudySpace, type StudyUnit, type TodayItem, type UnitStatus } from "./mock";
+
+// spaceId cho các hành động ghi (đánh dấu đọc…) — tránh thread qua nhiều lớp
+const SpaceIdCtx = createContext<string>("");
 
 // Điều phối sang tab khác kèm ngữ cảnh (highlight đúng nội dung của tiểu mục)
 export type GoTab = (tab: string, ctx?: { sectionId?: string; unitKey?: string }) => void;
@@ -54,6 +58,7 @@ const STATUS: Record<UnitStatus, { label: string; dot: string; text: string }> =
 // (StudyRail trong StudyPageInner) — cột chính chỉ còn lộ trình.
 export function SpaceOverview({ space, onGoTab }: { space: StudySpace; onGoTab: GoTab }) {
   return (
+    <SpaceIdCtx.Provider value={space.id}>
     <div className="space-y-5">
       <div className="2xl:hidden">
         <TodayMenu items={space.todayMenu} onGoTab={onGoTab} />
@@ -68,6 +73,7 @@ export function SpaceOverview({ space, onGoTab }: { space: StudySpace; onGoTab: 
         <Heatmap streak={space.streak} />
       </div>
     </div>
+    </SpaceIdCtx.Provider>
   );
 }
 
@@ -229,11 +235,18 @@ type ChecklistItem = {
 function UnitRow({ unit, depth, onGoTab }: { unit: StudyUnit; depth: number; onGoTab: GoTab }) {
   const st = STATUS[unit.status];
   const openDoc = useOpenDoc();
+  const spaceId = useContext(SpaceIdCtx);
   const [open, setOpen] = useState(false);
 
   const goRead = () => {
-    if (unit.docId) openDoc(unit.docId);
-    else toast.info("Prototype — tài liệu demo chưa gắn cho unit này");
+    if (!unit.docId) { toast.info("Tiểu mục này chưa gắn tài liệu"); return; }
+    openDoc(unit.docId);
+    // Mở ra = coi như đã đọc (rule "không khóa"); ghi tiến độ + phiên đọc (không tính streak)
+    const uk = unitKeyFor(unit);
+    if (spaceId && uk) {
+      void markUnitRead(spaceId, uk).catch(() => {});
+      void logStudySession({ spaceId, activityType: "read", unitKey: uk, activeMinutes: 3 }).catch(() => {});
+    }
   };
 
   const items: ChecklistItem[] = [
