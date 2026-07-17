@@ -14,7 +14,7 @@ import {
   useActivePlan, usePlanTasks, useNotificationSettings, createPlan, upsertNotificationSettings,
   type StudyPlanTaskRow, type NewPlanTask, type ScheduleMode,
 } from "@/lib/api/study";
-import { enablePush, disablePush, pushSupported } from "@/lib/push";
+import { enablePush, disablePush, pushSupported, isPushSubscribed } from "@/lib/push";
 import {
   ACT_MIN, buildModuleLoads, buildSchedule, buildScheduleTracks, dailyMinutesFor, fmtDate, fmtHours,
   projectedEndDate, recommendDays, WEEKDAY_LABELS,
@@ -64,12 +64,16 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
   const [weekdays, setWeekdays] = useState<boolean[]>(() => Array(7).fill(true));
   const [assign, setAssign] = useState<Record<string, boolean[]>>({}); // mode tracks: moduleId → [T2..CN]
   const [trackDaily, setTrackDaily] = useState(60);
-  const [notifOn, setNotifOn] = useState(true);
+  const [notifOn, setNotifOn] = useState(false); // phản ánh subscription THẬT của thiết bị này
   const [notifTimes, setNotifTimes] = useState<string[]>(["08:45", "21:15"]);
 
+  // Giờ nhắc lấy từ settings; còn BẬT/TẮT theo subscription THẬT của thiết bị này
   useEffect(() => {
-    if (notifSettings) { setNotifOn(notifSettings.enabled); if (notifSettings.times?.length) setNotifTimes(notifSettings.times); }
+    if (notifSettings?.times?.length) setNotifTimes(notifSettings.times);
   }, [notifSettings]);
+  useEffect(() => {
+    isPushSubscribed().then(setNotifOn).catch(() => {});
+  }, []);
 
   // Giữ order khớp loads (module mới thêm vào cuối, bỏ module đã biến mất)
   useEffect(() => {
