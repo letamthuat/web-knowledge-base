@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v6";
+const CACHE_VERSION = "v7";
 const CACHE_NAME = `wkb-shell-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -90,3 +90,33 @@ async function networkFirstWithFallback(request) {
     return await caches.match("/offline");
   }
 }
+
+// ─── Push (nhắc học module Học tập) ──────────────────────────────────────────
+// Payload từ Edge Function study-reminders: { title, body, url, tag }
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data && event.data.text ? event.data.text() : "" }; }
+  const title = data.title || "Web Knowledge Base";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      tag: data.tag || "study-reminder",
+      data: { url: data.url || "/study" },
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/study";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const c of clients) {
+        if ("focus" in c) { c.navigate(url); return c.focus(); }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});

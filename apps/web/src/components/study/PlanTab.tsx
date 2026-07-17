@@ -14,6 +14,7 @@ import {
   useActivePlan, usePlanTasks, useNotificationSettings, createPlan, upsertNotificationSettings,
   type StudyPlanTaskRow, type NewPlanTask,
 } from "@/lib/api/study";
+import { enablePush, disablePush, pushSupported } from "@/lib/push";
 import {
   ACT_MIN, buildModuleLoads, buildSchedule, dailyMinutesFor, fmtDate, fmtHours,
   projectedEndDate, recommendDays, WEEKDAY_LABELS,
@@ -64,6 +65,23 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
   useEffect(() => {
     if (notifSettings) { setNotifOn(notifSettings.enabled); if (notifSettings.times?.length) setNotifTimes(notifSettings.times); }
   }, [notifSettings]);
+
+  async function toggleNotif() {
+    if (!notifOn) {
+      try {
+        await enablePush();
+        setNotifOn(true);
+        await upsertNotificationSettings({ enabled: true, times: notifTimes });
+        toast.success("Đã bật nhắc học trên thiết bị này");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Không bật được thông báo");
+      }
+    } else {
+      await disablePush().catch(() => {});
+      setNotifOn(false);
+      await upsertNotificationSettings({ enabled: false }).catch(() => {});
+    }
+  }
 
   const active = loads.filter((l) => sel.has(l.id));
   const totalMin = active.reduce((s, l) => s + l.minutes, 0);
@@ -235,7 +253,7 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
               <p className="text-[13px] font-medium">Thông báo đẩy tới thiết bị</p>
               <p className="text-[11px] text-muted-foreground">Sáng: tóm tắt việc hôm nay · Tối: nhắc vào học / việc còn dở</p>
             </div>
-            <button onClick={() => setNotifOn(!notifOn)} role="switch" aria-checked={notifOn} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${notifOn ? "bg-primary" : "bg-muted"}`}>
+            <button onClick={toggleNotif} disabled={!pushSupported()} role="switch" aria-checked={notifOn} title={pushSupported() ? "" : "Thiết bị chưa hỗ trợ thông báo đẩy"} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${notifOn ? "bg-primary" : "bg-muted"}`}>
               <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${notifOn ? "left-[22px]" : "left-0.5"}`} />
             </button>
           </div>
