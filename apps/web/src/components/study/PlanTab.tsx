@@ -4,7 +4,7 @@
 // Rule local (plan.ts), 0 call Gemini. Done-state suy TỪ HÀNH ĐỘNG THẬT (không tick tay).
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle, Bell, CalendarDays, CheckCircle2, Loader2, Minus, Plus, RefreshCw,
+  AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Loader2, Minus, Plus, RefreshCw,
   SlidersHorizontal, Sparkles, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -58,6 +58,7 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
   const [busy, setBusy] = useState(false);
   const [sel, setSel] = useState<Set<string>>(() => new Set(loads.filter((l) => l.defaultOn).map((l) => l.id)));
   const [mode, setMode] = useState<ScheduleMode>("sequential");
+  const [order, setOrder] = useState<string[]>(() => loads.map((l) => l.id));
   const [daysOverride, setDaysOverride] = useState<number | null>(null);
   const [weekdays, setWeekdays] = useState<boolean[]>(() => Array(7).fill(true));
   const [assign, setAssign] = useState<Record<string, boolean[]>>({}); // mode tracks: moduleId → [T2..CN]
@@ -69,11 +70,21 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
     if (notifSettings) { setNotifOn(notifSettings.enabled); if (notifSettings.times?.length) setNotifTimes(notifSettings.times); }
   }, [notifSettings]);
 
+  // Giữ order khớp loads (module mới thêm vào cuối, bỏ module đã biến mất)
+  useEffect(() => {
+    setOrder((prev) => {
+      const ids = loads.map((l) => l.id);
+      const kept = prev.filter((id) => ids.includes(id));
+      return [...kept, ...ids.filter((id) => !kept.includes(id))];
+    });
+  }, [loads]);
+
   // Seed wizard theo plan đang active (để "Điều chỉnh" hiện đúng cấu hình cũ)
   useEffect(() => {
     if (!activePlan) return;
     setMode(activePlan.scheduleMode);
     setSel(new Set(activePlan.selectedModuleKeys));
+    if (activePlan.moduleOrder?.length) setOrder(activePlan.moduleOrder);
     if (activePlan.scheduleMode === "tracks") {
       if (activePlan.trackAssignments) setAssign(activePlan.trackAssignments);
       if (activePlan.targetDailyMin) setTrackDaily(activePlan.targetDailyMin);
@@ -100,7 +111,16 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
     }
   }
 
-  const active = loads.filter((l) => sel.has(l.id));
+  // Thứ tự học module (user sắp xếp) — quyết định module trước/sau + ưu tiên khi chung thứ
+  const active = order.filter((id) => sel.has(id)).map((id) => loads.find((l) => l.id === id)).filter((l): l is NonNullable<typeof l> => !!l);
+  const moveModule = (id: string, dir: -1 | 1) => setOrder((prev) => {
+    const selIds = prev.filter((x) => sel.has(x));
+    const i = selIds.indexOf(id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= selIds.length) return prev;
+    [selIds[i], selIds[j]] = [selIds[j], selIds[i]];
+    return [...selIds, ...prev.filter((x) => !sel.has(x))];
+  });
   const totalMin = active.reduce((s, l) => s + l.minutes, 0);
   const unitCount = active.reduce((s, l) => s + l.unitCount, 0);
   const recDays = recommendDays(totalMin);
@@ -358,9 +378,18 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
               <tbody>
                 {active.length === 0 ? (
                   <tr><td colSpan={8} className="py-3 text-center text-muted-foreground">Chọn module ở trên trước</td></tr>
-                ) : active.map((l) => (
+                ) : active.map((l, idx) => (
                   <tr key={l.id} className="border-t">
-                    <td className="max-w-[140px] truncate py-1.5 pr-2 font-medium" title={l.title}>{l.title}</td>
+                    <td className="py-1.5 pr-2">
+                      <div className="flex items-center gap-1">
+                        <div className="flex shrink-0 flex-col">
+                          <button onClick={() => moveModule(l.id, -1)} disabled={idx === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Lên"><ChevronUp className="h-3 w-3" /></button>
+                          <button onClick={() => moveModule(l.id, 1)} disabled={idx === active.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Xuống"><ChevronDown className="h-3 w-3" /></button>
+                        </div>
+                        <span className="shrink-0 text-[10px] font-bold tabular-nums text-primary">{idx + 1}.</span>
+                        <span className="max-w-[120px] truncate font-medium" title={l.title}>{l.title}</span>
+                      </div>
+                    </td>
                     {WEEKDAY_LABELS.map((_, i) => {
                       const on = assign[l.id]?.[i] ?? false;
                       return (
