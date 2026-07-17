@@ -10,15 +10,16 @@ import { toast } from "sonner";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { Id } from "@/_generated/dataModel";
-import { HEATMAP, QUIZ_SECTIONS, type StudySpace, type StudyUnit, type TodayItem, type UnitStatus } from "./mock";
+import { HEATMAP, type StudySpace, type StudyUnit, type TodayItem, type UnitStatus } from "./mock";
 
 // Điều phối sang tab khác kèm ngữ cảnh (highlight đúng nội dung của tiểu mục)
 export type GoTab = (tab: string, ctx?: { sectionId?: string; unitKey?: string }) => void;
 
 // unit "m2-1-3" ↔ quiz section "q-2-1-3"
+// unit "m2-1-3" → quiz section id "q-2-1-3" (QuizTab tự resolve về unitKey thật)
 function quizSectionIdFor(unit: StudyUnit): string | undefined {
-  const id = "q-" + unit.id.slice(1);
-  return QUIZ_SECTIONS.some((s) => s.id === id) ? id : undefined;
+  if (!/^m\d+(-\d+)+$/.test(unit.id)) return undefined;
+  return "q-" + unit.id.slice(1);
 }
 
 // unit "m2-1-3" → số tiểu mục "2.1.3" (khóa lọc card/phiên Feynman)
@@ -354,7 +355,7 @@ export function WeakSpots({ space, onGoTab }: { space: StudySpace; onGoTab: GoTa
                 <p className="truncate text-[11px] text-muted-foreground">{w.reason}</p>
               </div>
               <button
-                onClick={() => onGoTab("quiz", { sectionId: sid && QUIZ_SECTIONS.some((s) => s.id === sid) ? sid : undefined })}
+                onClick={() => onGoTab("quiz", { sectionId: sid ?? undefined })}
                 className="shrink-0 rounded-lg border bg-background px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-muted"
               >
                 Học lại
