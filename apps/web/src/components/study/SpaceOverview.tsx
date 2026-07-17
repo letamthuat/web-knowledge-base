@@ -10,7 +10,10 @@ import { toast } from "sonner";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { Id } from "@/_generated/dataModel";
-import { markUnitRead, logStudySession } from "@/lib/api/study";
+import { markUnitRead, logStudySession, getSectionQuestions, saveSectionQuestions } from "@/lib/api/study";
+import { useAiSettings } from "@/lib/api/ai-settings";
+import { getUnitScopeText } from "@/lib/study/materialize";
+import { requestPreQuestions } from "@/lib/study/generate";
 import { HEATMAP, type StudySpace, type StudyUnit, type TodayItem, type UnitStatus } from "./mock";
 
 // spaceId cho các hành động ghi (đánh dấu đọc…) — tránh thread qua nhiều lớp
@@ -343,8 +346,57 @@ function UnitRow({ unit, depth, onGoTab }: { unit: StudyUnit; depth: number; onG
               </span>
             </button>
           ))}
+          {/* Pre-questions: chỉ gợi mở khi tiểu mục CHƯA đọc */}
+          {unit.readPct === 0 && unit.docId && (
+            <PrePanel spaceId={spaceId} unitKey={unitKeyFor(unit) ?? ""} docId={unit.docId} label={`${unitKeyFor(unit) ?? ""} ${unit.title}`} />
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Câu hỏi định hướng trước khi đọc (SPEC §5) — sinh 1 lần/tiểu mục, cache
+function PrePanel({ spaceId, unitKey, docId, label }: { spaceId: string; unitKey: string; docId: string; label: string }) {
+  const ai = useAiSettings();
+  const [phase, setPhase] = useState<"idle" | "loading" | "done">("idle");
+  const [questions, setQuestions] = useState<string[]>([]);
+
+  async function load() {
+    setPhase("loading");
+    try {
+      const cached = await getSectionQuestions(spaceId, unitKey, "pre");
+      let qs = cached?.questions as string[] | undefined;
+      if (!qs || qs.length === 0) {
+        const scope = await getUnitScopeText(docId, unitKey);
+        if (!scope || scope.length < 40) { toast.error("Không lấy được nội dung tiểu mục"); setPhase("idle"); return; }
+        qs = await requestPreQuestions({ scopeText: scope, unitLabel: label, geminiApiKey: ai?.geminiApiKey, geminiModels: ai?.geminiModels });
+        await saveSectionQuestions(spaceId, unitKey, "pre", qs);
+      }
+      setQuestions(qs);
+      setPhase("done");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Sinh câu hỏi thất bại");
+      setPhase("idle");
+    }
+  }
+
+  if (phase === "idle") {
+    return (
+      <button onClick={load} className="mt-0.5 flex w-full items-center gap-2 rounded-md border border-dashed border-primary/30 px-2 py-1.5 text-left text-[11.5px] text-primary transition-colors hover:bg-primary/5">
+        <Sparkles className="h-3.5 w-3.5 shrink-0" /> Câu hỏi định hướng trước khi đọc (kích hoạt tò mò)
+      </button>
+    );
+  }
+  if (phase === "loading") {
+    return <p className="mt-0.5 flex items-center gap-2 px-2 py-1.5 text-[11.5px] text-muted-foreground"><Sparkles className="h-3.5 w-3.5 animate-pulse" /> AI đang nghĩ câu hỏi…</p>;
+  }
+  return (
+    <div className="mt-0.5 rounded-md border border-primary/20 bg-primary/5 p-2.5">
+      <p className="mb-1 flex items-center gap-1.5 text-[10.5px] font-semibold text-primary"><Sparkles className="h-3 w-3" /> TRƯỚC KHI ĐỌC, THỬ TRẢ LỜI TRONG ĐẦU</p>
+      <ul className="space-y-1">
+        {questions.map((q, i) => <li key={i} className="flex gap-1.5 text-[12px] leading-snug"><span className="text-primary">{i + 1}.</span> {q}</li>)}
+      </ul>
     </div>
   );
 }

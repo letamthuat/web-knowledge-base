@@ -27,6 +27,22 @@ export async function requestGeneratedCards(input: {
   return data.cards ?? [];
 }
 
+export async function requestPreQuestions(input: { scopeText: string; unitLabel: string } & Key): Promise<string[]> {
+  const res = await fetch("/api/study/generate-pre", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      scopeText: input.scopeText,
+      unitLabel: input.unitLabel,
+      geminiApiKey: input.geminiApiKey ?? undefined,
+      geminiModels: input.geminiModels ?? undefined,
+    }),
+  });
+  const data = (await res.json()) as { questions?: string[]; error?: string };
+  if (!res.ok) throw new Error(data.error ?? "Sinh câu hỏi định hướng thất bại");
+  return data.questions ?? [];
+}
+
 export async function requestGeneratedQuiz(input: { scopeText: string; unitLabel: string } & Key): Promise<QuizQuestion[]> {
   const res = await fetch("/api/study/generate-quiz", {
     method: "POST",
