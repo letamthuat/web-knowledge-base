@@ -185,6 +185,58 @@ export function buildSchedule(tasks: PlanTask[], dailyMinutes: number, weekdays:
   return days;
 }
 
+// Mode "Theo luồng": mỗi module gán riêng các thứ (assignments[moduleId] = [T2..CN]).
+// 1 thứ nhiều module → học TUẦN TỰ theo moduleOrder (module trước hết sạch mới sang
+// module sau; buổi giao nhau nạp tiếp module kế để không phí giờ). SPEC §3.4b.
+export function buildScheduleTracks(
+  moduleTasks: Record<string, PlanTask[]>,
+  assignments: Record<string, boolean[]>,
+  moduleOrder: string[],
+  dailyMinutes: number,
+  from = new Date(),
+): PlanDay[] {
+  const order = moduleOrder.filter((m) => (assignments[m] ?? []).some(Boolean) && (moduleTasks[m] ?? []).length);
+  if (!order.length) return [];
+  const queues = new Map<string, PlanTask[]>();
+  for (const m of order) queues.set(m, (moduleTasks[m] ?? []).map((t) => ({ ...t })));
+  const hasTasks = () => order.some((m) => (queues.get(m)?.length ?? 0) > 0);
+
+  const days: PlanDay[] = [];
+  let d = addDays(from, 1);
+  let guard = 0;
+  while (hasTasks() && guard++ < 2000) {
+    const wd = mondayIndex(d);
+    const owners = order.filter((m) => assignments[m]?.[wd] && (queues.get(m)?.length ?? 0) > 0);
+    if (!owners.length) { d = addDays(d, 1); continue; }
+    const day: PlanDay = { date: new Date(d), tasks: [], totalMin: 0 };
+    let cap = dailyMinutes;
+    if (days.length > 0) {
+      const review: PlanTask = { type: "review", label: "Ôn flashcard đến hạn", minutes: ACT_MIN.review };
+      day.tasks.push(review); day.totalMin += review.minutes; cap -= review.minutes;
+    }
+    let full = false;
+    for (const m of owners) {
+      if (full) break;
+      const q = queues.get(m)!;
+      while (q.length && cap >= 5) {
+        const next = q[0];
+        if (next.minutes <= cap) {
+          q.shift(); day.tasks.push(next); day.totalMin += next.minutes; cap -= next.minutes;
+        } else if (next.type === "read" && cap >= MIN_READ_SPLIT && next.minutes - cap >= MIN_READ_SPLIT) {
+          day.tasks.push({ ...next, minutes: cap }); day.totalMin += cap;
+          q[0] = { ...next, label: next.label.replace(/ \(tiếp\)$/, "") + " (tiếp)", minutes: next.minutes - cap };
+          cap = 0;
+        } else if (!day.tasks.some((t) => t.type !== "review")) {
+          q.shift(); day.tasks.push(next); day.totalMin += next.minutes; cap = 0;
+        } else { full = true; break; }
+      }
+    }
+    days.push(day);
+    d = addDays(d, 1);
+  }
+  return days;
+}
+
 // ─── Format ──────────────────────────────────────────────────────────────────
 
 export function fmtHours(min: number): string {

@@ -12,11 +12,11 @@ import type { StudySpace, StudyUnit } from "./mock";
 import { useOpenDoc, type GoTab } from "./SpaceOverview";
 import {
   useActivePlan, usePlanTasks, useNotificationSettings, createPlan, upsertNotificationSettings,
-  type StudyPlanTaskRow, type NewPlanTask,
+  type StudyPlanTaskRow, type NewPlanTask, type ScheduleMode,
 } from "@/lib/api/study";
 import { enablePush, disablePush, pushSupported } from "@/lib/push";
 import {
-  ACT_MIN, buildModuleLoads, buildSchedule, dailyMinutesFor, fmtDate, fmtHours,
+  ACT_MIN, buildModuleLoads, buildSchedule, buildScheduleTracks, dailyMinutesFor, fmtDate, fmtHours,
   projectedEndDate, recommendDays, WEEKDAY_LABELS,
   type PlanDay, type PlanTask, type PlanTaskType,
 } from "./plan";
@@ -57,14 +57,31 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sel, setSel] = useState<Set<string>>(() => new Set(loads.filter((l) => l.defaultOn).map((l) => l.id)));
+  const [mode, setMode] = useState<ScheduleMode>("sequential");
   const [daysOverride, setDaysOverride] = useState<number | null>(null);
   const [weekdays, setWeekdays] = useState<boolean[]>(() => Array(7).fill(true));
+  const [assign, setAssign] = useState<Record<string, boolean[]>>({}); // mode tracks: moduleId → [T2..CN]
+  const [trackDaily, setTrackDaily] = useState(60);
   const [notifOn, setNotifOn] = useState(true);
   const [notifTimes, setNotifTimes] = useState<string[]>(["08:45", "21:15"]);
 
   useEffect(() => {
     if (notifSettings) { setNotifOn(notifSettings.enabled); if (notifSettings.times?.length) setNotifTimes(notifSettings.times); }
   }, [notifSettings]);
+
+  // Seed wizard theo plan đang active (để "Điều chỉnh" hiện đúng cấu hình cũ)
+  useEffect(() => {
+    if (!activePlan) return;
+    setMode(activePlan.scheduleMode);
+    setSel(new Set(activePlan.selectedModuleKeys));
+    if (activePlan.scheduleMode === "tracks") {
+      if (activePlan.trackAssignments) setAssign(activePlan.trackAssignments);
+      if (activePlan.targetDailyMin) setTrackDaily(activePlan.targetDailyMin);
+    } else if (activePlan.weekdays?.length === 7) {
+      setWeekdays(activePlan.weekdays);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan?._id]);
 
   async function toggleNotif() {
     if (!notifOn) {
@@ -90,9 +107,29 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
   const days = Math.max(1, daysOverride ?? recDays);
   const perDay = totalMin ? dailyMinutesFor(totalMin, days) : 0;
   const endDate = totalMin ? projectedEndDate(days, weekdays) : null;
+  const moduleTasksMap = useMemo(() => Object.fromEntries(active.map((l) => [l.id, l.tasks])), [active]);
+
+  // Đảm bảo module đã chọn có dòng gán thứ (mặc định cả tuần) khi vào mode Theo luồng
+  useEffect(() => {
+    if (mode !== "tracks") return;
+    setAssign((prev) => {
+      const n = { ...prev };
+      for (const l of active) if (!n[l.id]) n[l.id] = Array(7).fill(true);
+      return n;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, sel]);
 
   const toggleModule = (id: string) => setSel((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const toggleWeekday = (i: number) => setWeekdays((prev) => prev.map((v, j) => (j === i ? !v : v)));
+  const toggleAssign = (id: string, i: number) => setAssign((prev) => ({ ...prev, [id]: (prev[id] ?? Array(7).fill(false)).map((v, j) => (j === i ? !v : v)) }));
+
+  // Preview mode Theo luồng (mô phỏng bằng rule) → số buổi + ngày xong
+  const tracksPreview = useMemo(
+    () => (mode === "tracks" ? buildScheduleTracks(moduleTasksMap, assign, active.map((l) => l.id), trackDaily) : []),
+    [mode, moduleTasksMap, assign, active, trackDaily],
+  );
+  const tracksUnassigned = mode === "tracks" && active.some((l) => !(assign[l.id] ?? []).some(Boolean));
 
   // done-state suy từ signals thật
   const isTaskDone = (t: PlanTask): boolean => {
@@ -119,20 +156,25 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
     }
   };
 
-  async function persistPlan(localDays: PlanDay[]) {
+  async function savePlan(cfg: {
+    scheduleMode: ScheduleMode; selectedModuleKeys: string[]; moduleOrder: string[];
+    weekdays: boolean[]; trackAssignments?: Record<string, boolean[]>; targetDailyMin: number; totalMin: number; localDays: PlanDay[];
+  }) {
     const tasks: NewPlanTask[] = [];
-    localDays.forEach((day) => {
+    cfg.localDays.forEach((day) => {
       const dayDate = startOfDayMs(day.date);
       day.tasks.filter((t) => t.type !== "review").forEach((t, seq) =>
         tasks.push({ dayDate, seq, type: t.type, unitKey: t.unitKey, docId: t.docId, minutes: t.minutes, label: t.label }),
       );
     });
-    const startDate = localDays.length ? startOfDayMs(localDays[0].date) : startOfDayMs(new Date());
+    const startDate = cfg.localDays.length ? startOfDayMs(cfg.localDays[0].date) : startOfDayMs(new Date());
+    const endTs = cfg.localDays.length ? startOfDayMs(cfg.localDays[cfg.localDays.length - 1].date) : startDate;
     await createPlan({
-      spaceId, scheduleMode: "sequential",
-      selectedModuleKeys: active.map((l) => l.id), moduleOrder: active.map((l) => l.id),
-      weekdays, targetDailyMin: perDay, totalMin,
-      startDate, projectedEndDate: (endDate ?? new Date()).getTime(), tasks,
+      spaceId, scheduleMode: cfg.scheduleMode,
+      selectedModuleKeys: cfg.selectedModuleKeys, moduleOrder: cfg.moduleOrder,
+      weekdays: cfg.weekdays, trackAssignments: cfg.trackAssignments,
+      targetDailyMin: cfg.targetDailyMin, totalMin: cfg.totalMin,
+      startDate, projectedEndDate: endTs, tasks,
     });
     await upsertNotificationSettings({ enabled: notifOn, times: notifTimes }).catch(() => {});
   }
@@ -140,17 +182,57 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
   async function generate() {
     setBusy(true);
     try {
-      await persistPlan(buildSchedule(active.flatMap((l) => l.tasks), perDay, weekdays));
+      if (mode === "tracks") {
+        const unionWd = Array.from({ length: 7 }, (_, i) => active.some((l) => assign[l.id]?.[i]));
+        await savePlan({
+          scheduleMode: "tracks", selectedModuleKeys: active.map((l) => l.id), moduleOrder: active.map((l) => l.id),
+          weekdays: unionWd, trackAssignments: Object.fromEntries(active.map((l) => [l.id, assign[l.id] ?? Array(7).fill(false)])),
+          targetDailyMin: trackDaily, totalMin, localDays: buildScheduleTracks(moduleTasksMap, assign, active.map((l) => l.id), trackDaily),
+        });
+      } else {
+        await savePlan({
+          scheduleMode: "sequential", selectedModuleKeys: active.map((l) => l.id), moduleOrder: active.map((l) => l.id),
+          weekdays, targetDailyMin: perDay, totalMin, localDays: buildSchedule(active.flatMap((l) => l.tasks), perDay, weekdays),
+        });
+      }
       toast.success("Đã lưu kế hoạch chi tiết");
       setEditing(false);
     } catch { toast.error("Tạo kế hoạch thất bại"); }
     setBusy(false);
   }
 
+  // Gom task còn lại theo module (mode tracks) — dùng unitKey prefix; task không có unitKey theo module trước đó
+  function groupRemaining(remaining: PlanTask[], order: string[]): Record<string, PlanTask[]> {
+    const map: Record<string, PlanTask[]> = Object.fromEntries(order.map((m) => [m, [] as PlanTask[]]));
+    let lastMod = order[0];
+    for (const t of remaining) {
+      const mod = t.unitKey ? "m" + t.unitKey.split(".")[0] : lastMod;
+      const key = map[mod] ? mod : lastMod;
+      lastMod = key;
+      (map[key] ?? (map[key] = [])).push(t);
+    }
+    return map;
+  }
+
   async function reschedule(remaining: PlanTask[]) {
     setBusy(true);
     try {
-      await persistPlan(buildSchedule(remaining, perDay || dailyMinutesFor(60, 1), weekdays));
+      const ap = activePlan;
+      if (ap?.scheduleMode === "tracks") {
+        const order = ap.moduleOrder;
+        await savePlan({
+          scheduleMode: "tracks", selectedModuleKeys: ap.selectedModuleKeys, moduleOrder: order,
+          weekdays: ap.weekdays, trackAssignments: ap.trackAssignments ?? undefined,
+          targetDailyMin: ap.targetDailyMin, totalMin: ap.totalMin,
+          localDays: buildScheduleTracks(groupRemaining(remaining, order), ap.trackAssignments ?? {}, order, ap.targetDailyMin),
+        });
+      } else {
+        await savePlan({
+          scheduleMode: "sequential", selectedModuleKeys: ap?.selectedModuleKeys ?? active.map((l) => l.id), moduleOrder: ap?.moduleOrder ?? active.map((l) => l.id),
+          weekdays: ap?.weekdays ?? weekdays, targetDailyMin: ap?.targetDailyMin || perDay || 60, totalMin: ap?.totalMin ?? totalMin,
+          localDays: buildSchedule(remaining, ap?.targetDailyMin || perDay || 60, ap?.weekdays ?? weekdays),
+        });
+      }
       toast.success("Đã xếp lại lịch từ ngày mai");
     } catch { toast.error("Xếp lại lịch thất bại"); }
     setBusy(false);
@@ -215,6 +297,15 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
         <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
           <CalendarDays className="h-3.5 w-3.5 text-primary" /> NHỊP HỌC
         </h2>
+        <div className="mt-2 flex gap-1 rounded-lg bg-muted/60 p-1">
+          <button onClick={() => setMode("sequential")} className={`flex-1 rounded-md py-1.5 text-[12.5px] font-medium transition-colors ${mode === "sequential" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Tuần tự</button>
+          <button onClick={() => setMode("tracks")} className={`flex-1 rounded-md py-1.5 text-[12.5px] font-medium transition-colors ${mode === "tracks" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Theo luồng</button>
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {mode === "sequential" ? "Học hết module này sang module kế, dùng chung các thứ đã chọn." : "Mỗi module gán riêng các thứ trong tuần — học song song. 1 thứ nhiều module → học tuần tự theo thứ tự chọn."}
+        </p>
+
+        {mode === "sequential" && (
         <div className="mt-2 space-y-4 rounded-xl border bg-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -243,6 +334,55 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
             {!weekdays.some(Boolean) && <p className="mt-1.5 text-[11.5px] text-red-500">Chọn ít nhất 1 thứ trong tuần</p>}
           </div>
         </div>
+        )}
+
+        {mode === "tracks" && (
+        <div className="mt-2 space-y-3 rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[13px] font-medium">Mục tiêu phút/buổi</p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setTrackDaily(Math.max(20, trackDaily - 10))} className="flex h-8 w-8 items-center justify-center rounded-lg border transition-colors hover:bg-muted" aria-label="Giảm"><Minus className="h-3.5 w-3.5" /></button>
+              <span className="w-16 text-center text-[15px] font-semibold tabular-nums">{trackDaily}′</span>
+              <button onClick={() => setTrackDaily(trackDaily + 10)} className="flex h-8 w-8 items-center justify-center rounded-lg border transition-colors hover:bg-muted" aria-label="Tăng"><Plus className="h-3.5 w-3.5" /></button>
+            </div>
+          </div>
+          {/* Bảng gán module × thứ */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11.5px]">
+              <thead>
+                <tr className="text-muted-foreground">
+                  <th className="py-1 text-left font-medium">Module</th>
+                  {WEEKDAY_LABELS.map((lb) => <th key={lb} className="px-0.5 py-1 text-center font-medium">{lb}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {active.length === 0 ? (
+                  <tr><td colSpan={8} className="py-3 text-center text-muted-foreground">Chọn module ở trên trước</td></tr>
+                ) : active.map((l) => (
+                  <tr key={l.id} className="border-t">
+                    <td className="max-w-[140px] truncate py-1.5 pr-2 font-medium" title={l.title}>{l.title}</td>
+                    {WEEKDAY_LABELS.map((_, i) => {
+                      const on = assign[l.id]?.[i] ?? false;
+                      return (
+                        <td key={i} className="px-0.5 py-1 text-center">
+                          <button onClick={() => toggleAssign(l.id, i)} className={`mx-auto flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-semibold transition-colors ${on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{on ? "✓" : ""}</button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {tracksUnassigned && <p className="text-[11.5px] text-red-500">Mỗi module cần gán ít nhất 1 thứ (hoặc bỏ chọn module đó).</p>}
+          <div className="rounded-lg bg-muted/50 p-3 text-center">
+            <p className="text-[15px] font-bold tabular-nums text-primary">{tracksPreview.length} buổi</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              ~{trackDaily}′/buổi{tracksPreview.length ? ` · dự kiến xong ${fmtDate(tracksPreview[tracksPreview.length - 1].date)}` : ""}
+            </p>
+          </div>
+        </div>
+        )}
       </section>
 
       <section>
@@ -274,7 +414,7 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
         </div>
       </section>
 
-      <button onClick={generate} disabled={!totalMin || !weekdays.some(Boolean) || busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-[13.5px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40">
+      <button onClick={generate} disabled={!totalMin || busy || (mode === "sequential" ? !weekdays.some(Boolean) : tracksUnassigned || tracksPreview.length === 0)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-[13.5px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40">
         {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Đang lưu…</> : "Tạo & lưu kế hoạch chi tiết →"}
       </button>
     </div>
