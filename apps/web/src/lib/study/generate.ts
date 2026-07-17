@@ -1,6 +1,6 @@
 "use client";
 // Client helper gọi route AI sinh nội dung học (on-demand). Truyền key Gemini của user.
-import type { CardType, QuizQuestion } from "@/lib/api/study";
+import type { CardType, QuizQuestion, FeynmanRubric } from "@/lib/api/study";
 
 export type GenCard = { type: CardType; front: string; back: string; quote: string };
 export type EssayGrade = { credit: number; good: string[]; missing: string[] };
@@ -58,4 +58,25 @@ export async function requestEssayGrades(
   const data = (await res.json()) as { grades?: EssayGrade[]; error?: string };
   if (!res.ok) throw new Error(data.error ?? "Chấm tự luận thất bại");
   return data.grades ?? [];
+}
+
+export async function requestFeynmanGrade(
+  input: { audioBase64: string; mimeType: string; scopeText: string; unitLabels: string; isLinked: boolean } & Key,
+): Promise<{ rubric: FeynmanRubric; transcript: string }> {
+  const res = await fetch("/api/study/grade-feynman", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      audioBase64: input.audioBase64,
+      mimeType: input.mimeType,
+      scopeText: input.scopeText,
+      unitLabels: input.unitLabels,
+      isLinked: input.isLinked,
+      geminiApiKey: input.geminiApiKey ?? undefined,
+      geminiModels: input.geminiModels ?? undefined,
+    }),
+  });
+  const data = (await res.json()) as { rubric?: FeynmanRubric; transcript?: string; error?: string };
+  if (!res.ok || !data.rubric) throw new Error(data.error ?? "Chấm Feynman thất bại");
+  return { rubric: data.rubric, transcript: data.transcript ?? "" };
 }
