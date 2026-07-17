@@ -24,10 +24,25 @@ function localMinutes(tz: string): number {
 }
 const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
  try {
   const webpush = (await import("npm:web-push@3.6.7")).default;
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+
+  // Chế độ test: {test:true} → gửi 1 push thử tới MỌI thiết bị đã đăng ký, bỏ qua giờ/nội dung.
+  let testMode = false;
+  try { const b = await req.json(); testMode = b?.test === true; } catch { /* body rỗng */ }
+  if (testMode) {
+    const { data: subs } = await admin.from("push_subscriptions").select("*");
+    let n = 0;
+    const payload = JSON.stringify({ title: "🔔 Test nhắc học", body: "Push hoạt động rồi! Đây là thông báo thử.", url: "/study", tag: "study-test" });
+    for (const sub of subs ?? []) {
+      try { await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload); n++; }
+      catch (err) { const code = (err as { statusCode?: number }).statusCode; if (code === 404 || code === 410) await admin.from("push_subscriptions").delete().eq("endpoint", sub.endpoint); }
+    }
+    return new Response(JSON.stringify({ ok: true, test: true, sent: n }), { headers: { "content-type": "application/json" } });
+  }
+
   const now = Date.now();
   const todayStart = startOfDay(now);
   const tomorrowStart = todayStart + 86_400_000;
