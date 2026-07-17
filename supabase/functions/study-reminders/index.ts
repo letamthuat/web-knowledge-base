@@ -3,8 +3,7 @@
 //
 // Secrets cần set: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mailto:...).
 // SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY tự có trong runtime edge function.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import webpush from "https://esm.sh/web-push@3.6.7";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -12,7 +11,6 @@ const VAPID_PUBLIC = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE_KEY")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@example.com";
 
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
 const startOfDay = (ms: number) => { const d = new Date(ms); d.setUTCHours(0, 0, 0, 0); return d.getTime(); };
@@ -27,6 +25,9 @@ function localMinutes(tz: string): number {
 const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 
 Deno.serve(async () => {
+ try {
+  const webpush = (await import("npm:web-push@3.6.7")).default;
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
   const now = Date.now();
   const todayStart = startOfDay(now);
   const tomorrowStart = todayStart + 86_400_000;
@@ -80,4 +81,7 @@ Deno.serve(async () => {
   }
 
   return new Response(JSON.stringify({ ok: true, sent }), { headers: { "content-type": "application/json" } });
+ } catch (e) {
+  return new Response(JSON.stringify({ ok: false, error: String((e as Error)?.message ?? e), stack: (e as Error)?.stack ?? null }), { status: 200, headers: { "content-type": "application/json" } });
+ }
 });
