@@ -4,7 +4,7 @@
 // Rule local (plan.ts), 0 call Gemini. Done-state suy TỪ HÀNH ĐỘNG THẬT (không tick tay).
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Loader2, Minus, Plus, RefreshCw,
+  AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, GripVertical, Loader2, Minus, Plus, RefreshCw,
   SlidersHorizontal, Sparkles, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -59,6 +59,7 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
   const [sel, setSel] = useState<Set<string>>(() => new Set(loads.filter((l) => l.defaultOn).map((l) => l.id)));
   const [mode, setMode] = useState<ScheduleMode>("sequential");
   const [order, setOrder] = useState<string[]>(() => loads.map((l) => l.id));
+  const [dragId, setDragId] = useState<string | null>(null);
   const [daysOverride, setDaysOverride] = useState<number | null>(null);
   const [weekdays, setWeekdays] = useState<boolean[]>(() => Array(7).fill(true));
   const [assign, setAssign] = useState<Record<string, boolean[]>>({}); // mode tracks: moduleId → [T2..CN]
@@ -119,6 +120,16 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
     const j = i + dir;
     if (i < 0 || j < 0 || j >= selIds.length) return prev;
     [selIds[i], selIds[j]] = [selIds[j], selIds[i]];
+    return [...selIds, ...prev.filter((x) => !sel.has(x))];
+  });
+  // Kéo-thả: dời module đang kéo tới vị trí module đích
+  const reorderModule = (dragId: string, targetId: string) => setOrder((prev) => {
+    if (dragId === targetId) return prev;
+    const selIds = prev.filter((x) => sel.has(x));
+    const from = selIds.indexOf(dragId);
+    const to = selIds.indexOf(targetId);
+    if (from < 0 || to < 0) return prev;
+    selIds.splice(to, 0, selIds.splice(from, 1)[0]);
     return [...selIds, ...prev.filter((x) => !sel.has(x))];
   });
   const totalMin = active.reduce((s, l) => s + l.minutes, 0);
@@ -379,15 +390,24 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
                 {active.length === 0 ? (
                   <tr><td colSpan={8} className="py-3 text-center text-muted-foreground">Chọn module ở trên trước</td></tr>
                 ) : active.map((l, idx) => (
-                  <tr key={l.id} className="border-t">
+                  <tr
+                    key={l.id}
+                    draggable
+                    onDragStart={() => setDragId(l.id)}
+                    onDragEnd={() => setDragId(null)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => { if (dragId) reorderModule(dragId, l.id); setDragId(null); }}
+                    className={`border-t ${dragId === l.id ? "opacity-40" : ""}`}
+                  >
                     <td className="py-1.5 pr-2">
                       <div className="flex items-center gap-1">
+                        <GripVertical className="h-3.5 w-3.5 shrink-0 cursor-grab text-muted-foreground/50 active:cursor-grabbing" />
                         <div className="flex shrink-0 flex-col">
                           <button onClick={() => moveModule(l.id, -1)} disabled={idx === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Lên"><ChevronUp className="h-3 w-3" /></button>
                           <button onClick={() => moveModule(l.id, 1)} disabled={idx === active.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Xuống"><ChevronDown className="h-3 w-3" /></button>
                         </div>
                         <span className="shrink-0 text-[10px] font-bold tabular-nums text-primary">{idx + 1}.</span>
-                        <span className="max-w-[120px] truncate font-medium" title={l.title}>{l.title}</span>
+                        <span className="max-w-[110px] truncate font-medium" title={l.title}>{l.title}</span>
                       </div>
                     </td>
                     {WEEKDAY_LABELS.map((_, i) => {
