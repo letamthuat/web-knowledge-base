@@ -250,7 +250,7 @@ function SpaceList({ models, loading, onOpen, onCreate }: {
           </button>
         </div>
       ) : (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {models.map((s) => (
             <SpaceCard key={s.id} space={s} onOpen={() => onOpen(s.id)} />
           ))}

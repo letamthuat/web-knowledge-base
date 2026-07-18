@@ -40,12 +40,13 @@ function unitKeyFor(unit: StudyUnit): string | undefined {
 export function useOpenDoc() {
   const { openTab } = useTabSync();
   const { setActivePanel } = useActiveTab();
+  // Mở tài liệu = mở tab + về đúng vị trí đọc dở (reader tự khôi phục tiến độ).
+  // KHÔNG nhảy tới #anchor: giữ đơn giản & ổn định theo yêu cầu.
   return useCallback(
-    (docId: string, anchor?: string | null) => {
+    (docId: string, _anchor?: string | null) => {
       openTab(docId as Id<"documents">).catch(() => {});
       setActivePanel(`reader:${docId}`);
-      const hash = anchor ? `#${encodeURIComponent(anchor)}` : "";
-      window.history.pushState(null, "", `/reader/${docId}${hash}`);
+      window.history.pushState(null, "", `/reader/${docId}`);
     },
     [openTab, setActivePanel]
   );

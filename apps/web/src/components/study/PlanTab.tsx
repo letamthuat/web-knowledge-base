@@ -544,7 +544,7 @@ function ScheduleView({ plan, perDay, endDate, loading, isTaskDone, onAdjust, on
       ) : months.map((m) => (
         <div key={m.label}>
           <p className="py-1 text-center text-[12px] font-semibold text-muted-foreground">{m.label}</p>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {m.days.map(({ day, index }) => <SessionCard key={index} day={day} index={index} today={today} isTaskDone={isTaskDone} onOpenTask={onOpenTask} />)}
           </div>
         </div>
