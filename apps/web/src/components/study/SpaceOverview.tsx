@@ -231,17 +231,32 @@ function ModuleNode({ unit, depth, onGoTab }: { unit: StudyUnit; depth: number; 
           {unit.children!.map((c) =>
             c.children ? <ModuleNode key={c.id} unit={c} depth={depth + 1} onGoTab={onGoTab} /> : <UnitRow key={c.id} unit={c} depth={depth + 1} onGoTab={onGoTab} />
           )}
-          {leafParent && (
-            <div className="mx-1 mt-1 flex items-center gap-2 rounded-lg border border-dashed border-primary/30 bg-primary/5 px-2.5 py-2">
-              <Mic className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="flex-1 text-[12px] text-muted-foreground">
-                Trạm tổng kết: quiz xuyên tiểu mục + giảng cả mục 5 phút
-              </span>
-              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                mở khi đủ 🟢
-              </span>
-            </div>
-          )}
+          {leafParent && (() => {
+            const mucKey = unitKeyFor(unit) ?? unit.id.slice(1).split("-").join(".");
+            const allGreen = total > 0 && mastered === total;
+            return (
+              <div className={`mx-1 mt-1 rounded-lg border px-2.5 py-2 ${allGreen ? "border-primary/40 bg-primary/5" : "border-dashed border-primary/25 bg-primary/[0.03]"}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px]">🎯</span>
+                  <span className="flex-1 text-[12px] font-medium">Trạm tổng kết {mucKey}</span>
+                  {allGreen ? (
+                    <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">đủ 🟢 — nên làm</span>
+                  ) : (
+                    <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">khuyến nghị khi đủ 🟢</span>
+                  )}
+                </div>
+                <p className="mt-1 pl-6 text-[11px] text-muted-foreground">Kiểm tra tổng hợp: quiz xuyên các tiểu mục + giảng lại cả mục.</p>
+                <div className="mt-1.5 flex gap-2 pl-6">
+                  <button onClick={() => onGoTab("quiz", { sectionId: "q-" + unit.id.slice(1) })} className="flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-[11px] font-medium text-primary hover:bg-muted">
+                    <HelpCircle className="h-3 w-3" /> Quiz tổng kết
+                  </button>
+                  <button onClick={() => onGoTab("feynman", { unitKey: mucKey })} className="flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-[11px] font-medium text-primary hover:bg-muted">
+                    <Mic className="h-3 w-3" /> Giảng cả mục
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

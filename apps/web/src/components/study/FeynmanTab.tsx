@@ -20,18 +20,23 @@ import { requestFeynmanGrade } from "@/lib/study/generate";
 type RecState = "idle" | "recording" | "processing" | "result";
 const MAX_SCOPE = 4;
 
-type Leaf = { key: string; title: string; docId: string | null; readPct: number; status: UnitStatus };
+type Leaf = { key: string; title: string; docId: string | null; readPct: number; status: UnitStatus; isStation?: boolean };
 function unitKeyOfId(id: string): string {
   return /^m\d+$/.test(id) ? "M" + id.slice(1) : id.slice(1).split("-").join(".");
 }
+// leaves = tiểu mục + mục x.y (giảng cả mục — trạm tổng kết). isStation không hiện trong picker.
 function flatten(units: StudyUnit[]): { leaves: Leaf[]; titleByKey: Map<string, string> } {
   const leaves: Leaf[] = [];
   const titleByKey = new Map<string, string>();
   const walk = (u: StudyUnit) => {
     const key = unitKeyOfId(u.id);
     titleByKey.set(key, u.title);
-    if (u.children && u.children.length) u.children.forEach(walk);
-    else leaves.push({ key, title: u.title, docId: u.docId ?? null, readPct: u.readPct, status: u.status });
+    if (u.children && u.children.length) {
+      if (u.children.every((c) => !c.children)) leaves.push({ key, title: u.title, docId: u.docId ?? null, readPct: u.readPct, status: u.status, isStation: true });
+      u.children.forEach(walk);
+    } else {
+      leaves.push({ key, title: u.title, docId: u.docId ?? null, readPct: u.readPct, status: u.status });
+    }
   };
   units.forEach(walk);
   return { leaves, titleByKey };
@@ -55,7 +60,7 @@ export function FeynmanTab({ spaceId, space, focusUnitKey }: { spaceId: string; 
   const sessions = useFeynmanSessions(spaceId);
   const checkpoint = useStudyCheckpoint(spaceId);
   const { leaves, titleByKey } = useMemo(() => flatten(space.units), [space.units]);
-  const readLeaves = useMemo(() => leaves.filter((l) => l.readPct > 0), [leaves]);
+  const readLeaves = useMemo(() => leaves.filter((l) => l.readPct > 0 && !l.isStation), [leaves]);
   const leafByKey = useMemo(() => new Map(leaves.map((l) => [l.key, l])), [leaves]);
 
   const [rec, setRec] = useState<RecState>("idle");

@@ -18,18 +18,25 @@ import {
 import { getUnitScopeText } from "@/lib/study/materialize";
 import { requestGeneratedQuiz, requestEssayGrades, type EssayGrade } from "@/lib/study/generate";
 
-type Leaf = { unitKey: string; moduleKey: string; title: string; docId: string | null; anchor: string | null };
+type Leaf = { unitKey: string; moduleKey: string; title: string; docId: string | null; anchor: string | null; isStation?: boolean };
 function unitKeyOfId(id: string): string {
   return /^m\d+$/.test(id) ? "M" + id.slice(1) : id.slice(1).split("-").join(".");
 }
+// leaves = tiểu mục x.y.z + "trạm tổng kết" (mục x.y có con toàn là tiểu mục) — quiz xuyên tiểu mục
 function flatten(units: StudyUnit[]): { leaves: Leaf[]; titleByKey: Map<string, string> } {
   const leaves: Leaf[] = [];
   const titleByKey = new Map<string, string>();
   const walk = (u: StudyUnit) => {
     const key = unitKeyOfId(u.id);
     titleByKey.set(key, u.title);
-    if (u.children && u.children.length) u.children.forEach(walk);
-    else leaves.push({ unitKey: key, moduleKey: "M" + key.split(".")[0], title: u.title, docId: u.docId ?? null, anchor: u.headingAnchor ?? null });
+    if (u.children && u.children.length) {
+      if (u.children.every((c) => !c.children)) {
+        leaves.push({ unitKey: key, moduleKey: "M" + key.split(".")[0], title: u.title, docId: u.docId ?? null, anchor: u.headingAnchor ?? null, isStation: true });
+      }
+      u.children.forEach(walk);
+    } else {
+      leaves.push({ unitKey: key, moduleKey: "M" + key.split(".")[0], title: u.title, docId: u.docId ?? null, anchor: u.headingAnchor ?? null });
+    }
   };
   units.forEach(walk);
   return { leaves, titleByKey };
@@ -141,8 +148,9 @@ function SectionList({
         {focused && <p className="mb-1.5 text-[10.5px] font-semibold text-primary">← QUIZ CỦA TIỂU MỤC BẠN VỪA CHỌN</p>}
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13.5px] font-medium">{l.title}</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{l.unitKey}</p>
+            {l.isStation && <span className="mb-0.5 inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">🎯 TRẠM TỔNG KẾT</span>}
+            <p className="truncate text-[13.5px] font-medium">{l.isStation ? `Quiz tổng kết ${l.unitKey}` : l.title}</p>
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{l.isStation ? `xuyên các tiểu mục của ${l.title}` : l.unitKey}</p>
             {atts.length > 0 && (
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 {atts.map((a) => (
