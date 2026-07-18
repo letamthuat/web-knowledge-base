@@ -20,10 +20,13 @@ export type StudyUnit = {
 };
 
 export type TodayItem = {
-  type: "read" | "review" | "quiz" | "fix";
+  type: "read" | "review" | "quiz" | "cards" | "feynman" | "station" | "fix";
   label: string;
   detail: string;
   quizSectionId?: string; // điều phối sang tab Kiểm tra thì highlight đúng section này
+  unitKey?: string;        // điều phối tab Ôn tập/Feynman đúng tiểu mục
+  docId?: string;          // read → mở reader
+  anchor?: string;         // read → scroll đúng heading
 };
 
 export type WeakSpot = { id: string; label: string; reason: string };
@@ -42,6 +45,7 @@ export type StudySpace = {
   todayMenu: TodayItem[];
   units: StudyUnit[];
   weakSpots: WeakSpot[];
+  heatmap?: number[]; // 84 ô (12 tuần) mức 0-4 từ phút học chủ động/ngày
 };
 
 export type CardType = "concept" | "apply" | "link";

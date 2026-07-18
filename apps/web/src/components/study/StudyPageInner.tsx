@@ -50,7 +50,7 @@ export function StudyPageInner() {
   const data = useStudyData();
   const models = useMemo(
     () => buildAllSpaceModels(data),
-    [data.spaces, data.units, data.cards, data.attempts, data.feyn, data.sessions],
+    [data.spaces, data.units, data.cards, data.attempts, data.feyn, data.sessions, data.plans, data.planTasks],
   );
   const initial = parseStudyPath(pathname);
   const [spaceId, setSpaceId] = useState<string | null>(initial.spaceId);
@@ -190,7 +190,7 @@ function StudyRail({ space, onGoTab }: { space: StudySpace; onGoTab: GoTab }) {
     <aside className="hidden min-h-0 flex-col gap-5 overflow-y-auto pb-2 2xl:flex">
       <TodayMenu items={space.todayMenu} onGoTab={onGoTab} />
       {space.weakSpots.length > 0 && <WeakSpots space={space} onGoTab={onGoTab} />}
-      <Heatmap streak={space.streak} />
+      <Heatmap streak={space.streak} data={space.heatmap} />
     </aside>
   );
 }

@@ -74,7 +74,7 @@ export function SpaceOverview({ space, onGoTab }: { space: StudySpace; onGoTab: 
         </div>
       )}
       <div className="2xl:hidden">
-        <Heatmap streak={space.streak} />
+        <Heatmap streak={space.streak} data={space.heatmap} />
       </div>
     </div>
     </SpaceIdCtx.Provider>
@@ -87,17 +87,24 @@ const TODAY_ICON: Record<TodayItem["type"], typeof BookOpen> = {
   read: BookOpen,
   review: RotateCcw,
   quiz: CheckCircle2,
+  cards: Layers,
+  feynman: Mic,
+  station: Sparkles,
   fix: AlertTriangle,
 };
 
-const TODAY_TAB: Record<TodayItem["type"], string | null> = {
-  read: null, // sẽ mở reader thật sau
-  review: "review",
-  quiz: "quiz",
-  fix: "quiz",
-};
-
 export function TodayMenu({ items, onGoTab }: { items: TodayItem[]; onGoTab: GoTab }) {
+  const openDoc = useOpenDoc();
+  const go = (it: TodayItem) => {
+    switch (it.type) {
+      case "read": if (it.docId) openDoc(it.docId, it.anchor); return;
+      case "quiz": case "fix": onGoTab("quiz", { sectionId: it.quizSectionId }); return;
+      case "cards": onGoTab("review", { unitKey: it.unitKey }); return;
+      case "feynman": onGoTab("feynman", { unitKey: it.unitKey }); return;
+      case "review": onGoTab("review"); return;
+      case "station": return; // trạm tổng kết: chưa điều phối
+    }
+  };
   return (
     <section>
       <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
@@ -106,11 +113,10 @@ export function TodayMenu({ items, onGoTab }: { items: TodayItem[]; onGoTab: GoT
       <div className="mt-2 space-y-2">
         {items.map((it, i) => {
           const Icon = TODAY_ICON[it.type];
-          const target = TODAY_TAB[it.type];
           return (
             <button
               key={i}
-              onClick={() => target && onGoTab(target, { sectionId: it.quizSectionId })}
+              onClick={() => go(it)}
               className={`flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/40 hover:shadow-sm ${
                 it.type === "fix" ? "border-red-500/30" : ""
               }`}
@@ -474,14 +480,15 @@ const HEAT_COLORS = [
   "bg-emerald-500",
 ];
 
-export function Heatmap({ streak }: { streak: number }) {
+export function Heatmap({ streak, data }: { streak: number; data?: number[] }) {
+  const cells = data && data.length ? data : HEATMAP;
   return (
     <section>
       <h2 className="text-[13px] font-semibold text-muted-foreground">HOẠT ĐỘNG 12 TUẦN</h2>
       <div className="mt-2 rounded-xl border bg-card p-3">
         <div className="grid grid-flow-col grid-rows-7 gap-[3px] overflow-x-auto">
-          {HEATMAP.map((v, i) => (
-            <div key={i} className={`h-3 w-3 rounded-[3px] ${HEAT_COLORS[v]}`} />
+          {cells.map((v, i) => (
+            <div key={i} className={`h-3 w-3 rounded-[3px] ${HEAT_COLORS[Math.max(0, Math.min(4, v))]}`} />
           ))}
         </div>
         <p className="mt-2.5 text-[11px] text-muted-foreground">

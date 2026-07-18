@@ -11,6 +11,8 @@ import {
   type QuizAttemptRow,
   type FeynmanSessionRow,
   type StudySessionRow,
+  type StudyPlanRow,
+  type StudyPlanTaskRow,
 } from "@/lib/api/study";
 import type { StudySpace, StudyUnit, TodayItem, WeakSpot, UnitStatus } from "@/components/study/mock";
 
@@ -37,6 +39,8 @@ export type StudyData = {
   attempts: QuizAttemptRow[] | undefined;
   feyn: FeynmanSessionRow[] | undefined;
   sessions: StudySessionRow[] | undefined;
+  plans: StudyPlanRow[] | undefined;
+  planTasks: StudyPlanTaskRow[] | undefined;
   loading: boolean;
 };
 
@@ -47,19 +51,23 @@ export function useStudyData(): StudyData {
   const attempts = useRealtimeQuery<QuizAttemptRow>("quiz_attempts");
   const feyn = useRealtimeQuery<FeynmanSessionRow>("feynman_sessions");
   const sessions = useRealtimeQuery<StudySessionRow>("study_sessions");
-  return { spaces, units, cards, attempts, feyn, sessions, loading: spaces === undefined || units === undefined };
+  const plans = useRealtimeQuery<StudyPlanRow>("study_plans", { filter: { status: "active" } });
+  const planTasks = useRealtimeQuery<StudyPlanTaskRow>("study_plan_tasks");
+  return { spaces, units, cards, attempts, feyn, sessions, plans, planTasks, loading: spaces === undefined || units === undefined };
 }
 
-// ─── Streak (chỉ ngày có active-recall; chưa xét plan-weekday, SPEC §2.9) ──────
-function computeStreak(sessions: StudySessionRow[]): number {
+// ─── Streak (chỉ ngày có active-recall; có plan → ngày ngoài lịch trung tính, SPEC §2.9) ──
+function computeStreak(sessions: StudySessionRow[], weekdays?: boolean[]): number {
   const days = new Set(sessions.filter((s) => s.isActiveRecall).map((s) => startOfDay(s.occurredAt)));
   if (days.size === 0) return 0;
+  const isStudyDay = (ms: number) => !weekdays || weekdays.length !== 7 || weekdays[(new Date(ms).getDay() + 6) % 7];
   let d = startOfDay(Date.now());
-  if (!days.has(d)) d -= DAY_MS; // chưa học hôm nay → tính từ hôm qua (chuỗi chưa đứt)
+  if (!days.has(d)) d -= DAY_MS; // hôm nay chưa học → tính từ hôm qua (chưa đứt)
   let streak = 0;
-  while (days.has(d)) {
-    streak++;
-    d -= DAY_MS;
+  let guard = 0;
+  while (guard++ < 400) {
+    if (!isStudyDay(d)) { d -= DAY_MS; continue; } // ngày ngoài lịch học: bỏ qua, không đứt
+    if (days.has(d)) { streak++; d -= DAY_MS; } else break;
   }
   return streak;
 }
@@ -72,17 +80,23 @@ export function buildSpaceModel(
   allAttempts: QuizAttemptRow[],
   allFeyn: FeynmanSessionRow[],
   allSessions: StudySessionRow[],
+  allPlans: StudyPlanRow[] = [],
+  allPlanTasks: StudyPlanTaskRow[] = [],
 ): StudySpace {
   const rows = allUnits.filter((u) => u.spaceId === space._id && !u.orphaned);
   const cards = allCards.filter((c) => c.spaceId === space._id);
   const attempts = allAttempts.filter((a) => a.spaceId === space._id);
   const feyn = allFeyn.filter((f) => f.spaceId === space._id);
   const sessions = allSessions.filter((s) => s.spaceId === space._id);
+  const activePlan = allPlans.find((p) => p.spaceId === space._id);
 
   // Dẫn xuất per-unitKey
   const quizBestBy = new Map<string, number>();
   for (const a of attempts) quizBestBy.set(a.unitKey, Math.max(quizBestBy.get(a.unitKey) ?? 0, a.score));
   const cardsBy = new Set(cards.map((c) => c.unitKey));
+  const readPctByKey = new Map<string, number>();
+  const leafMetaByKey = new Map<string, { docId: string | null; anchor: string | null; title: string }>();
+  for (const r of rows) if (r.isLeaf) { readPctByKey.set(r.unitKey, r.readPct); leafMetaByKey.set(r.unitKey, { docId: r.docId, anchor: r.headingAnchor, title: r.title }); }
   const feynCountBy = new Map<string, number>();
   for (const f of feyn) for (const k of f.scopeKeys) feynCountBy.set(k, (feynCountBy.get(k) ?? 0) + 1);
 
@@ -149,16 +163,54 @@ export function buildSpaceModel(
   const minutesToday = Math.round(
     sessions.filter((s) => startOfDay(s.occurredAt) === today).reduce((m, s) => m + s.activeMinutes, 0),
   );
-  const streak = computeStreak(sessions);
+  const streak = computeStreak(sessions, activePlan?.weekdays);
 
-  // todayMenu (rule cơ bản — SPEC §1.2; chưa gồm carry-over/plan): due card + unit đang/đầu chưa học
-  const todayMenu: TodayItem[] = [];
-  if (dueCards > 0) todayMenu.push({ type: "review", label: `Ôn ${dueCards} card đến hạn`, detail: "Trộn các tiểu mục theo lịch giãn cách" });
+  // Heatmap 84 ô (12 tuần) — mức 0-4 theo phút học chủ động/ngày (SPEC §2.9)
+  const minByDay = new Map<number, number>();
+  for (const s of sessions) minByDay.set(startOfDay(s.occurredAt), (minByDay.get(startOfDay(s.occurredAt)) ?? 0) + s.activeMinutes);
+  const heatLevel = (m: number) => (m <= 0 ? 0 : m <= 10 ? 1 : m <= 25 ? 2 : m <= 45 ? 3 : 4);
+  const heatmap = Array.from({ length: 84 }, (_, i) => heatLevel(minByDay.get(today - (83 - i) * DAY_MS) ?? 0));
+
+  // todayMenu (SPEC §1.2): việc buổi hôm nay từ plan + nợ carry-over + card đến hạn + remediation 🔴, DEDUP + cap 5
   const st = (r: StudyUnitRow) => statusByKey.get(r.unitKey) ?? "new";
-  const nextLeaf = leaves.find((r) => st(r) === "reading") ?? leaves.find((r) => st(r) === "new");
-  if (nextLeaf) todayMenu.push({ type: "read", label: `Đọc ${nextLeaf.title}`, detail: st(nextLeaf) === "reading" ? `đang ở ${nextLeaf.readPct}%` : "chưa bắt đầu" });
+  const taskDone = (type: string, unitKey: string | null): boolean => {
+    if (!unitKey) return false;
+    switch (type) {
+      case "read": return (readPctByKey.get(unitKey) ?? 0) >= 100;
+      case "quiz": return (quizBestBy.get(unitKey) ?? 0) >= 80;
+      case "cards": return cardsBy.has(unitKey);
+      case "feynman": return (feynCountBy.get(unitKey) ?? 0) > 0;
+      default: return false;
+    }
+  };
+  const todayMenu: TodayItem[] = [];
+  const seen = new Set<string>();
+  const pushTask = (t: StudyPlanTaskRow, carry: boolean) => {
+    if (t.type === "review" || t.type === "station") return;
+    const dk = `${t.type}:${t.unitKey ?? ""}`;
+    if (seen.has(dk) || taskDone(t.type, t.unitKey)) return;
+    seen.add(dk);
+    const meta = t.unitKey ? leafMetaByKey.get(t.unitKey) : undefined;
+    const type = (["read", "quiz", "cards", "feynman"].includes(t.type) ? t.type : "read") as TodayItem["type"];
+    todayMenu.push({
+      type, label: (carry ? "Còn nợ: " : "") + t.label, detail: carry ? "từ buổi trước" : "buổi hôm nay",
+      unitKey: t.unitKey ?? undefined, docId: meta?.docId ?? t.docId ?? undefined, anchor: meta?.anchor ?? undefined,
+      quizSectionId: t.unitKey ? "q-" + t.unitKey.split(".").join("-") : undefined,
+    });
+  };
+  if (activePlan) {
+    const tasks = allPlanTasks.filter((t) => t.planId === activePlan._id);
+    tasks.filter((t) => t.dayDate < today && !taskDone(t.type, t.unitKey)).slice(0, 2).forEach((t) => pushTask(t, true)); // carry-over
+    tasks.filter((t) => t.dayDate === today).forEach((t) => pushTask(t, false)); // buổi hôm nay
+  }
+  if (dueCards > 0) todayMenu.push({ type: "review", label: `Ôn ${dueCards} card đến hạn`, detail: "Trộn các tiểu mục theo lịch giãn cách" });
   const decayed = leaves.find((r) => st(r) === "decayed");
-  if (decayed) todayMenu.push({ type: "fix", label: `Quiz lại ${decayed.title}`, detail: "🔴 lâu không ôn — làm lại để xanh", quizSectionId: "q-" + unitIdFromKey(decayed.unitKey).slice(1) });
+  if (decayed && !seen.has(`quiz:${decayed.unitKey}`)) todayMenu.push({ type: "fix", label: `Quiz lại ${decayed.title}`, detail: "🔴 lâu không ôn — làm lại để xanh", unitKey: decayed.unitKey, quizSectionId: "q-" + decayed.unitKey.split(".").join("-") });
+  if (!activePlan && !todayMenu.some((i) => i.type === "read")) {
+    const nextLeaf = leaves.find((r) => st(r) === "reading") ?? leaves.find((r) => st(r) === "new");
+    if (nextLeaf) { const meta = leafMetaByKey.get(nextLeaf.unitKey); todayMenu.push({ type: "read", label: `Đọc ${nextLeaf.title}`, detail: st(nextLeaf) === "reading" ? `đang ở ${nextLeaf.readPct}%` : "chưa bắt đầu", unitKey: nextLeaf.unitKey, docId: meta?.docId ?? undefined, anchor: meta?.anchor ?? undefined }); }
+  }
+  todayMenu.splice(5); // cap 5
 
   // weakSpots (SPEC §1.3): decayed HOẶC quizBest<80
   const weakSpots: WeakSpot[] = leaves
@@ -187,6 +239,7 @@ export function buildSpaceModel(
     todayMenu,
     units,
     weakSpots,
+    heatmap,
   };
 }
 
@@ -197,7 +250,9 @@ export function buildAllSpaceModels(data: StudyData): StudySpace[] {
   const attempts = data.attempts ?? [];
   const feyn = data.feyn ?? [];
   const sessions = data.sessions ?? [];
+  const plans = data.plans ?? [];
+  const planTasks = data.planTasks ?? [];
   return data.spaces
     .filter((s) => !s.archivedAt)
-    .map((s) => buildSpaceModel(s, data.units!, cards, attempts, feyn, sessions));
+    .map((s) => buildSpaceModel(s, data.units!, cards, attempts, feyn, sessions, plans, planTasks));
 }
