@@ -77,7 +77,7 @@ export async function requestEssayGrades(
 }
 
 export async function requestFeynmanGrade(
-  input: { audioBase64: string; mimeType: string; scopeText: string; unitLabels: string; isLinked: boolean } & Key,
+  input: { audioBase64?: string; mimeType?: string; transcriptText?: string; scopeText: string; unitLabels: string; isLinked: boolean } & Key,
 ): Promise<{ rubric: FeynmanRubric; transcript: string }> {
   const res = await fetch("/api/study/grade-feynman", {
     method: "POST",
@@ -85,6 +85,7 @@ export async function requestFeynmanGrade(
     body: JSON.stringify({
       audioBase64: input.audioBase64,
       mimeType: input.mimeType,
+      transcriptText: input.transcriptText,
       scopeText: input.scopeText,
       unitLabels: input.unitLabels,
       isLinked: input.isLinked,

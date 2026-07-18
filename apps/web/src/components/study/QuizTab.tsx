@@ -9,7 +9,7 @@ import {
 import { toast } from "sonner";
 import type { StudySpace, StudyUnit } from "./mock";
 import { StudyMarkdown } from "./StudyMarkdown";
-import { useOpenDoc } from "./SpaceOverview";
+import { useOpenDoc, type GoTab } from "./SpaceOverview";
 import { useAiSettings } from "@/lib/api/ai-settings";
 import {
   useQuizAttempts, getSectionQuestions, saveSectionQuestions, recordQuizAttempt, logStudySession,
@@ -56,7 +56,7 @@ type View =
   | { kind: "run"; leaf: Leaf; questions: QuizQuestion[] }
   | { kind: "review"; leaf: Leaf; attempt: QuizAttemptRow; questions: QuizQuestion[] };
 
-export function QuizTab({ spaceId, space, focusSectionId }: { spaceId: string; space: StudySpace; focusSectionId?: string | null }) {
+export function QuizTab({ spaceId, space, focusSectionId, onGoTab }: { spaceId: string; space: StudySpace; focusSectionId?: string | null; onGoTab: GoTab }) {
   const attempts = useQuizAttempts(spaceId);
   const ai = useAiSettings();
   const [view, setView] = useState<View>({ kind: "list" });
@@ -103,7 +103,7 @@ export function QuizTab({ spaceId, space, focusSectionId }: { spaceId: string; s
     );
   }
   if (view.kind === "run") {
-    return <QuizRunner leaf={view.leaf} questions={view.questions} spaceId={spaceId} ai={ai} onExit={() => setView({ kind: "list" })} />;
+    return <QuizRunner leaf={view.leaf} questions={view.questions} spaceId={spaceId} ai={ai} onExit={() => setView({ kind: "list" })} onGoTab={onGoTab} />;
   }
   if (view.kind === "review") {
     return <AttemptReview leaf={view.leaf} attempt={view.attempt} questions={view.questions} onExit={() => setView({ kind: "list" })} onRetry={() => setView({ kind: "run", leaf: view.leaf, questions: view.questions })} />;
@@ -303,10 +303,10 @@ function OptionBadge({ i, picked }: { i: number; picked?: boolean }) {
 type Answer = { mcqPick?: number; openText?: string; submitted: boolean };
 
 function QuizRunner({
-  leaf, questions, spaceId, ai, onExit,
+  leaf, questions, spaceId, ai, onExit, onGoTab,
 }: {
   leaf: Leaf; questions: QuizQuestion[]; spaceId: string;
-  ai: { geminiApiKey: string | null; geminiModels: string[] | null } | null | undefined; onExit: () => void;
+  ai: { geminiApiKey: string | null; geminiModels: string[] | null } | null | undefined; onExit: () => void; onGoTab: GoTab;
 }) {
   const [qIdx, setQIdx] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>(questions.map(() => ({ submitted: false })));
@@ -366,7 +366,14 @@ function QuizRunner({
         <p className="mt-1 max-w-sm text-[12.5px] text-muted-foreground">
           Trắc nghiệm {result.mcqCorrect}/{mcqTotal} · Tự luận {result.essayScore.toFixed(1)}/{openTotal} (AI chấm). Bài làm + nhận xét đã lưu vào lịch sử.
         </p>
-        <button onClick={onExit} className="mt-4 rounded-lg border px-3 py-1.5 text-[13px] font-medium hover:bg-muted">Về danh sách</button>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <button onClick={onExit} className="rounded-lg border px-3 py-1.5 text-[13px] font-medium hover:bg-muted">Về danh sách</button>
+          {result.score < 100 && (
+            <button onClick={() => onGoTab("review", { unitKey: leaf.unitKey })} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-medium text-primary-foreground hover:opacity-90">
+              <Sparkles className="h-3.5 w-3.5" /> Ôn/tạo flashcard tiểu mục này
+            </button>
+          )}
+        </div>
       </div>
     );
   }

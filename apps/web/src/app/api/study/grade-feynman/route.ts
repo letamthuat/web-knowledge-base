@@ -13,12 +13,14 @@ function textModels(models?: string[]): string[] {
   return list.length > 0 ? list : DEFAULT_MODELS;
 }
 
-const PROMPT = (scope: string, labels: string, isLinked: boolean) => `Đây là bản ghi âm người học GIẢNG LẠI (phương pháp Feynman) (các) tiểu mục: ${labels}.
+const PROMPT = (scope: string, labels: string, isLinked: boolean, typed?: string) => `${typed
+  ? `Đây là bài người học GÕ để GIẢNG LẠI (phương pháp Feynman) (các) tiểu mục: ${labels}.\nBài giảng của người học:\n"""\n${typed}\n"""`
+  : `Đây là bản ghi âm người học GIẢNG LẠI (phương pháp Feynman) (các) tiểu mục: ${labels}.`}
 Nội dung GỐC để đối chiếu:
 """
 ${scope}
 """
-Hãy nghe kỹ audio, chuyển thành transcript tiếng Việt, rồi CHẤM cách hiểu của người học so với nội dung gốc:
+${typed ? "Đọc kỹ bài gõ, rồi" : "Hãy nghe kỹ audio, chuyển thành transcript tiếng Việt, rồi"} CHẤM cách hiểu của người học so với nội dung gốc:
 - "correct": mảng các ý người học NẮM ĐÚNG (câu ngắn).
 - "missing": mảng ý QUAN TRỌNG bị BỎ SÓT.
 - "wrong": mảng chỗ HIỂU CHƯA ĐÚNG / nói sai (kèm sửa ngắn).
@@ -51,9 +53,10 @@ function parseRubric(raw: string, isLinked: boolean) {
 }
 
 export async function POST(req: NextRequest) {
-  let body: { audioBase64?: string; mimeType?: string; scopeText?: string; unitLabels?: string; isLinked?: boolean; geminiApiKey?: string; geminiModels?: string[] };
+  let body: { audioBase64?: string; mimeType?: string; transcriptText?: string; scopeText?: string; unitLabels?: string; isLinked?: boolean; geminiApiKey?: string; geminiModels?: string[] };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
-  if (!body.audioBase64) return NextResponse.json({ error: "audioBase64 required" }, { status: 400 });
+  const typed = (body.transcriptText ?? "").trim();
+  if (!body.audioBase64 && typed.length < 10) return NextResponse.json({ error: "Cần audio hoặc bài gõ" }, { status: 400 });
   const scope = (body.scopeText ?? "").trim();
   if (scope.length < 20) return NextResponse.json({ error: "Không có nội dung gốc để đối chiếu" }, { status: 400 });
   const apiKey = body.geminiApiKey?.trim() || process.env.GEMINI_API_KEY;
@@ -61,11 +64,12 @@ export async function POST(req: NextRequest) {
   const models = textModels(body.geminiModels);
   const isLinked = body.isLinked === true;
 
+  // Text mode (gõ): chỉ 1 part text; audio mode: inline_data + text
+  const parts = typed
+    ? [{ text: PROMPT(scope.slice(0, 20_000), body.unitLabels ?? "", isLinked, typed.slice(0, 8_000)) }]
+    : [{ inline_data: { mime_type: body.mimeType || "audio/webm", data: body.audioBase64 } }, { text: PROMPT(scope.slice(0, 20_000), body.unitLabels ?? "", isLinked) }];
   const requestBody = JSON.stringify({
-    contents: [{ parts: [
-      { inline_data: { mime_type: body.mimeType || "audio/webm", data: body.audioBase64 } },
-      { text: PROMPT(scope.slice(0, 20_000), body.unitLabels ?? "", isLinked) },
-    ] }],
+    contents: [{ parts }],
     generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: "application/json" },
   });
 
@@ -91,7 +95,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const { rubric, transcript } = parseRubric(rawText, isLinked);
-    return NextResponse.json({ rubric, transcript });
+    return NextResponse.json({ rubric, transcript: transcript || typed });
   } catch {
     return NextResponse.json({ error: "Không parse được kết quả chấm" }, { status: 502 });
   }

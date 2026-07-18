@@ -4,7 +4,7 @@
 // rubric 4 mục, lưu feynman_sessions. 2 chế độ: checklist (khóa 1 tiểu mục) / tự do (nối ≤4 mục).
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertCircle, CheckCircle2, ChevronDown, ChevronRight, HelpCircle, Lightbulb, Link2, Loader2, Mic, Quote, Search, Square, X, XCircle,
+  AlertCircle, CheckCircle2, ChevronDown, ChevronRight, HelpCircle, Keyboard, Lightbulb, Link2, Loader2, Mic, Quote, Search, Square, X, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { StudySpace, StudyUnit, UnitStatus } from "./mock";
@@ -63,6 +63,8 @@ export function FeynmanTab({ spaceId, space, focusUnitKey }: { spaceId: string; 
   const [freeMode, setFreeMode] = useState(false);
   const [freeScope, setFreeScope] = useState<string[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [typedText, setTypedText] = useState("");
   const [resultRubric, setResultRubric] = useState<{ rubric: FeynmanRubric; scopeKeys: string[]; durationSec: number } | null>(null);
 
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -86,6 +88,8 @@ export function FeynmanTab({ spaceId, space, focusUnitKey }: { spaceId: string; 
     setPickerOpen(false);
     setRec("idle");
     setResultRubric(null);
+    setTyping(false);
+    setTypedText("");
   }, [focusUnitKey, defaultScope]);
 
   useEffect(() => {
@@ -125,12 +129,9 @@ export function FeynmanTab({ spaceId, space, focusUnitKey }: { spaceId: string; 
     setRec("processing");
   }
 
-  async function handleAudio(blob: Blob, mimeType: string) {
+  async function gradeAndSave(input: { audioBase64?: string; mimeType?: string; transcriptText?: string }, durationSec: number) {
     const scopeKeys = [...scope];
-    const durationSec = Math.max(1, Math.round((Date.now() - startTsRef.current) / 1000));
     try {
-      const audioBase64 = await blobToBase64(blob);
-      if (!audioBase64) throw new Error("Ghi âm rỗng");
       const scopeText = (
         await Promise.all(scopeKeys.map((k) => { const l = leafByKey.get(k); return l?.docId ? getUnitScopeText(l.docId, k) : Promise.resolve(""); }))
       ).filter(Boolean).join("\n\n---\n\n");
@@ -138,8 +139,7 @@ export function FeynmanTab({ spaceId, space, focusUnitKey }: { spaceId: string; 
       const isLinked = scopeKeys.length >= 2;
       const unitLabels = scopeKeys.map((k) => titleByKey.get(k) ?? k).join(" ↔ ");
       const { rubric, transcript } = await requestFeynmanGrade({
-        audioBase64, mimeType, scopeText, unitLabels, isLinked,
-        geminiApiKey: ai?.geminiApiKey, geminiModels: ai?.geminiModels,
+        ...input, scopeText, unitLabels, isLinked, geminiApiKey: ai?.geminiApiKey, geminiModels: ai?.geminiModels,
       });
       await recordFeynmanSession({ spaceId, scopeKeys, isLinked, durationSec, transcript, rubric });
       await logStudySession({ spaceId, activityType: "feynman", unitKey: scopeKeys[0], activeMinutes: Math.max(1, Math.round(durationSec / 60)) });
@@ -149,6 +149,21 @@ export function FeynmanTab({ spaceId, space, focusUnitKey }: { spaceId: string; 
       toast.error(e instanceof Error ? e.message : "Chấm Feynman thất bại");
       setRec("idle");
     }
+  }
+
+  async function handleAudio(blob: Blob, mimeType: string) {
+    const durationSec = Math.max(1, Math.round((Date.now() - startTsRef.current) / 1000));
+    const audioBase64 = await blobToBase64(blob);
+    if (!audioBase64) { toast.error("Ghi âm rỗng"); setRec("idle"); return; }
+    await gradeAndSave({ audioBase64, mimeType }, durationSec);
+  }
+
+  async function submitTyped() {
+    if (scope.length === 0) return;
+    const text = typedText.trim();
+    if (text.length < 10) { toast.error("Viết dài hơn chút để AI chấm được"); return; }
+    setRec("processing");
+    await gradeAndSave({ transcriptText: text }, Math.max(1, Math.round(text.split(/\s+/).length / 2)));
   }
 
   const scopeLabelOf = (keys: string[], linked: boolean) => keys.map((k) => titleByKey.get(k) ?? k).join(linked ? " ↔ " : " + ");
@@ -210,7 +225,7 @@ export function FeynmanTab({ spaceId, space, focusUnitKey }: { spaceId: string; 
         </div>
 
         <div className="mt-4 flex flex-col items-center py-2">
-          {rec === "idle" && (
+          {rec === "idle" && !typing && (
             <>
               <button onClick={start} disabled={scope.length === 0}
                 className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
@@ -220,7 +235,28 @@ export function FeynmanTab({ spaceId, space, focusUnitKey }: { spaceId: string; 
               <p className="mt-2.5 text-[12px] text-muted-foreground">
                 {scope.length > 0 ? "Chạm để bắt đầu giảng" : "Chọn tiểu mục đã đọc trước rồi mới giảng"}
               </p>
+              {scope.length > 0 && (
+                <button onClick={() => setTyping(true)} className="mt-1.5 flex items-center gap-1 text-[11.5px] text-primary hover:underline">
+                  <Keyboard className="h-3 w-3" /> hoặc gõ thay vì nói
+                </button>
+              )}
             </>
+          )}
+          {rec === "idle" && typing && (
+            <div className="w-full">
+              <textarea
+                value={typedText}
+                onChange={(e) => setTypedText(e.target.value)}
+                rows={6}
+                placeholder="Gõ lại phần bạn hiểu, như đang giảng cho người mới… AI sẽ đối chiếu với tài liệu và chấm."
+                className="w-full rounded-lg border bg-background p-3 text-[13px] leading-relaxed outline-none focus:border-primary"
+                autoFocus
+              />
+              <div className="mt-2 flex items-center justify-between">
+                <button onClick={() => { setTyping(false); setTypedText(""); }} className="text-[12px] text-muted-foreground hover:text-foreground">← Quay lại thu âm</button>
+                <button onClick={submitTyped} disabled={typedText.trim().length < 10} className="rounded-lg bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40">Chấm bài gõ</button>
+              </div>
+            </div>
           )}
           {rec === "recording" && (
             <>

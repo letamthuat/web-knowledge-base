@@ -168,7 +168,7 @@ export function StudyPageInner() {
                 {tab === "overview" && <SpaceOverview space={space} onGoTab={goTab} />}
                 {tab === "plan" && <PlanTab key={space.id} spaceId={space.id} space={space} onGoTab={goTab} />}
                 {tab === "review" && <ReviewTab spaceId={space.id} space={space} focusUnitKey={focusCtx?.unitKey} />}
-                {tab === "quiz" && <QuizTab spaceId={space.id} space={space} focusSectionId={focusCtx?.sectionId} />}
+                {tab === "quiz" && <QuizTab spaceId={space.id} space={space} focusSectionId={focusCtx?.sectionId} onGoTab={goTab} />}
                 {tab === "feynman" && <FeynmanTab spaceId={space.id} space={space} focusUnitKey={focusCtx?.unitKey} />}
               </div>
             </div>
