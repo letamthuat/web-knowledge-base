@@ -13,11 +13,19 @@ export function pushSupported(): boolean {
 export async function isPushSubscribed(): Promise<boolean> {
   if (!pushSupported()) return false;
   try {
-    const reg = await navigator.serviceWorker.ready;
-    return !!(await reg.pushManager.getSubscription());
+    const reg = await navigator.serviceWorker.getRegistration(); // KHÔNG dùng .ready (treo nếu chưa có SW)
+    return reg ? !!(await reg.pushManager.getSubscription()) : false;
   } catch {
     return false;
   }
+}
+
+// Đảm bảo có SW registration (localhost tự gỡ SW → cần tự đăng ký lại)
+async function ensureRegistration(): Promise<ServiceWorkerRegistration> {
+  let reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
+  await navigator.serviceWorker.ready;
+  return reg;
 }
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
@@ -35,7 +43,7 @@ export async function enablePush(): Promise<boolean> {
   if (!VAPID_PUBLIC) throw new Error("Chưa cấu hình VAPID public key (NEXT_PUBLIC_VAPID_PUBLIC_KEY)");
   const perm = await Notification.requestPermission();
   if (perm !== "granted") throw new Error("Bạn đã từ chối quyền thông báo");
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await ensureRegistration();
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {
     sub = await reg.pushManager.subscribe({
@@ -52,7 +60,8 @@ export async function enablePush(): Promise<boolean> {
 /** Huỷ subscribe trên thiết bị này + xoá DB. */
 export async function disablePush(): Promise<void> {
   if (!pushSupported()) return;
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return;
   const sub = await reg.pushManager.getSubscription();
   if (sub) {
     const endpoint = sub.endpoint;
