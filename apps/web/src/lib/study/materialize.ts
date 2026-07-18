@@ -273,35 +273,12 @@ export async function materializeDocsSpace(input: {
 
 // ─── Reconcile khi handbook/tài liệu đổi (SPEC §2.3.1) ────────────────────────
 export type ReconcileDiff = { added: number; changed: number; removed: number; total: number };
+export type SrcDoc = { docId: string; title: string; relPath: string };
 
-type SrcDoc = { docId: string; title: string; relPath: string };
-
-// Handbook space: quét TOÀN BỘ file markdown hiện tại của handbook (bỏ file phụ trợ) →
-// bắt được cả FILE MỚI thêm sau. Docs space (tài liệu lẻ): dùng danh sách đã chọn.
-async function sourceDocsOf(spaceId: string): Promise<SrcDoc[]> {
-  const { data: space } = await supabase.from("study_spaces").select("sourceType, \"handbookId\"").eq("_id", spaceId).maybeSingle();
-  if (space?.sourceType === "handbook" && space.handbookId) {
-    const { data: docs } = await supabase
-      .from("documents")
-      .select("_id, relPath, title, format, status")
-      .eq("handbookId", space.handbookId)
-      .eq("format", "markdown")
-      .eq("status", "ready");
-    return ((docs ?? []) as { _id: string; relPath: string | null; title: string }[])
-      .map((d) => ({ docId: d._id, title: d.title, relPath: d.relPath ?? d.title }))
-      .filter((d) => !isMetaFile(d.relPath))
-      .sort((a, b) => a.relPath.localeCompare(b.relPath, undefined, { numeric: true }));
-  }
-  // Tài liệu lẻ: theo study_space_sources đã chọn
-  const { data: srcs } = await supabase.from("study_space_sources").select("docId, \"order\"").eq("spaceId", spaceId).order("order", { ascending: true });
-  const ids = (srcs ?? []).map((s: { docId: string }) => s.docId);
-  if (!ids.length) return [];
-  const { data: docs } = await supabase.from("documents").select("_id, relPath, title, format").in("_id", ids);
-  const byId = new Map((docs ?? []).map((d: { _id: string; relPath: string | null; title: string; format: string }) => [d._id, d]));
-  return ids
-    .map((id: string) => byId.get(id))
-    .filter((d): d is { _id: string; relPath: string | null; title: string; format: string } => !!d && d.format === "markdown")
-    .map((d) => ({ docId: d._id, title: d.title, relPath: d.relPath ?? d.title }));
+/** docId các file đang thuộc không gian học (để popup Đồng bộ tick sẵn). */
+export async function getSpaceSourceIds(spaceId: string): Promise<string[]> {
+  const { data } = await supabase.from("study_space_sources").select("docId").eq("spaceId", spaceId);
+  return (data ?? []).map((s: { docId: string }) => s.docId);
 }
 
 async function parseDocsToUnits(docs: SrcDoc[]): Promise<ParsedUnit[]> {
@@ -324,8 +301,8 @@ async function parseDocsToUnits(docs: SrcDoc[]): Promise<ParsedUnit[]> {
  * apply=true áp dụng: thêm unit mới, cờ contentChanged, đánh dấu orphaned unit đã gỡ,
  * cập nhật orderIndex/title/anchor. Join theo unitKey → tiến độ (quiz/card/feynman) giữ nguyên.
  */
-export async function reconcileSpace(spaceId: string, apply: boolean): Promise<ReconcileDiff> {
-  const docs = await sourceDocsOf(spaceId);
+export async function reconcileSpace(spaceId: string, selectedDocs: SrcDoc[], apply: boolean): Promise<ReconcileDiff> {
+  const docs = selectedDocs;
   const desired = await parseDocsToUnits(docs);
   const { data: existingRows } = await supabase.from("study_units").select("*").eq("spaceId", spaceId);
   const existing = (existingRows ?? []) as StudyUnitRow[];
