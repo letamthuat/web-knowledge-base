@@ -2,6 +2,7 @@
 // Data-access layer module "Học tập" (Study) trên Supabase.
 // Theo 01-specs/study/SPEC.md §2 + pattern lib/api/domains.ts.
 // Rule-first: SRS interval, decay, streak = deterministic ở đây/rule engine — 0 Gemini.
+import { useMemo } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery, useRealtimeOne } from "@/hooks/useRealtimeQuery";
 
@@ -227,6 +228,18 @@ export function useStudySpaces(): StudySpaceRow[] | undefined {
 
 export function useStudySpace(spaceId: string | null): StudySpaceRow | null | undefined {
   return useRealtimeOne<StudySpaceRow>("study_spaces", { filter: spaceId ? { _id: spaceId } : undefined, enabled: !!spaceId });
+}
+
+/** Số thẻ đến hạn hôm nay theo từng spaceId (1 query gộp toàn bộ card của user). Dùng cho badge sidebar. */
+export function useDueCountsBySpace(): Record<string, number> {
+  const cards = useRealtimeQuery<FlashcardRow>("flashcards", { order: { column: "dueAt", ascending: true } });
+  return useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!cards) return out;
+    const now = Date.now();
+    for (const c of cards) if (isDue(c, now)) out[c.spaceId] = (out[c.spaceId] ?? 0) + 1;
+    return out;
+  }, [cards]);
 }
 
 /** Cây lộ trình 1 space, theo orderIndex (thứ tự học mặc định). */

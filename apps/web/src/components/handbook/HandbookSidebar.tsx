@@ -32,7 +32,7 @@ import {
   AlertTriangle, X, Check, Search, GraduationCap, NotebookPen, Settings,
 } from "lucide-react";
 import { HandbookTree } from "./HandbookTree";
-import { SPACES } from "@/components/study/mock";
+import { useStudySpaces, useDueCountsBySpace } from "@/lib/api/study";
 import { useAllNotesWithDocTitle } from "@/lib/api/notes";
 import { AppLogo } from "@/components/AppLogo";
 import { useSession, signOut } from "@/lib/auth-client";
@@ -272,6 +272,13 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
   const [studyOpen, setStudyOpen] = useState(false); // bung/thu các không gian học
   const [notesOpen, setNotesOpen] = useState(false); // bung/thu danh sách ghi chú
 
+  // Không gian học THẬT từ DB (không dùng mock nữa) — lọc bỏ space đã lưu trữ, sắp theo tên
+  const allSpaces = useStudySpaces();
+  const dueCounts = useDueCountsBySpace();
+  const spaces = (allSpaces ?? [])
+    .filter((s) => !s.archivedAt)
+    .sort((a, b) => a.name.localeCompare(b.name, "vi", { numeric: true }));
+
   const activeDocId = activePanel?.startsWith("reader:") ? activePanel.slice("reader:".length) : null;
 
   // Tài khoản + đăng xuất nằm trong sidebar (user chốt 16/07)
@@ -362,22 +369,31 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
           />
           {studyOpen && (
             <div className="ml-3 border-l border-border/40 pb-1 pl-1.5">
-              {SPACES.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => goPanel("study", `/study/${s.id}`)}
-                  title={s.name}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-foreground/80 transition-colors hover:bg-muted"
-                >
-                  <span className="text-[14px] leading-none">{s.emoji}</span>
-                  <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                  {s.dueCards > 0 && (
-                    <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                      {s.dueCards}
-                    </span>
-                  )}
-                </button>
-              ))}
+              {allSpaces === undefined ? (
+                <p className="px-2 py-1.5 text-[12px] text-muted-foreground/70">Đang tải…</p>
+              ) : spaces.length === 0 ? (
+                <p className="px-2 py-1.5 text-[12px] text-muted-foreground/70">Chưa có không gian học</p>
+              ) : (
+                spaces.map((s) => {
+                  const due = dueCounts[s._id] ?? 0;
+                  return (
+                    <button
+                      key={s._id}
+                      onClick={() => goPanel("study", `/study/${s._id}`)}
+                      title={s.name}
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-foreground/80 transition-colors hover:bg-muted"
+                    >
+                      <span className="text-[14px] leading-none">{s.emoji ?? "📘"}</span>
+                      <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                      {due > 0 && (
+                        <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                          {due}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
             </div>
           )}
 
@@ -399,8 +415,16 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     placeholder="Lọc theo tên…"
-                    className="min-w-0 flex-1 bg-transparent py-1.5 text-[13px] outline-none placeholder:text-muted-foreground/60"
+                    className="min-w-0 flex-1 appearance-none bg-transparent py-1.5 text-[13px] outline-none [&::-webkit-search-cancel-button]:hidden placeholder:text-muted-foreground/60"
                     data-no-autozoom-fix
+                    type="search"
+                    name="library-tree-filter"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-1p-ignore
                   />
                   {filter && (
                     <button
