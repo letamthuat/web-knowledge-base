@@ -274,7 +274,25 @@ export async function materializeDocsSpace(input: {
 // ─── Reconcile khi handbook/tài liệu đổi (SPEC §2.3.1) ────────────────────────
 export type ReconcileDiff = { added: number; changed: number; removed: number; total: number };
 
-async function sourceDocsOf(spaceId: string): Promise<{ docId: string; title: string; relPath: string }[]> {
+type SrcDoc = { docId: string; title: string; relPath: string };
+
+// Handbook space: quét TOÀN BỘ file markdown hiện tại của handbook (bỏ file phụ trợ) →
+// bắt được cả FILE MỚI thêm sau. Docs space (tài liệu lẻ): dùng danh sách đã chọn.
+async function sourceDocsOf(spaceId: string): Promise<SrcDoc[]> {
+  const { data: space } = await supabase.from("study_spaces").select("sourceType, \"handbookId\"").eq("_id", spaceId).maybeSingle();
+  if (space?.sourceType === "handbook" && space.handbookId) {
+    const { data: docs } = await supabase
+      .from("documents")
+      .select("_id, relPath, title, format, status")
+      .eq("handbookId", space.handbookId)
+      .eq("format", "markdown")
+      .eq("status", "ready");
+    return ((docs ?? []) as { _id: string; relPath: string | null; title: string }[])
+      .map((d) => ({ docId: d._id, title: d.title, relPath: d.relPath ?? d.title }))
+      .filter((d) => !isMetaFile(d.relPath))
+      .sort((a, b) => a.relPath.localeCompare(b.relPath, undefined, { numeric: true }));
+  }
+  // Tài liệu lẻ: theo study_space_sources đã chọn
   const { data: srcs } = await supabase.from("study_space_sources").select("docId, \"order\"").eq("spaceId", spaceId).order("order", { ascending: true });
   const ids = (srcs ?? []).map((s: { docId: string }) => s.docId);
   if (!ids.length) return [];
@@ -286,8 +304,7 @@ async function sourceDocsOf(spaceId: string): Promise<{ docId: string; title: st
     .map((d) => ({ docId: d._id, title: d.title, relPath: d.relPath ?? d.title }));
 }
 
-async function desiredUnits(spaceId: string): Promise<ParsedUnit[]> {
-  const docs = await sourceDocsOf(spaceId);
+async function parseDocsToUnits(docs: SrcDoc[]): Promise<ParsedUnit[]> {
   let order = 0;
   const all: ParsedUnit[] = [];
   for (let i = 0; i < docs.length; i++) {
@@ -308,7 +325,8 @@ async function desiredUnits(spaceId: string): Promise<ParsedUnit[]> {
  * cập nhật orderIndex/title/anchor. Join theo unitKey → tiến độ (quiz/card/feynman) giữ nguyên.
  */
 export async function reconcileSpace(spaceId: string, apply: boolean): Promise<ReconcileDiff> {
-  const desired = await desiredUnits(spaceId);
+  const docs = await sourceDocsOf(spaceId);
+  const desired = await parseDocsToUnits(docs);
   const { data: existingRows } = await supabase.from("study_units").select("*").eq("spaceId", spaceId);
   const existing = (existingRows ?? []) as StudyUnitRow[];
   const exByKey = new Map(existing.map((e) => [e.unitKey, e]));
@@ -347,5 +365,7 @@ export async function reconcileSpace(spaceId: string, apply: boolean): Promise<R
   for (const e of removed) {
     await supabase.from("study_units").update({ orphaned: true, updatedAt: now }).eq("_id", e._id);
   }
+  // Ghi lại tập nguồn hiện tại (nhớ file mới thêm vào handbook)
+  await setSpaceSources(spaceId, docs.map((d) => d.docId));
   return diff;
 }
