@@ -13,7 +13,24 @@ const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@example.com
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-const startOfDay = (ms: number) => { const d = new Date(ms); d.setUTCHours(0, 0, 0, 0); return d.getTime(); };
+const DAY_MS = 86_400_000;
+
+// Mốc 00:00 "hôm nay" theo TIMEZONE user (epoch ms) — KHÔNG dùng UTC.
+// plan_tasks.dayDate được client lưu = nửa đêm giờ local, nên phải so cùng hệ quy chiếu,
+// nếu không sẽ đếm nhầm task của ngày hôm sau (lệch +7h ở VN → nhắc sai ngày).
+function dayStartInTz(now: number, tz: string): number {
+  const p: Record<string, string> = {};
+  for (const x of new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).formatToParts(new Date(now))) p[x.type] = x.value;
+  const hour = p.hour === "24" ? 0 : Number(p.hour); // en-GB có thể trả "24" lúc nửa đêm
+  const asUTC = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), hour, Number(p.minute), Number(p.second));
+  // offset tz luôn theo phút → làm tròn để triệt sai số dưới-giây (tránh loại nhầm task đúng 00:00)
+  const offset = Math.round((asUTC - now) / 60_000) * 60_000; // lệch tz tại now (VN = +7h)
+  const localMidnightAsUTC = Math.floor(asUTC / DAY_MS) * DAY_MS;
+  return localMidnightAsUTC - offset;                  // epoch ms của 00:00 local hôm nay
+}
 
 // Phút-trong-ngày theo timezone user (Intl) — so khớp times[] với thời điểm hiện tại.
 function localMinutes(tz: string): number {
@@ -44,8 +61,6 @@ Deno.serve(async (req) => {
   }
 
   const now = Date.now();
-  const todayStart = startOfDay(now);
-  const tomorrowStart = todayStart + 86_400_000;
 
   const { data: settings } = await admin.from("notification_settings").select("*").eq("enabled", true);
   let sent = 0;
@@ -58,6 +73,10 @@ Deno.serve(async (req) => {
     const hit = times.find((t) => Math.abs(timeToMin(t) - nowMin) <= 7);
     if (hit === undefined) continue;
     const morning = timeToMin(hit) < 12 * 60;
+
+    // Cửa sổ "hôm nay" theo giờ user (UTC+7 cho VN) — khớp với dayDate lưu ở client
+    const todayStart = dayStartInTz(now, tz);
+    const tomorrowStart = todayStart + DAY_MS;
 
     // Nội dung rule: buổi hôm nay còn việc + card đến hạn (gộp mọi space của user)
     const { data: plans } = await admin.from("study_plans").select("_id").eq("userId", s.userId).eq("status", "active");
