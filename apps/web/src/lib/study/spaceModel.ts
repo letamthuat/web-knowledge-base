@@ -52,7 +52,9 @@ export function useStudyData(): StudyData {
   const feyn = useRealtimeQuery<FeynmanSessionRow>("feynman_sessions");
   const sessions = useRealtimeQuery<StudySessionRow>("study_sessions");
   const plans = useRealtimeQuery<StudyPlanRow>("study_plans", { filter: { status: "active" } });
-  const planTasks = useRealtimeQuery<StudyPlanTaskRow>("study_plan_tasks");
+  // Order theo _creationTime DESC: task của plan mới nhất nằm đầu → luôn trong 1000 dòng
+  // nạp được (an toàn kể cả khi còn sót task cũ). createPlan cũng đã xoá task cũ.
+  const planTasks = useRealtimeQuery<StudyPlanTaskRow>("study_plan_tasks", { order: { column: "_creationTime", ascending: false } });
   return { spaces, units, cards, attempts, feyn, sessions, plans, planTasks, loading: spaces === undefined || units === undefined };
 }
 

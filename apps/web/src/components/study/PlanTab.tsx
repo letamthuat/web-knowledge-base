@@ -45,6 +45,8 @@ function buildSignals(units: StudyUnit[]): Map<string, Sig> {
   return map;
 }
 function startOfDayMs(d: Date): number { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); }
+// YYYY-MM-DD theo giờ LOCAL (không dùng toISOString vì sẽ lệch múi giờ UTC+7)
+function isoDate(d: Date): string { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 
 export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: StudySpace; onGoTab: GoTab }) {
   const activePlan = useActivePlan(spaceId);
@@ -66,6 +68,10 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
   const [trackDaily, setTrackDaily] = useState(60);
   const [notifOn, setNotifOn] = useState(false); // phản ánh subscription THẬT của thiết bị này
   const [notifTimes, setNotifTimes] = useState<string[]>(["08:45", "21:15"]);
+  // Ngày bắt đầu học — mặc định ngày mai (D+1), cho phép chọn
+  const [startDate, setStartDate] = useState<Date>(() => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(0, 0, 0, 0); return d; });
+  // Rule engine bắt đầu ở addDays(from,1) → truyền from = startDate−1 để buổi đầu rơi đúng startDate
+  const scheduleFrom = useMemo(() => { const d = new Date(startDate.getTime()); d.setDate(d.getDate() - 1); d.setHours(0, 0, 0, 0); return d; }, [startDate]);
 
   // Giờ nhắc lấy từ settings; còn BẬT/TẮT theo subscription THẬT của thiết bị này
   useEffect(() => {
@@ -89,6 +95,9 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
     if (!activePlan) return;
     setMode(activePlan.scheduleMode);
     setSel(new Set(activePlan.selectedModuleKeys));
+    // Ngày bắt đầu: giữ của plan cũ nếu còn ở tương lai, ngược lại mặc định ngày mai
+    { const tmr = new Date(); tmr.setDate(tmr.getDate() + 1); tmr.setHours(0, 0, 0, 0);
+      setStartDate(activePlan.startDate && activePlan.startDate >= tmr.getTime() ? new Date(activePlan.startDate) : tmr); }
     if (activePlan.moduleOrder?.length) setOrder(activePlan.moduleOrder);
     if (activePlan.scheduleMode === "tracks") {
       if (activePlan.trackAssignments) setAssign(activePlan.trackAssignments);
@@ -116,6 +125,15 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
     }
   }
 
+  // Lưu giờ nhắc từ ScheduleView (plan đã có) — KHÔNG tạo lại kế hoạch
+  async function saveNotifTimes(times: string[]) {
+    setNotifTimes(times);
+    try {
+      await upsertNotificationSettings({ enabled: true, times });
+      toast.success("Đã lưu giờ nhắc");
+    } catch { toast.error("Lưu giờ nhắc thất bại"); }
+  }
+
   // Thứ tự học module (user sắp xếp) — quyết định module trước/sau + ưu tiên khi chung thứ
   const active = order.filter((id) => sel.has(id)).map((id) => loads.find((l) => l.id === id)).filter((l): l is NonNullable<typeof l> => !!l);
   const moveModule = (id: string, dir: -1 | 1) => setOrder((prev) => {
@@ -141,7 +159,7 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
   const recDays = recommendDays(totalMin);
   const days = Math.max(1, daysOverride ?? recDays);
   const perDay = totalMin ? dailyMinutesFor(totalMin, days) : 0;
-  const endDate = totalMin ? projectedEndDate(days, weekdays) : null;
+  const endDate = totalMin ? projectedEndDate(days, weekdays, scheduleFrom) : null;
   const moduleTasksMap = useMemo(() => Object.fromEntries(active.map((l) => [l.id, l.tasks])), [active]);
 
   // Đảm bảo module đã chọn có dòng gán thứ (mặc định cả tuần) khi vào mode Theo luồng
@@ -161,8 +179,8 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
 
   // Preview mode Theo luồng (mô phỏng bằng rule) → số buổi + ngày xong
   const tracksPreview = useMemo(
-    () => (mode === "tracks" ? buildScheduleTracks(moduleTasksMap, assign, active.map((l) => l.id), trackDaily) : []),
-    [mode, moduleTasksMap, assign, active, trackDaily],
+    () => (mode === "tracks" ? buildScheduleTracks(moduleTasksMap, assign, active.map((l) => l.id), trackDaily, scheduleFrom) : []),
+    [mode, moduleTasksMap, assign, active, trackDaily, scheduleFrom],
   );
   const tracksUnassigned = mode === "tracks" && active.some((l) => !(assign[l.id] ?? []).some(Boolean));
 
@@ -222,12 +240,12 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
         await savePlan({
           scheduleMode: "tracks", selectedModuleKeys: active.map((l) => l.id), moduleOrder: active.map((l) => l.id),
           weekdays: unionWd, trackAssignments: Object.fromEntries(active.map((l) => [l.id, assign[l.id] ?? Array(7).fill(false)])),
-          targetDailyMin: trackDaily, totalMin, localDays: buildScheduleTracks(moduleTasksMap, assign, active.map((l) => l.id), trackDaily),
+          targetDailyMin: trackDaily, totalMin, localDays: buildScheduleTracks(moduleTasksMap, assign, active.map((l) => l.id), trackDaily, scheduleFrom),
         });
       } else {
         await savePlan({
           scheduleMode: "sequential", selectedModuleKeys: active.map((l) => l.id), moduleOrder: active.map((l) => l.id),
-          weekdays, targetDailyMin: perDay, totalMin, localDays: buildSchedule(active.flatMap((l) => l.tasks), perDay, weekdays),
+          weekdays, targetDailyMin: perDay, totalMin, localDays: buildSchedule(active.flatMap((l) => l.tasks), perDay, weekdays, scheduleFrom),
         });
       }
       toast.success("Đã lưu kế hoạch chi tiết");
@@ -291,7 +309,11 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
         onAdjust={() => setEditing(true)}
         onReschedule={reschedule}
         onOpenTask={openTask}
-        notifLabel={notifOn && notifTimes.length ? notifTimes.join(" · ") : null}
+        notifOn={notifOn}
+        notifTimes={notifTimes}
+        notifSupported={pushSupported()}
+        onToggleNotif={toggleNotif}
+        onSaveNotifTimes={saveNotifTimes}
         busy={busy}
       />
     );
@@ -339,6 +361,20 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
         <p className="mt-1 text-[11px] text-muted-foreground">
           {mode === "sequential" ? "Học hết module này sang module kế, dùng chung các thứ đã chọn." : "Mỗi module gán riêng các thứ trong tuần — học song song. 1 thứ nhiều module → học tuần tự theo thứ tự chọn."}
         </p>
+
+        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border bg-card p-3">
+          <div>
+            <p className="text-[13px] font-medium">Bắt đầu học từ</p>
+            <p className="text-[11px] text-muted-foreground">Mặc định ngày mai — chọn ngày khác nếu muốn</p>
+          </div>
+          <input
+            type="date"
+            value={isoDate(startDate)}
+            min={isoDate(new Date())}
+            onChange={(e) => { if (e.target.value) { const d = new Date(e.target.value + "T00:00:00"); d.setHours(0, 0, 0, 0); setStartDate(d); } }}
+            className="rounded-lg border bg-background px-2.5 py-1.5 text-[13px] tabular-nums outline-none focus:border-primary/50"
+          />
+        </div>
 
         {mode === "sequential" && (
         <div className="mt-2 space-y-4 rounded-xl border bg-card p-4">
@@ -485,12 +521,60 @@ function tasksToDays(rows: StudyPlanTaskRow[]): PlanDay[] {
   });
 }
 
+// Badge nhắc học BẤM ĐƯỢC ở lịch đã có — chỉnh/thêm giờ tại chỗ, KHÔNG tạo lại kế hoạch
+function NotifControl({ on, times, supported, onToggle, onSaveTimes }: {
+  on: boolean; times: string[]; supported: boolean;
+  onToggle: () => void | Promise<void>; onSaveTimes: (times: string[]) => void | Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<string[]>(times);
+  useEffect(() => { setDraft(times); }, [times, open]);
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((v) => !v)} className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] transition-colors ${on ? "bg-muted text-muted-foreground hover:bg-muted/70" : "border border-dashed text-muted-foreground hover:border-primary/40 hover:text-primary"}`}>
+        <Bell className="h-3 w-3" /> {on && times.length ? times.join(" · ") : "Thêm nhắc học"}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-xl border bg-card p-3 shadow-lg">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[12.5px] font-medium">Nhắc học (thiết bị này)</span>
+              <button onClick={onToggle} disabled={!supported} role="switch" aria-checked={on} title={supported ? "" : "Thiết bị chưa hỗ trợ thông báo đẩy"} className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-40 ${on ? "bg-primary" : "bg-muted"}`}>
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+              </button>
+            </div>
+            {on ? (
+              <div className="mt-2 space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {draft.map((t, i) => (
+                    <span key={i} className="flex items-center gap-1 rounded-lg border bg-background px-1.5 py-1">
+                      <input type="time" value={t} onChange={(e) => setDraft((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))} className="bg-transparent text-[12px] font-medium tabular-nums outline-none" />
+                      {draft.length > 1 && <button onClick={() => setDraft((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-red-500" aria-label="Xóa giờ"><X className="h-3 w-3" /></button>}
+                    </span>
+                  ))}
+                  {draft.length < 4 && <button onClick={() => setDraft((prev) => [...prev, "20:00"])} className="flex items-center gap-1 rounded-lg border border-dashed px-2 py-1 text-[11.5px] text-muted-foreground hover:text-primary"><Plus className="h-3 w-3" /> Giờ</button>}
+                </div>
+                <button onClick={async () => { await onSaveTimes(draft); setOpen(false); }} className="w-full rounded-lg bg-primary py-1.5 text-[12.5px] font-medium text-primary-foreground hover:opacity-90">Lưu giờ nhắc</button>
+              </div>
+            ) : (
+              <p className="mt-2 text-[11px] text-muted-foreground">{supported ? "Bật để nhận nhắc học — sáng tóm tắt việc, tối nhắc việc còn dở." : "Thiết bị chưa hỗ trợ thông báo đẩy."}</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Lịch chi tiết ────────────────────────────────────────────────────────────
-function ScheduleView({ plan, perDay, endDate, loading, isTaskDone, onAdjust, onReschedule, onOpenTask, notifLabel, busy }: {
+function ScheduleView({ plan, perDay, endDate, loading, isTaskDone, onAdjust, onReschedule, onOpenTask, notifOn, notifTimes, notifSupported, onToggleNotif, onSaveNotifTimes, busy }: {
   plan: PlanDay[]; perDay: number; endDate: Date | null; loading: boolean;
   isTaskDone: (t: PlanTask) => boolean;
   onAdjust: () => void; onReschedule: (remaining: PlanTask[]) => void; onOpenTask: (t: PlanTask) => void;
-  notifLabel: string | null; busy: boolean;
+  notifOn: boolean; notifTimes: string[]; notifSupported: boolean;
+  onToggleNotif: () => void | Promise<void>; onSaveNotifTimes: (times: string[]) => void | Promise<void>;
+  busy: boolean;
 }) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const months = useMemo(() => {
@@ -517,7 +601,7 @@ function ScheduleView({ plan, perDay, endDate, loading, isTaskDone, onAdjust, on
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11.5px] font-semibold text-primary">{plan.length} buổi · ≈ {fmtHours(perDay)}/buổi</span>
           {endDate && <span className="rounded-full bg-muted px-2.5 py-1 text-[11.5px] text-muted-foreground">dự kiến xong {fmtDate(endDate)}</span>}
-          {notifLabel && <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11.5px] text-muted-foreground"><Bell className="h-3 w-3" /> {notifLabel}</span>}
+          <NotifControl on={notifOn} times={notifTimes} supported={notifSupported} onToggle={onToggleNotif} onSaveTimes={onSaveNotifTimes} />
           <div className="ml-auto flex gap-1.5">
             <button onClick={() => onReschedule(remaining())} disabled={busy} className="flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-muted disabled:opacity-40" title="Dồn việc chưa xong, xếp lại từ ngày mai (rule, 0 call AI)">
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Xếp lại lịch

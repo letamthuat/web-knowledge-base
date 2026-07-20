@@ -602,8 +602,11 @@ export async function createPlan(input: {
 }): Promise<string> {
   const userId = await currentUserId();
   const now = Date.now();
-  // Archive plan active hiện tại
-  await supabase.from("study_plans").update({ status: "archived", archivedAt: now }).eq("spaceId", input.spaceId).eq("status", "active");
+  // Xoá HẲN plan + task cũ của space (mỗi space chỉ giữ 1 plan hiện hành).
+  // Trước đây chỉ "archive" nên task cũ tích luỹ → chạm trần 1000 dòng của query gộp,
+  // khiến plan mới không nạp đủ task (HÔM NAY rỗng). Plan cũ không dùng lại nên xoá sạch.
+  await supabase.from("study_plan_tasks").delete().eq("spaceId", input.spaceId);
+  await supabase.from("study_plans").delete().eq("spaceId", input.spaceId);
   const { data, error } = await supabase
     .from("study_plans")
     .insert({
