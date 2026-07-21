@@ -188,7 +188,7 @@ export function StudyPageInner() {
 function StudyRail({ space, onGoTab }: { space: StudySpace; onGoTab: GoTab }) {
   return (
     <aside className="hidden min-h-0 flex-col gap-5 overflow-y-auto pb-2 2xl:flex">
-      <TodayMenu items={space.todayMenu} onGoTab={onGoTab} />
+      <TodayMenu items={space.todayMenu} onGoTab={onGoTab} spaceId={space.id} />
       {space.weakSpots.length > 0 && <WeakSpots space={space} onGoTab={onGoTab} />}
       <Heatmap streak={space.streak} data={space.heatmap} />
     </aside>

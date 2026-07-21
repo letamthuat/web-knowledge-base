@@ -67,7 +67,7 @@ export function SpaceOverview({ space, onGoTab }: { space: StudySpace; onGoTab: 
     <SpaceIdCtx.Provider value={space.id}>
     <div className="space-y-5">
       <div className="2xl:hidden">
-        <TodayMenu items={space.todayMenu} onGoTab={onGoTab} />
+        <TodayMenu items={space.todayMenu} onGoTab={onGoTab} spaceId={space.id} />
       </div>
       <Syllabus units={space.units} onGoTab={onGoTab} />
       {space.weakSpots.length > 0 && (
@@ -95,11 +95,21 @@ const TODAY_ICON: Record<TodayItem["type"], typeof BookOpen> = {
   fix: AlertTriangle,
 };
 
-export function TodayMenu({ items, onGoTab }: { items: TodayItem[]; onGoTab: GoTab }) {
+export function TodayMenu({ items, onGoTab, spaceId: spaceIdProp }: { items: TodayItem[]; onGoTab: GoTab; spaceId?: string }) {
   const openDoc = useOpenDoc();
+  const ctxSpaceId = useContext(SpaceIdCtx);
+  const spaceId = spaceIdProp || ctxSpaceId;
   const go = (it: TodayItem) => {
     switch (it.type) {
-      case "read": if (it.docId) openDoc(it.docId, it.anchor); return;
+      case "read":
+        if (!it.docId) return;
+        openDoc(it.docId, it.anchor);
+        // Mở ra = coi như đã đọc → set readPct=100 để việc "Đọc" tự tick xong.
+        if (spaceId && it.unitKey) {
+          void markUnitRead(spaceId, it.unitKey).catch(() => {});
+          void logStudySession({ spaceId, activityType: "read", unitKey: it.unitKey, activeMinutes: 3 }).catch(() => {});
+        }
+        return;
       case "quiz": case "fix": onGoTab("quiz", { sectionId: it.quizSectionId }); return;
       case "cards": onGoTab("review", { unitKey: it.unitKey }); return;
       case "feynman": onGoTab("feynman", { unitKey: it.unitKey }); return;

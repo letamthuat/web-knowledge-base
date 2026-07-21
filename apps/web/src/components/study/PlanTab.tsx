@@ -12,6 +12,7 @@ import type { StudySpace, StudyUnit } from "./mock";
 import { useOpenDoc, type GoTab } from "./SpaceOverview";
 import {
   useActivePlan, usePlanTasks, useNotificationSettings, createPlan, upsertNotificationSettings,
+  markUnitRead, logStudySession,
   type StudyPlanTaskRow, type NewPlanTask, type ScheduleMode,
 } from "@/lib/api/study";
 import { enablePush, disablePush, pushSupported, isPushSubscribed } from "@/lib/push";
@@ -200,7 +201,15 @@ export function PlanTab({ spaceId, space, onGoTab }: { spaceId: string; space: S
 
   const openTask = (t: PlanTask) => {
     switch (t.type) {
-      case "read": if (t.docId) openDoc(t.docId); else toast.info("Tiểu mục chưa gắn tài liệu"); return;
+      case "read":
+        if (!t.docId) { toast.info("Tiểu mục chưa gắn tài liệu"); return; }
+        openDoc(t.docId);
+        // Mở ra = coi như đã đọc (rule "không khóa") → set readPct=100 để task tick xong.
+        if (t.unitKey) {
+          void markUnitRead(spaceId, t.unitKey).catch(() => {});
+          void logStudySession({ spaceId, activityType: "read", unitKey: t.unitKey, activeMinutes: 3 }).catch(() => {});
+        }
+        return;
       case "quiz": onGoTab("quiz", { sectionId: t.unitKey ? "q-" + t.unitKey.split(".").join("-") : undefined }); return;
       case "cards": onGoTab("review", { unitKey: t.unitKey }); return;
       case "feynman": onGoTab("feynman", { unitKey: t.unitKey }); return;
