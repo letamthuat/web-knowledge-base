@@ -45,20 +45,40 @@ interface TocEntry {
   id: string;
   text: string;
   level: number;
+  sectionIdx: number;
 }
 
+// Turn a raw markdown heading into the visible text rehype-slug sees, so the
+// slug we compute here matches the id rehype-slug puts on the DOM node.
+function headingText(raw: string): string {
+  return raw
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")   // images → nothing
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // links → link text
+    .replace(/[*_`~]/g, "")                   // emphasis / inline code markers
+    .replace(/\\(.)/g, "$1")                  // escaped chars
+    .trim();
+}
+
+// Build the TOC per section, resetting the slugger for each section exactly as
+// rehype-slug does (each LazySection runs its own rehype-slug instance). This
+// keeps every TOC id equal to the real DOM heading id within its section.
 function extractToc(markdown: string): TocEntry[] {
-  const lines = markdown.split("\n");
+  const sects = splitIntoSections(markdown);
   const entries: TocEntry[] = [];
-  const slugger = new GithubSlugger();
-  for (const line of lines) {
-    const m = line.match(/^(#{1,6})\s+(.+)/);
-    if (!m) continue;
-    const level = m[1].length;
-    const text = m[2].replace(/[*_`[\]]/g, "").trim();
-    const id = slugger.slug(text);
-    entries.push({ id, text, level });
-  }
+  sects.forEach((sec, sectionIdx) => {
+    const slugger = new GithubSlugger();
+    let inCode = false;
+    for (const line of sec.split("\n")) {
+      if (line.trim().startsWith("```")) { inCode = !inCode; continue; }
+      if (inCode) continue;
+      const m = line.match(/^(#{1,6})\s+(.+)/);
+      if (!m) continue;
+      const level = m[1].length;
+      const text = headingText(m[2]);
+      const id = slugger.slug(text);
+      entries.push({ id, text, level, sectionIdx });
+    }
+  });
   return entries;
 }
 
@@ -68,10 +88,12 @@ const LazySection = memo(function LazySection({
   content,
   components,
   scrollRoot,
+  sectionIndex,
 }: {
   content: string;
   components: Components;
   scrollRoot: React.RefObject<HTMLDivElement | null>;
+  sectionIndex: number;
 }) {
   const [mounted, setMounted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -92,7 +114,7 @@ const LazySection = memo(function LazySection({
   }, [mounted, scrollRoot]);
 
   return (
-    <div ref={ref} style={!mounted ? { minHeight: estimatedHeight } : undefined}>
+    <div ref={ref} data-sec={sectionIndex} style={!mounted ? { minHeight: estimatedHeight } : undefined}>
       {mounted && (
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
@@ -954,68 +976,66 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     [savePosition]
   );
 
-  // Map heading ID → section index (built from raw markdown text, not DOM)
-  const headingSectionMap = useMemo((): Map<string, number> => {
-    if (!content) return new Map();
-    const sects = splitIntoSections(content);
-    const map = new Map<string, number>();
-    const slugger = new GithubSlugger();
-    sects.forEach((sec, idx) => {
-      for (const line of sec.split("\n")) {
-        const m = line.match(/^(#{1,6})\s+(.+)/);
-        if (!m) continue;
-        const text = m[2].replace(/[*_`[\]]/g, "").trim();
-        const id = slugger.slug(text);
-        if (!map.has(id)) map.set(id, idx);
-      }
-    });
-    return map;
-  }, [content]);
-
-  const scrollToHeading = useCallback((id: string) => {
+  const scrollToHeading = useCallback((entry: TocEntry) => {
     const container = contentRef.current;
     if (!container) return;
+    const { id, sectionIdx } = entry;
 
-    const fineTune = () => {
-      const heading = container.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
-      if (!heading) return false;
-      // contentRef has position:relative, so it is heading's offsetParent root.
-      // Walk chain to sum offsetTop values until we reach container (or body).
+    // Sum offsetTop up the chain until we reach the scroll container. contentRef
+    // is position:relative so it is the offsetParent root; the loop also covers
+    // any extra positioned ancestor.
+    const offsetInContainer = (node: HTMLElement): number => {
       let top = 0;
-      let el: HTMLElement | null = heading;
+      let el: HTMLElement | null = node;
       while (el && el !== container) {
         top += el.offsetTop;
         el = el.offsetParent as HTMLElement | null;
       }
-      // If walk never reached container (zoom edge case), fall back to simple offsetTop
-      if (el !== container) top = heading.offsetTop;
-      container.scrollTo({ top: Math.max(0, top - 8), behavior: "smooth" });
+      return el === container ? top : node.offsetTop;
+    };
+
+    const sectionEl = () =>
+      container.querySelector(`[data-sec="${sectionIdx}"]`) as HTMLElement | null;
+
+    // Scope the lookup to the owning section so duplicate slugs across sections
+    // (each section slugs from scratch) resolve to the correct heading.
+    const findHeading = (): HTMLElement | null => {
+      const root: ParentNode = sectionEl() ?? container;
+      return root.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
+    };
+
+    const fineTune = (): boolean => {
+      const heading = findHeading();
+      if (!heading) return false;
+      container.scrollTo({ top: Math.max(0, offsetInContainer(heading) - 8), behavior: "smooth" });
       activeIdRef.current = id;
       setActiveId(id);
       return true;
     };
 
-    // If heading is already in DOM, scroll immediately
+    // Heading already mounted → scroll straight to it.
     if (fineTune()) return;
 
-    // Heading not yet in DOM (LazySection not mounted).
-    // Pre-scroll to the estimated section position to trigger IntersectionObserver.
-    const sectionIdx = headingSectionMap.get(id);
-    if (sectionIdx !== undefined) {
-      const totalSections = sections.length;
-      const estimatedPct = totalSections > 1 ? sectionIdx / totalSections : 0;
-      const estimatedTop = estimatedPct * container.scrollHeight;
-      container.scrollTo({ top: estimatedTop, behavior: "instant" });
-    }
+    // Section not mounted yet: its wrapper still exists (with an estimated
+    // height), so scroll to the wrapper's real position. That brings it into the
+    // LazySection IntersectionObserver margin and mounts it.
+    const scrollToSection = () => {
+      const sec = sectionEl();
+      if (!sec) return;
+      const target = Math.max(0, offsetInContainer(sec) - 8);
+      if (Math.abs(container.scrollTop - target) > 4) container.scrollTop = target;
+    };
+    scrollToSection();
 
-    // Poll until heading appears in DOM (LazySection mounts after scroll triggers IntersectionObserver)
+    // Poll until the section mounts and the heading appears, keeping it in view.
     let attempts = 0;
     const poll = () => {
       if (fineTune()) return;
-      if (attempts++ < 50) requestAnimationFrame(poll);
+      scrollToSection();
+      if (attempts++ < 120) requestAnimationFrame(poll);
     };
     requestAnimationFrame(poll);
-  }, [headingSectionMap, sections.length]);
+  }, []);
 
   if (error) {
     return (
@@ -1077,7 +1097,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
                 <button
                   key={`${entry.id}-${i}`}
                   onClick={() => {
-                    scrollToHeading(entry.id);
+                    scrollToHeading(entry);
                     if (window.innerWidth < 768) {
                       setTocOpen(false);
                     }
@@ -1186,13 +1206,15 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
             <div className="bg-card text-card-foreground border border-border/60 rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.25)] px-6 py-10 sm:px-12 sm:py-12 md:px-16 md:py-16" style={{ fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
               <article className="prose prose-neutral dark:prose-invert max-w-none">
                 {sections.length === 1 ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
-                    components={mdComponents}
-                  >
-                    {sections[0]}
-                  </ReactMarkdown>
+                  <div data-sec={0}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
+                      components={mdComponents}
+                    >
+                      {sections[0]}
+                    </ReactMarkdown>
+                  </div>
                 ) : (
                   sections.map((section, i) => (
                     <LazySection
@@ -1200,6 +1222,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
                       content={section}
                       components={mdComponents}
                       scrollRoot={contentRef}
+                      sectionIndex={i}
                     />
                   ))
                 )}
