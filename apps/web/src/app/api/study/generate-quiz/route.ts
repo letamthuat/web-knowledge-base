@@ -71,10 +71,20 @@ export async function POST(req: NextRequest) {
   if (!apiKey) return NextResponse.json({ error: "Chưa cấu hình Gemini API key (Cài đặt)" }, { status: 400 });
   const models = textModels(body.geminiModels);
 
-  const requestBody = JSON.stringify({
-    contents: [{ parts: [{ text: PROMPT(scope.slice(0, 24_000), body.unitLabel ?? "") }] }],
-    generationConfig: { temperature: 0.4, maxOutputTokens: 8192, responseMimeType: "application/json" },
-  });
+  const promptText = PROMPT(scope.slice(0, 24_000), body.unitLabel ?? "");
+  // Tắt "thinking" của gemini-2.5-*: nếu bật, phần suy nghĩ đốt hết maxOutputTokens
+  // → JSON đầu ra bị cắt cụt (finishReason MAX_TOKENS) → parse vỡ → 502.
+  // gemini-2.0-* KHÔNG hỗ trợ thinkingConfig (gửi vào sẽ 400) nên chỉ gắn cho model 2.5.
+  const bodyFor = (model: string) =>
+    JSON.stringify({
+      contents: [{ parts: [{ text: promptText }] }],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json",
+        ...(/2\.5/.test(model) ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+      },
+    });
 
   let rawText = "";
   let lastError = "";
@@ -83,12 +93,22 @@ export async function POST(req: NextRequest) {
     let res: Response;
     try {
       res = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: requestBody,
+        method: "POST", headers: { "Content-Type": "application/json" }, body: bodyFor(model),
       });
     } catch (e) { lastError = `Network ${model}: ${e}`; continue; }
     if (res.ok) {
-      const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-      rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      let data: { candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[]; promptFeedback?: { blockReason?: string } };
+      try {
+        data = await res.json();
+      } catch (e) { lastError = `Bad JSON từ ${model}: ${e}`; continue; }
+      const cand = data.candidates?.[0];
+      rawText = cand?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+      // Gemini 200 nhưng không có nội dung: bị chặn an toàn hoặc cắt cụt token → thử model kế.
+      if (!rawText.trim()) {
+        const reason = cand?.finishReason ?? data.promptFeedback?.blockReason ?? "empty";
+        lastError = `Gemini ${model} không trả nội dung (${reason})`;
+        continue;
+      }
       ok = true; break;
     }
     lastError = `Gemini ${res.status} on ${model}: ${await res.text()}`;
@@ -99,9 +119,11 @@ export async function POST(req: NextRequest) {
   try {
     const questions = parseQuiz(rawText);
     const mcq = questions.filter((q) => q.kind === "mcq").length;
-    if (questions.length < 3 || mcq === 0) return NextResponse.json({ error: "AI ra đề không hợp lệ" }, { status: 502 });
+    if (questions.length < 3 || mcq === 0) {
+      return NextResponse.json({ error: `AI ra đề không hợp lệ (được ${questions.length} câu, ${mcq} trắc nghiệm)` }, { status: 502 });
+    }
     return NextResponse.json({ questions });
-  } catch {
-    return NextResponse.json({ error: "Không parse được đề AI" }, { status: 502 });
+  } catch (e) {
+    return NextResponse.json({ error: `Không parse được đề AI: ${e instanceof Error ? e.message : e}. Đầu ra: ${rawText.slice(0, 200)}` }, { status: 502 });
   }
 }
