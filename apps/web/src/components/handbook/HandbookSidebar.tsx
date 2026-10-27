@@ -29,8 +29,9 @@ import {
   Trash2, Pencil, FilePlus2, FolderPlus, FileText, Files,
   Image as ImageIcon, FileAudio, FileVideo, Presentation, BookOpen,
   Circle, CheckCircle2, CircleDot, Folder, FolderOpen, SplitSquareHorizontal,
-  AlertTriangle, X, Check, Search, GraduationCap, NotebookPen, Settings,
+  AlertTriangle, X, Check, Search, GraduationCap, NotebookPen, Settings, Download,
 } from "lucide-react";
+import { usePwa } from "@/contexts/PwaContext";
 import { HandbookTree } from "./HandbookTree";
 import { useStudySpaces, useDueCountsBySpace } from "@/lib/api/study";
 import { useAllNotesWithDocTitle } from "@/lib/api/notes";
@@ -261,6 +262,7 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
   const domains = useDomains();
   const { openTab } = useTabSync();
   const { activePanel, setActivePanel, openSecondary } = useActiveTab();
+  const { isStandalone, isInstallable, isIOS, promptInstall, openIOSGuide } = usePwa();
   const createDomain = (a: { name: string; color?: string }) => apiCreateDomain(a.name, a.color);
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
@@ -488,6 +490,21 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
             />
           )}
 
+          {!isStandalone && (isInstallable || isIOS) && (
+            <button
+              onClick={() => {
+                if (isIOS) openIOSGuide();
+                else promptInstall();
+                if (onLinkClick) onLinkClick();
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] text-primary transition-colors hover:bg-primary/10 font-medium"
+              title="Cài đặt Web Knowledge Base lên máy"
+            >
+              <Download className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate">Cài ứng dụng</span>
+            </button>
+          )}
+
           <NavRow icon={Settings} label="Cài đặt" active={activePanel === "settings"} onClick={() => goPanel("settings", "/settings")} />
           <NavRow
             icon={Trash2}
@@ -511,9 +528,9 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
           <button
             onClick={handleLogout}
             title="Đăng xuất"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-destructive active:scale-95"
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -529,7 +546,7 @@ function NavRow({ icon: Icon, label, active = false, iconCls = "", onClick }: {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] transition-colors hover:bg-muted hover:text-foreground ${
+      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 min-h-[38px] sm:min-h-[34px] text-[13px] transition-colors hover:bg-muted hover:text-foreground active:scale-[0.99] ${
         active ? "bg-muted font-medium text-foreground" : "text-muted-foreground"
       }`}
     >
@@ -548,7 +565,7 @@ function ExpandableNavRow({ icon: Icon, label, active, open, onToggle, onNavigat
     <div className={`flex items-center rounded-lg transition-colors hover:bg-muted ${active ? "bg-muted" : ""}`}>
       <button
         onClick={onNavigate}
-        className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-[13px] transition-colors hover:text-foreground ${
+        className={`flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 min-h-[38px] sm:min-h-[34px] text-left text-[13px] transition-colors hover:text-foreground ${
           active ? "font-medium text-foreground" : "text-muted-foreground"
         }`}
       >
@@ -558,7 +575,7 @@ function ExpandableNavRow({ icon: Icon, label, active, open, onToggle, onNavigat
       <button
         onClick={onToggle}
         aria-label={`Bung/thu ${label}`}
-        className="mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground"
+        className="mr-1 flex h-8 w-8 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground active:scale-95"
       >
         <ChevronRight className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
       </button>

@@ -1,26 +1,38 @@
 {
   "name": "Web Knowledge Base",
-  "short_name": "WKB",
+  "short_name": "Web KB",
   "description": "Kho tri thức cá nhân — đọc, ghi chú, tra cứu mọi lúc mọi nơi",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#ffffff",
+  "background_color": "#0b1329",
   "theme_color": "#1A365D",
   "lang": "vi",
-  "categories": ["productivity", "education"],
+  "dir": "ltr",
+  "categories": ["productivity", "education", "books", "utilities"],
+  "prefer_related_applications": false,
   "shortcuts": [
     {
-      "name": "Thư viện",
+      "name": "Thư viện tài liệu",
       "short_name": "Thư viện",
+      "description": "Mở thư viện tài liệu và sách",
       "url": "/library",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Ghi chú mới",
+      "name": "Ghi chú",
       "short_name": "Ghi chú",
+      "description": "Xem và tạo ghi chú tri thức",
       "url": "/notes",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Không gian học tập",
+      "short_name": "Học tập",
+      "description": "Ôn tập thẻ nhớ và câu hỏi",
+      "url": "/study",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ],

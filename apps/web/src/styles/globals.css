@@ -144,6 +144,31 @@ html body {
 .h-dvh     { height: 100vh;     height: 100dvh; }
 .min-h-dvh { min-height: 100vh; min-height: 100dvh; }
 
+/* PWA Standalone optimizations */
+@media (display-mode: standalone) {
+  html, body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* Hardware accelerated layer for drawers & overlays (prevents frame drops) */
+.gpu-accel {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Smooth momentum scrolling for mobile PWA */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
 /* Prevent iOS Safari auto-zoom: input focus when font-size < 16px triggers page zoom.
    Exclude large-title inputs (text-2xl) to preserve intentional sizing. */
 @media (max-width: 767px) {

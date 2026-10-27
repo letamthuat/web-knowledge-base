@@ -13,6 +13,7 @@ import { useBackupDownload } from "@/hooks/useBackupDownload";
 import { SearchModal } from "@/components/search/SearchModal";
 import { AppLogo } from "@/components/AppLogo";
 import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
+import { PwaSettingsSection } from "@/components/settings/PwaSettingsSection";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -486,6 +487,9 @@ export function SettingsPageInner() {
             )}
           </div>
         </div>
+
+        {/* PWA & App Settings */}
+        <PwaSettingsSection />
 
         {/* AI Settings */}
         <AiSettingsSection />

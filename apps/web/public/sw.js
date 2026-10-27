@@ -1,9 +1,12 @@
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v8";
 const CACHE_NAME = `wkb-shell-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
   "/offline",
   "/manifest.webmanifest",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/favicon.ico",
 ];
 
 // ─── Install ────────────────────────────────────────────────────────────────
@@ -47,15 +50,16 @@ self.addEventListener("fetch", (event) => {
     request.destination === "style" ||
     request.destination === "font" ||
     request.destination === "image" ||
-    request.url.includes("/_next/static/")
+    request.url.includes("/_next/static/") ||
+    request.url.includes("/icons/")
   ) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
-  // HTML navigation: Network-First with /offline fallback
+  // HTML navigation: Network-First with fast timeout to cached shell + /offline fallback
   if (request.mode === "navigate") {
-    event.respondWith(networkFirstWithFallback(request));
+    event.respondWith(networkFirstFast(request));
     return;
   }
 });
@@ -76,18 +80,29 @@ async function cacheFirst(request) {
   }
 }
 
-async function networkFirstWithFallback(request) {
-  try {
-    const response = await fetch(request);
+async function networkFirstFast(request, timeoutMs = 1500) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+
+  const fetchPromise = fetch(request).then((response) => {
     if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }
     return response;
+  });
+
+  if (cached) {
+    // If we have cached version, race network against a fast timeout to avoid blank white screens
+    return Promise.race([
+      fetchPromise,
+      new Promise((resolve) => setTimeout(() => resolve(cached), timeoutMs)),
+    ]).catch(() => cached);
+  }
+
+  try {
+    return await fetchPromise;
   } catch {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    return await caches.match("/offline");
+    return (await cache.match("/offline")) || new Response("Offline", { status: 503 });
   }
 }
 
@@ -102,8 +117,8 @@ self.addEventListener("push", (event) => {
       body: data.body || "",
       tag: data.tag || "study-reminder",
       data: { url: data.url || "/study" },
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
     })
   );
 });
@@ -120,3 +135,11 @@ self.addEventListener("notificationclick", (event) => {
     })
   );
 });
+
+// ─── Messages ───────────────────────────────────────────────────────────────
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+

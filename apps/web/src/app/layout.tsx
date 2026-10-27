@@ -8,7 +8,10 @@ import { ScreenRecordingPillFloating } from "@/components/recording/ScreenRecord
 import { AppSettingsPanel } from "@/components/AppSettingsPanel";
 import { DataPrefetcherDynamic as DataPrefetcher } from "@/components/DataPrefetcherDynamic";
 import { AppShellDynamic as AppShell } from "@/components/AppShellDynamic";
+import { PwaProvider } from "@/contexts/PwaContext";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
+import { OnlineOfflineStatus } from "@/components/pwa/OnlineOfflineStatus";
+import { PwaUpdateToast } from "@/components/pwa/PwaUpdateToast";
 import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
@@ -77,14 +80,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <body className={inter.className}>
         {/* SupabaseProvider — session do middleware lo, supabase client là singleton */}
         <SupabaseProvider>
-          <RecordingProvider>
-            <AppShell>{children}</AppShell>
-            <DataPrefetcher />
-            <AudioRecordingPillFloating />
-            <ScreenRecordingPillFloating />
-            <InstallBanner />
-            <AppSettingsPanel />
-          </RecordingProvider>
+          <PwaProvider>
+            <RecordingProvider>
+              <AppShell>{children}</AppShell>
+              <DataPrefetcher />
+              <AudioRecordingPillFloating />
+              <ScreenRecordingPillFloating />
+              <InstallBanner />
+              <OnlineOfflineStatus />
+              <PwaUpdateToast />
+              <AppSettingsPanel />
+            </RecordingProvider>
+          </PwaProvider>
           {/* Toast notifications dùng tiếng Việt (NFR37) */}
           <Toaster
             richColors

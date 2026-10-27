@@ -31,11 +31,17 @@ export function MobileSidebarDrawer({ open, onClose }: { open: boolean; onClose:
   return (
     <div className="fixed inset-0 z-[60] xl:hidden" role="dialog" aria-modal="true" aria-label="Điều hướng">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" onClick={onClose} />
-      {/* Panel — full-height, giống hệt sidebar desktop */}
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+      {/* Panel — full-height, hardware-accelerated slide-in */}
       <aside
-        className="absolute left-0 top-0 h-full w-[85vw] max-w-[320px] border-r border-border bg-card shadow-xl"
-        style={{ paddingTop: "var(--safe-top)" }}
+        className="absolute left-0 top-0 h-full w-[85vw] max-w-[320px] border-r border-border bg-card shadow-2xl animate-in slide-in-from-left duration-250 ease-out will-change-transform"
+        style={{
+          paddingTop: "var(--safe-top)",
+          paddingBottom: "var(--safe-bottom)",
+        }}
       >
         <HandbookSidebarContent onLinkClick={onClose} />
       </aside>
