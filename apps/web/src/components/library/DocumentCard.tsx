@@ -129,9 +129,9 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   async function handleTrash() {
     try {
       await trashDocument(doc._id);
-      toast.success(L.trashSuccess);
+      toast.success("Đã chuyển vào thùng rác");
     } catch {
-      toast.error(L.trashError);
+      toast.error("Không thể xoá tài liệu");
     }
     setShowTrashDialog(false);
   }
@@ -142,7 +142,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
         <SquarePlus className="mr-2 h-4 w-4" aria-hidden /> Mở trong tab mới
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => router.push(`/reader/${doc._id}`)}>
-        <ExternalLink className="mr-2 h-4 w-4" aria-hidden /> {L.openInNewWindow}
+        <ExternalLink className="mr-2 h-4 w-4" aria-hidden /> Mở tài liệu
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => exportDoc(doc._id)} disabled={isExporting}>
         <Download className="mr-2 h-4 w-4" aria-hidden /> Export ZIP (file + ghi chú)
@@ -155,7 +155,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
         <Pencil className="mr-2 h-4 w-4" aria-hidden /> {L.rename}
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => setShowFolderDialog(true)}>
-        <Folder className="mr-2 h-4 w-4" aria-hidden /> {currentFolder ? L.moveToFolder : L.addToFolder}
+        <Folder className="mr-2 h-4 w-4" aria-hidden /> {currentFolder ? "Chuyển folder" : "Thêm vào folder"}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => setShowTrashDialog(true)} className="text-destructive focus:text-destructive">

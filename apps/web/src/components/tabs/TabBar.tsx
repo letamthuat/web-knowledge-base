@@ -21,7 +21,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { NoteTab } from "@/hooks/useNoteTabs";
 import { useRecording } from "@/contexts/RecordingContext";
 import { useActiveTab } from "@/contexts/ActiveTabContext";

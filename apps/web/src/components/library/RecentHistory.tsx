@@ -27,11 +27,19 @@ const FORMAT_SPINES: Record<string, { border: string; bg: string; text: string }
   web_clip: { border: "border-l-teal-500", bg: "bg-teal-500/10", text: "text-teal-700 dark:text-teal-400" },
 };
 
-function formatProgressTime(timestamp: number): string {
-  const date = new Date(timestamp);
-  if (isToday(date)) return `Hôm nay, ${format(date, "HH:mm")}`;
-  if (isYesterday(date)) return `Hôm qua, ${format(date, "HH:mm")}`;
-  return format(date, "dd/MM/yyyy", { locale: vi });
+function formatProgressTime(timestamp: number | string | null | undefined): string {
+  if (!timestamp) return "";
+  const num = typeof timestamp === "string" ? Number(timestamp) : timestamp;
+  if (!num || isNaN(num)) return "";
+  const date = new Date(num);
+  if (isNaN(date.getTime())) return "";
+  try {
+    if (isToday(date)) return `Hôm nay, ${format(date, "HH:mm")}`;
+    if (isYesterday(date)) return `Hôm qua, ${format(date, "HH:mm")}`;
+    return format(date, "dd/MM/yyyy", { locale: vi });
+  } catch {
+    return "";
+  }
 }
 
 export function RecentHistory() {
