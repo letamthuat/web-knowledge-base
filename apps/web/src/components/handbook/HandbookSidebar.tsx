@@ -262,7 +262,7 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
   const router = useRouter();
   const domains = useDomains();
   const { openTab } = useTabSync();
-  const { activePanel, setActivePanel, openSecondary } = useActiveTab();
+  const { activePanel, setActivePanel, openSecondary, closeSecondary } = useActiveTab();
   const { isStandalone, isInstallable, isIOS, promptInstall, openIOSGuide } = usePwa();
   const createDomain = (a: { name: string; color?: string }) => apiCreateDomain(a.name, a.color);
 
@@ -301,11 +301,12 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
   }, [setActivePanel, onLinkClick]);
 
   const openDoc = useCallback((docId: Id<"documents">) => {
+    closeSecondary();
     openTab(docId).catch(() => {});
     setActivePanel(`reader:${docId}`);
     window.history.pushState(null, "", `/reader/${docId}`);
     if (onLinkClick) onLinkClick();
-  }, [openTab, setActivePanel, onLinkClick]);
+  }, [closeSecondary, openTab, setActivePanel, onLinkClick]);
 
   const handleCreateDomain = useCallback(() => {
     setRenameDialog({
@@ -667,12 +668,15 @@ export function HandbookSidebar() {
         </button>
       )}
       <div
-        className={`relative hidden h-full shrink-0 flex-col bg-card xl:flex transition-[width,border-color] duration-300 ease-in-out overflow-hidden ${
+        className={`relative hidden h-full shrink-0 flex-col bg-card xl:flex transition-[width,border-color] duration-200 ease-out overflow-hidden will-change-[width] ${
           sidebarOpen ? "border-r border-border" : "border-r border-transparent"
         }`}
-        style={{ width: sidebarOpen ? width : 0 }}
+        style={{
+          width: sidebarOpen ? width : 0,
+          contain: "paint layout",
+        }}
       >
-        <div className="h-full w-full min-w-[220px]">
+        <div style={{ width: `${width}px`, minWidth: `${width}px`, height: "100%" }}>
           <HandbookSidebarContent onCollapse={() => setSidebarOpen(false)} />
         </div>
         {sidebarOpen && (

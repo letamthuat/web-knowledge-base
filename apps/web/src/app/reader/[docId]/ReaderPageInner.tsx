@@ -258,9 +258,12 @@ function ReaderShell({ doc, downloadUrl }: {
   const tabOpened = useRef(false);
   useEffect(() => {
     if (tabOpened.current || tabsLoading) return;
+    const isAlreadyOpen = allTabs.some((t) => t.docId === doc._id);
     tabOpened.current = true;
-    openTab(doc._id).catch(() => {});
-  }, [tabsLoading, doc._id, openTab]);
+    if (!isAlreadyOpen) {
+      openTab(doc._id).catch(() => {});
+    }
+  }, [tabsLoading, doc._id, openTab, allTabs]);
 
   const jumpHandlerRef = useRef<((pos: ReadingPosition) => void) | null>(null);
   const registerJump = useCallback((fn: (pos: ReadingPosition) => void) => {

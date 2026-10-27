@@ -10,14 +10,6 @@ import { useEffect } from "react";
 import { HandbookSidebarContent } from "@/components/handbook/HandbookSidebar";
 
 export function MobileSidebarDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  // Khoá cuộn nền khi drawer mở
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
-
   // Đóng bằng phím Esc
   useEffect(() => {
     if (!open) return;
@@ -26,21 +18,30 @@ export function MobileSidebarDrawer({ open, onClose }: { open: boolean; onClose:
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] xl:hidden" role="dialog" aria-modal="true" aria-label="Điều hướng">
-      {/* Backdrop */}
+    <div
+      className={`fixed inset-0 z-[60] xl:hidden transition-opacity duration-200 ${
+        open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+      }`}
+      role="dialog"
+      aria-modal="true"
+      aria-hidden={!open}
+      aria-label="Điều hướng"
+    >
+      {/* Backdrop — mượt mà, không dùng backdrop-blur gây giật GPU trên PWA mobile */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-black/45"
+        style={{ touchAction: "none" }}
         onClick={onClose}
       />
-      {/* Panel — full-height, hardware-accelerated slide-in */}
+      {/* Panel — hardware-accelerated slide-in bằng pure GPU transform (không unmount component) */}
       <aside
-        className="absolute left-0 top-0 h-full w-[85vw] max-w-[320px] border-r border-border bg-card shadow-2xl animate-in slide-in-from-left duration-250 ease-out will-change-transform"
+        className="absolute left-0 top-0 h-full w-[85vw] max-w-[320px] border-r border-border bg-card shadow-2xl transition-transform duration-200 ease-out will-change-transform"
         style={{
           paddingTop: "var(--safe-top)",
           paddingBottom: "var(--safe-bottom)",
+          transform: open ? "translate3d(0, 0, 0)" : "translate3d(-100%, 0, 0)",
+          contain: "paint layout",
         }}
       >
         <HandbookSidebarContent onLinkClick={onClose} />

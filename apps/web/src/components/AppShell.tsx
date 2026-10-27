@@ -104,11 +104,17 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const current = activePanel ?? routerPanel;
 
   // Inline: when a reader panel becomes active, immediately add to mountedDocIds
-  // This runs during render so the TabPanel is included in this very render pass
+  // Cap at 1 on mobile and 3 on desktop to keep DOM lean and 60fps smooth
   if (current?.startsWith("reader:")) {
     const docId = current.slice("reader:".length);
-    if (!mountedDocIds.current.includes(docId)) {
-      mountedDocIds.current = [...mountedDocIds.current, docId];
+    const isMobileScreen = typeof window !== "undefined" && window.innerWidth < 1024;
+    if (isMobileScreen) {
+      if (mountedDocIds.current.length !== 1 || mountedDocIds.current[0] !== docId) {
+        mountedDocIds.current = [docId];
+      }
+    } else if (!mountedDocIds.current.includes(docId)) {
+      const updated = [...mountedDocIds.current, docId];
+      mountedDocIds.current = updated.length > 3 ? updated.slice(updated.length - 3) : updated;
     }
   }
 
@@ -116,11 +122,6 @@ function AppShellContent({ children }: { children: ReactNode }) {
   if (!current) {
     return <>{children}</>;
   }
-
-  // If active reader tab was just added this render (first time), it needs one render
-  // to hydrate ReaderDocLoader. Meanwhile render children as invisible underlay
-  // so there's no blank flash. Once mounted, the TabPanel takes over.
-  const activeDocId = current.startsWith("reader:") ? current.slice("reader:".length) : null;
 
   const splitActive = secondaryDocId !== null;
 
@@ -156,13 +157,6 @@ function AppShellContent({ children }: { children: ReactNode }) {
               <ReaderDocLoader docId={docId as Id<"documents">} />
             </TabPanel>
           ))}
-          {/* Fallback: render children behind active TabPanel so first load has content */}
-          {activeDocId && (
-            <div style={{ position: "absolute", inset: 0,
-                          visibility: "hidden", pointerEvents: "none", zIndex: -2 }}>
-              {children}
-            </div>
-          )}
         </div>
 
         {/* Divider + pane phải (split-screen 13.1) */}

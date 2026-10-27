@@ -27,18 +27,22 @@ export function useTabsWithDoc(): TabWithDoc[] | undefined {
     order: { column: "order", ascending: true },
     select: "*, documents(title, format)",
   });
-  return useMemo(
-    () =>
-      rows?.map((r) => {
-        const { documents, ...rest } = r;
-        return {
-          ...rest,
-          docTitle: documents?.title ?? "Untitled",
-          docFormat: documents?.format ?? "unknown",
-        };
-      }),
-    [rows],
-  );
+  return useMemo(() => {
+    if (!rows) return undefined;
+    const seen = new Set<string>();
+    const result: TabWithDoc[] = [];
+    for (const r of rows) {
+      if (seen.has(r.docId)) continue;
+      seen.add(r.docId);
+      const { documents, ...rest } = r;
+      result.push({
+        ...rest,
+        docTitle: documents?.title ?? "Untitled",
+        docFormat: documents?.format ?? "unknown",
+      });
+    }
+    return result;
+  }, [rows]);
 }
 
 async function currentUserId(): Promise<string> {
@@ -48,49 +52,81 @@ async function currentUserId(): Promise<string> {
 }
 
 // ─── MUTATIONS ───────────────────────────────────────────────────────────────
-// Mở (hoặc focus) tab cho document — idempotent, tối đa MAX_TABS.
+const inFlightOpenTab = new Map<string, Promise<string>>();
+
+// Mở (hoặc focus) tab cho document — idempotent, in-flight mutex, tối đa MAX_TABS.
 export async function openTab(docId: string, clientMutationId?: string): Promise<string> {
-  const userId = await currentUserId();
-  const now = Date.now();
+  const existingPromise = inFlightOpenTab.get(docId);
+  if (existingPromise) return existingPromise;
 
-  const { data: existing } = await supabase
-    .from("tabs")
-    .select("_id")
-    .eq("docId", docId)
-    .maybeSingle();
+  const promise = (async () => {
+    try {
+      const userId = await currentUserId();
+      const now = Date.now();
 
-  if (existing) {
-    await supabase
-      .from("tabs")
-      .update({ isActive: false })
-      .eq("isActive", true)
-      .neq("_id", existing._id);
-    await supabase.from("tabs").update({ isActive: true, updatedAt: now }).eq("_id", existing._id);
-    return existing._id;
-  }
+      // Kiểm tra tab đã tồn tại chưa (kèm dọn dẹp duplicate nếu có)
+      const { data: existingList } = await supabase
+        .from("tabs")
+        .select("_id")
+        .eq("userId", userId)
+        .eq("docId", docId);
 
-  const { data: allTabs } = await supabase.from("tabs").select("_id, order, isActive");
-  if ((allTabs?.length ?? 0) >= MAX_TABS) {
-    throw new Error("Tối đa 10 tab cùng lúc");
-  }
+      if (existingList && existingList.length > 0) {
+        const primaryId = existingList[0]._id;
+        if (existingList.length > 1) {
+          const duplicateIds = existingList.slice(1).map((t) => t._id);
+          await supabase.from("tabs").delete().in("_id", duplicateIds);
+        }
+        await supabase
+          .from("tabs")
+          .update({ isActive: false })
+          .eq("userId", userId)
+          .eq("isActive", true)
+          .neq("_id", primaryId);
+        await supabase
+          .from("tabs")
+          .update({ isActive: true, updatedAt: now })
+          .eq("_id", primaryId);
+        return primaryId;
+      }
 
-  await supabase.from("tabs").update({ isActive: false }).eq("isActive", true);
+      const { data: allTabs } = await supabase
+        .from("tabs")
+        .select("_id, order, isActive")
+        .eq("userId", userId);
 
-  const maxOrder = (allTabs ?? []).reduce((max, t) => Math.max(max, (t as { order: number }).order), -1);
-  const { data, error } = await supabase
-    .from("tabs")
-    .insert({
-      userId,
-      docId,
-      order: maxOrder + 1,
-      isActive: true,
-      updatedAt: now,
-      clientMutationId: clientMutationId ?? null,
-    })
-    .select("_id")
-    .single();
-  if (error || !data) throw error ?? new Error("Mở tab thất bại");
-  return data._id;
+      if ((allTabs?.length ?? 0) >= MAX_TABS) {
+        throw new Error("Tối đa 10 tab cùng lúc");
+      }
+
+      await supabase
+        .from("tabs")
+        .update({ isActive: false })
+        .eq("userId", userId)
+        .eq("isActive", true);
+
+      const maxOrder = (allTabs ?? []).reduce((max, t) => Math.max(max, (t as { order: number }).order), -1);
+      const { data, error } = await supabase
+        .from("tabs")
+        .insert({
+          userId,
+          docId,
+          order: maxOrder + 1,
+          isActive: true,
+          updatedAt: now,
+          clientMutationId: clientMutationId ?? null,
+        })
+        .select("_id")
+        .single();
+      if (error || !data) throw error ?? new Error("Mở tab thất bại");
+      return data._id;
+    } finally {
+      inFlightOpenTab.delete(docId);
+    }
+  })();
+
+  inFlightOpenTab.set(docId, promise);
+  return promise;
 }
 
 export async function closeTab(tabId: string): Promise<void> {

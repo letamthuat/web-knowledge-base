@@ -147,7 +147,19 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
     return () => document.removeEventListener("mousedown", onDown);
   }, [addMenuOpen]);
 
-  const displayTabs = optimisticTabs ?? tabs;
+  const rawTabs = optimisticTabs ?? tabs;
+  const displayTabs = useMemo(() => {
+    const seen = new Set<string>();
+    const res: TabDoc[] = [];
+    for (const t of rawTabs) {
+      const id = String(t.docId);
+      if (!seen.has(id)) {
+        seen.add(id);
+        res.push(t);
+      }
+    }
+    return res;
+  }, [rawTabs]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
