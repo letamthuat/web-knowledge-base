@@ -336,19 +336,21 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
       {/* Tìm kiếm toàn cục — dùng SearchModal thật sẵn có (tài liệu + ghi chú + highlight) */}
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      {/* Brand — logo + tên app chuyển từ header trang vào sidebar (kiểu MDLZ) */}
-      <div className="flex shrink-0 items-center gap-2.5 border-b border-border/40 px-3 py-3">
-        <AppLogo size={34} />
+      {/* Brand — Apple Books & Craft refined header */}
+      <div className="flex shrink-0 items-center gap-3 border-b border-border/50 px-3.5 py-3.5 bg-card/40">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-secondary/80 p-1 border border-border/40 shadow-xs">
+          <AppLogo size={28} />
+        </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-bold leading-tight">Web Knowledge Base</p>
-          <p className="truncate text-[10.5px] text-muted-foreground">Thư viện tri thức cá nhân</p>
+          <p className="truncate text-[13.5px] font-semibold tracking-tight text-foreground">Web Knowledge Base</p>
+          <p className="truncate text-[11px] text-muted-foreground font-serif italic">Thư viện tri thức cá nhân</p>
         </div>
         {onCollapse && (
           <button
             onClick={onCollapse}
             title="Ẩn sidebar"
             aria-label="Ẩn sidebar"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <PanelLeftClose className="h-4 w-4" />
           </button>
@@ -546,8 +548,8 @@ function NavRow({ icon: Icon, label, active = false, iconCls = "", onClick }: {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 min-h-[38px] sm:min-h-[34px] text-[13px] transition-colors hover:bg-muted hover:text-foreground active:scale-[0.99] ${
-        active ? "bg-muted font-medium text-foreground" : "text-muted-foreground"
+      className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 min-h-[38px] sm:min-h-[34px] text-[13px] transition-colors hover:bg-secondary/70 hover:text-foreground active:scale-[0.99] ${
+        active ? "bg-secondary font-medium text-foreground shadow-2xs" : "text-muted-foreground"
       }`}
     >
       <Icon className={`h-4 w-4 shrink-0 ${iconCls}`} />
@@ -562,7 +564,7 @@ function ExpandableNavRow({ icon: Icon, label, active, open, onToggle, onNavigat
   onToggle: () => void; onNavigate: () => void; iconCls?: string;
 }) {
   return (
-    <div className={`flex items-center rounded-lg transition-colors hover:bg-muted ${active ? "bg-muted" : ""}`}>
+    <div className={`flex items-center rounded-xl transition-colors hover:bg-secondary/70 ${active ? "bg-secondary shadow-2xs" : ""}`}>
       <button
         onClick={onNavigate}
         className={`flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 min-h-[38px] sm:min-h-[34px] text-left text-[13px] transition-colors hover:text-foreground ${
@@ -575,7 +577,7 @@ function ExpandableNavRow({ icon: Icon, label, active, open, onToggle, onNavigat
       <button
         onClick={onToggle}
         aria-label={`Bung/thu ${label}`}
-        className="mr-1 flex h-8 w-8 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground active:scale-95"
+        className="mr-1 flex h-8 w-8 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground active:scale-95"
       >
         <ChevronRight className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
       </button>

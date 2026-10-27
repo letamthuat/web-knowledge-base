@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { usePwa } from "@/contexts/PwaContext";
-import { WifiOff, Wifi, RefreshCw } from "lucide-react";
+import { WifiOff, Wifi } from "lucide-react";
 
 export function OnlineOfflineStatus() {
   const { isOnline } = usePwa();
@@ -14,7 +14,6 @@ export function OnlineOfflineStatus() {
       wasOffline.current = true;
       setShowReconnected(false);
     } else if (wasOffline.current) {
-      // Transition from offline to online
       setShowReconnected(true);
       const timer = setTimeout(() => {
         setShowReconnected(false);
@@ -29,11 +28,13 @@ export function OnlineOfflineStatus() {
       <aside
         role="status"
         aria-live="polite"
-        className="fixed top-2 left-1/2 -translate-x-1/2 z-[75] px-3.5 py-1.5 rounded-full bg-amber-500/95 dark:bg-amber-600/95 text-white shadow-lg backdrop-blur-md flex items-center gap-2 text-xs font-medium animate-in fade-in slide-in-from-top-3 duration-300"
+        className="fixed top-3 left-1/2 -translate-x-1/2 z-[75] px-4 py-1.5 rounded-full bg-card/90 text-foreground border border-amber-500/40 shadow-[0_8px_25px_rgba(0,0,0,0.1)] backdrop-blur-xl flex items-center gap-2.5 text-xs font-medium animate-in fade-in slide-in-from-top-3 duration-300"
         style={{ marginTop: "var(--safe-top)" }}
       >
-        <WifiOff className="h-3.5 w-3.5 shrink-0 animate-pulse text-amber-100" />
-        <span>Chế độ ngoại tuyến (Offline) — Đang xem dữ liệu lưu tạm</span>
+        <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+        <span className="text-[12px] text-foreground/90 font-medium">
+          Chế độ đọc ngoại tuyến (Offline)
+        </span>
       </aside>
     );
   }
@@ -43,11 +44,13 @@ export function OnlineOfflineStatus() {
       <aside
         role="status"
         aria-live="polite"
-        className="fixed top-2 left-1/2 -translate-x-1/2 z-[75] px-3.5 py-1.5 rounded-full bg-emerald-600/95 text-white shadow-lg backdrop-blur-md flex items-center gap-2 text-xs font-medium animate-in fade-in slide-in-from-top-3 duration-300"
+        className="fixed top-3 left-1/2 -translate-x-1/2 z-[75] px-4 py-1.5 rounded-full bg-card/90 text-foreground border border-emerald-500/40 shadow-[0_8px_25px_rgba(0,0,0,0.1)] backdrop-blur-xl flex items-center gap-2.5 text-xs font-medium animate-in fade-in slide-in-from-top-3 duration-300"
         style={{ marginTop: "var(--safe-top)" }}
       >
-        <Wifi className="h-3.5 w-3.5 shrink-0 text-emerald-200" />
-        <span>Đã khôi phục kết nối Internet</span>
+        <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+        <span className="text-[12px] text-foreground/90 font-medium">
+          Đã khôi phục kết nối Internet
+        </span>
       </aside>
     );
   }
