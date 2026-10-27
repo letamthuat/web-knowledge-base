@@ -16,7 +16,7 @@ const Lf = labels.formats;
 const FORMATS = ["pdf", "epub", "docx", "pptx", "image", "audio", "video", "markdown", "web_clip"] as const;
 
 const TRIGGER_CLS =
-  "inline-flex h-8 items-center gap-1 rounded-lg border border-input bg-background px-2.5 text-sm font-medium hover:bg-muted transition-colors";
+  "inline-flex h-8 items-center gap-1.5 rounded-full border border-border/80 bg-card/80 px-3 text-xs font-medium text-foreground/80 hover:bg-card hover:text-foreground hover:border-border transition-all shadow-xs";
 
 export interface FilterState {
   tags: string[];
@@ -213,10 +213,14 @@ export function FilterBar({ filters }: FilterBarProps) {
 
       {/* Clear all */}
       {active && (
-        <Button variant="ghost" size="sm" onClick={clearAll} aria-label="Xoá bộ lọc">
+        <button
+          onClick={clearAll}
+          aria-label="Xoá bộ lọc"
+          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-destructive/25 bg-destructive/10 px-3 text-xs font-medium text-destructive hover:bg-destructive/15 transition-colors"
+        >
           <X className="h-3.5 w-3.5" aria-hidden />
           {L.clearFilter}
-        </Button>
+        </button>
       )}
     </div>
   );

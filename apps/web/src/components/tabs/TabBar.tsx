@@ -33,6 +33,18 @@ const FORMAT_ICONS: Record<string, React.ElementType> = {
   image: Image, audio: Music, video: Video, markdown: FileCode, web_clip: Globe,
 };
 
+const FORMAT_DOTS: Record<string, string> = {
+  pdf: "bg-rose-500",
+  epub: "bg-amber-500",
+  docx: "bg-sky-500",
+  pptx: "bg-orange-500",
+  image: "bg-emerald-500",
+  audio: "bg-purple-500",
+  video: "bg-pink-500",
+  markdown: "bg-stone-500",
+  web_clip: "bg-teal-500",
+};
+
 interface SortableTabItemProps {
   tab: TabDoc;
   isActive: boolean;
@@ -42,8 +54,7 @@ interface SortableTabItemProps {
 
 function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemProps) {
   const router = useRouter();
-  // Use pre-joined docTitle/docFormat from tabs query — no extra subscription per tab
-  const Icon = FORMAT_ICONS[tab.docFormat ?? ""] ?? FileText;
+  const dotColor = FORMAT_DOTS[tab.docFormat ?? ""] ?? "bg-primary";
 
   const {
     attributes,
@@ -84,21 +95,21 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
       onClick={onClick}
       onMouseEnter={handleMouseEnter}
       className={[
-        "group relative flex h-8 min-w-0 max-w-[160px] shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-left transition-all duration-150",
+        "group relative flex h-8 min-w-0 max-w-[175px] shrink-0 cursor-pointer select-none items-center gap-2 rounded-xl px-2.5 text-left transition-all duration-150 border",
         isActive
-          ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
-          : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+          ? "bg-card text-foreground shadow-[0_1px_6px_rgba(0,0,0,0.06)] border-border/80 font-medium"
+          : "text-muted-foreground hover:bg-card/60 hover:text-foreground border-transparent",
       ].join(" ")}
     >
-      <Icon className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-      <span className="flex-1 truncate text-xs font-medium">{tab.docTitle || "…"}</span>
+      <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor} opacity-90`} />
+      <span className="flex-1 truncate text-xs">{tab.docTitle || "…"}</span>
       <span
         role="button"
         aria-label="Đóng tab"
         onClick={onClose}
         onPointerDown={(e) => e.stopPropagation()}
         className={[
-          "ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded transition-all",
+          "ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-all",
           isActive
             ? "opacity-60 hover:opacity-100 hover:bg-muted"
             : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-muted",
@@ -222,7 +233,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
   }
 
   return (
-    <div className="flex h-10 shrink-0 items-center gap-1 border-b bg-muted/40 px-2">
+    <div className="flex h-11 shrink-0 items-center gap-1.5 border-b border-border/70 bg-card/50 backdrop-blur-md px-3">
       {/* + dropdown — mở tài liệu hoặc ghi chú */}
       {showAddButton && (
         <div ref={addMenuRef} className="relative shrink-0">
@@ -231,26 +242,26 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
             aria-label="Mở tab mới"
             title="Mở tab mới"
             className={[
-              "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+              "flex h-7 w-7 items-center justify-center rounded-xl transition-all",
               addMenuOpen
-                ? "bg-background text-foreground ring-1 ring-border/60"
-                : "text-muted-foreground hover:bg-background hover:text-foreground",
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
             ].join(" ")}
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
           {addMenuOpen && (
-            <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border bg-popover shadow-md">
+            <div className="absolute left-0 top-full z-50 mt-1.5 w-48 rounded-2xl border border-border/80 bg-popover/95 p-1 backdrop-blur-md shadow-xl">
               <button
                 onClick={() => { setAddMenuOpen(false); router.push("/library"); }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
               >
                 <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                 Mở tài liệu
               </button>
               <button
                 onClick={() => { setAddMenuOpen(false); onAddNote ? onAddNote() : router.push("/notes"); }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
               >
                 <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
                 Ghi chú mới
@@ -264,7 +275,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                 }}
                 disabled={audioRecorder.state !== "idle"}
                 title={audioRecorder.state !== "idle" ? "Đang có phiên ghi âm" : undefined}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-rose-500 shrink-0">
                   <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
@@ -280,7 +291,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                 }}
                 disabled={screenRecorder.state !== "idle"}
                 title={screenRecorder.state !== "idle" ? "Đang có phiên quay màn hình" : undefined}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-violet-500 shrink-0">
                   <path d="M4.5 4.5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h8.25a3 3 0 0 0 3-3v-9a3 3 0 0 0-3-3H4.5ZM19.94 18.75l-2.69-2.69V7.94l2.69-2.69c.944-.945 2.56-.276 2.56 1.06v11.38c0 1.336-1.616 2.005-2.56 1.06Z" />
@@ -297,7 +308,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
       {/* Tab list — scrollable */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={displayTabs.map((t) => t._id)} strategy={horizontalListSortingStrategy}>
-          <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto scrollbar-none py-1">
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-none py-1">
             {/* Persistent Notes tab */}
             <div
               onClick={() => {
@@ -305,15 +316,15 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                 window.history.pushState(null, "", "/notes");
               }}
               className={[
-                "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 transition-all duration-150",
+                "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-xl px-2.5 transition-all duration-150 border",
                 notesActive && noteTabs.length === 0
-                  ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
-                  : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                  ? "bg-card text-foreground shadow-[0_1px_6px_rgba(0,0,0,0.06)] border-border/80 font-medium"
+                  : "text-muted-foreground hover:bg-card/60 hover:text-foreground border-transparent",
               ].join(" ")}
               title="Ghi chú"
             >
               <StickyNote className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-              <span className="text-xs font-medium">Ghi chú</span>
+              <span className="text-xs">Ghi chú</span>
             </div>
             {<div className="h-4 w-px shrink-0 bg-border/40" />}
 
@@ -325,24 +336,24 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                   key={nt.noteId}
                   onClick={() => onSelectNoteTab?.(nt.noteId)}
                   className={[
-                    "group relative flex h-8 min-w-0 max-w-[160px] shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md px-2.5 text-left transition-all duration-150",
+                    "group relative flex h-8 min-w-0 max-w-[170px] shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-xl px-2.5 text-left transition-all duration-150 border",
                     isNoteActive
-                      ? "bg-violet-50 text-violet-700 shadow-sm ring-1 ring-violet-200"
-                      : "text-violet-500/70 hover:bg-violet-50/60 hover:text-violet-600",
+                      ? "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30 shadow-sm font-medium"
+                      : "text-muted-foreground hover:bg-violet-500/5 hover:text-violet-600 border-transparent",
                   ].join(" ")}
                 >
-                  <StickyNote className="h-3 w-3 shrink-0" aria-hidden />
-                  <span className="flex-1 truncate text-xs font-medium">{nt.title || "(Không có tiêu đề)"}</span>
+                  <StickyNote className="h-3 w-3 shrink-0 text-violet-500" aria-hidden />
+                  <span className="flex-1 truncate text-xs">{nt.title || "(Không có tiêu đề)"}</span>
                   <span
                     role="button"
                     aria-label="Đóng tab ghi chú"
                     onClick={(e) => { e.stopPropagation(); onCloseNoteTab?.(nt.noteId); }}
                     onPointerDown={(e) => e.stopPropagation()}
                     className={[
-                      "ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded transition-all",
+                      "ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-all",
                       isNoteActive
-                        ? "opacity-60 hover:opacity-100 hover:bg-violet-100"
-                        : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-violet-100",
+                        ? "opacity-60 hover:opacity-100 hover:bg-violet-500/20"
+                        : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-violet-500/20",
                     ].join(" ")}
                   >
                     <X className="h-2.5 w-2.5" />

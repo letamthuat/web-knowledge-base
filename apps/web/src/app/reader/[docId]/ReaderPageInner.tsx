@@ -13,10 +13,11 @@ import { ReadingHistoryPopover } from "@/components/viewers/ReadingHistoryPopove
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
 import { toProgressPct } from "@/lib/position";
-import { ArrowLeft, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search, PanelLeftClose, PanelLeftOpen, Maximize2 } from "lucide-react";
+import { ArrowLeft, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search, PanelLeftClose, PanelLeftOpen, Maximize2, Palette } from "lucide-react";
 import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
 import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { signOut } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { TabBar } from "@/components/tabs/TabBar";
@@ -26,7 +27,7 @@ import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { useAllNotes } from "@/hooks/useNotes";
 import { SearchModal } from "@/components/search/SearchModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { useAppTypography } from "@/components/AppSettingsPanel";
+import { useAppTypography, openReadingSettings } from "@/components/AppSettingsPanel";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useDocExport } from "@/hooks/useDocExport";
 
@@ -297,84 +298,102 @@ function ReaderShell({ doc, downloadUrl }: {
 
         {/* Mobile swipe drawer — đồng bộ với sidebar desktop */}
         <MobileSidebarDrawer open={isMobile && drawerOpen} onClose={() => setDrawerOpen(false)} />
-        {!readingMode && <header
-          className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4 transition-opacity duration-300"
-          style={{ paddingTop: 'var(--safe-top)' }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" size="sm" className="p-1.5 shrink-0 xl:hidden" onClick={() => setDrawerOpen(true)}>
-              <Menu className="h-4 w-4" />
-            </Button>
-            {/* Desktop: nút MỞ sidebar — chỉ hiện khi đang ẩn (nút đóng nằm trong sidebar) */}
-            {!sidebarOpen && (
+        {!readingMode && (
+          <header
+            className="flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-card/90 px-3 sm:px-4 backdrop-blur-md transition-all duration-200"
+            style={{ paddingTop: 'var(--safe-top)' }}
+          >
+            {/* Left: Sidebar toggle / Logo */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-xl xl:hidden" onClick={() => setDrawerOpen(true)}>
+                <Menu className="h-4 w-4" />
+              </Button>
+              {!sidebarOpen && (
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="hidden xl:flex h-8 w-8 items-center justify-center rounded-xl hover:bg-muted text-muted-foreground transition-colors"
+                  aria-label="Hiện sidebar"
+                  title="Hiện sidebar"
+                >
+                  <PanelLeftOpen className="h-4 w-4" />
+                </button>
+              )}
+              <span className="xl:hidden"><AppLogo size={28} /></span>
+            </div>
+
+            {/* Center: Prominent Document Title + Format pill (Apple Books centered style) */}
+            <div className="flex items-center justify-center gap-2 min-w-0 px-2 flex-1 max-w-[500px]">
+              <span className="hidden sm:inline-flex rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary uppercase shrink-0">
+                {doc.format}
+              </span>
+              <h1 className="truncate text-xs sm:text-sm font-semibold text-foreground/90 text-center" title={doc.title}>
+                {doc.title}
+              </h1>
+            </div>
+
+            {/* Right: Zen reading tools & More dropdown */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
+              
+              {/* Nút Màu giấy & Cỡ chữ (Craft / Apple Books Theme) */}
               <button
-                onClick={() => setSidebarOpen(true)}
-                className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
-                aria-label="Hiện sidebar"
+                onClick={openReadingSettings}
+                title="Màu giấy & Cỡ chữ"
+                aria-label="Màu giấy & Cỡ chữ"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
               >
-                <PanelLeftOpen className="h-4 w-4" />
+                <Palette className="h-4 w-4" />
               </button>
-            )}
 
-            <span className="xl:hidden"><AppLogo size={32} /></span>
-          </div>
+              <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
 
-          <nav className="hidden xl:flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/library"))}>Thư viện</Button>
-            <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/notes"))}>
-              <StickyNote className="mr-1.5 h-3.5 w-3.5" />Ghi chú
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => confirmLeave(() => router.push("/settings"))}>
-              <Settings className="mr-1 h-4 w-4" />Cài đặt
-            </Button>
-          </nav>
+              {/* Zen Fullscreen */}
+              <button
+                onClick={toggleFullscreen}
+                title="Toàn màn hình (Zen Mode)"
+                aria-label="Toàn màn hình"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </button>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
-            <ReadingHistoryPopover docId={doc._id} onJump={jumpTo} />
-            {/* Desktop Full Screen Button */}
-            <Button variant="ghost" size="sm" onClick={toggleFullscreen} title="Xem toàn màn hình" className="hidden sm:inline-flex gap-1">
-              <Maximize2 className="h-4 w-4" />
-              <span className="hidden xl:inline">Toàn màn hình</span>
-            </Button>
-            {/* Mobile Full Screen Button (direct icon) */}
-            <button
-              onClick={toggleFullscreen}
-              className="flex sm:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-              title="Xem toàn màn hình"
-              aria-label="Xem toàn màn hình"
-            >
-              <Maximize2 className="h-5 w-5" />
-            </button>
-            <Button variant="ghost" size="sm" onClick={() => exportDoc(doc._id)} disabled={isExporting} title="Export ZIP (file + highlights + ghi chú)" className="hidden sm:inline-flex gap-1">
-              <Download className="h-4 w-4" />
-              <span className="hidden xl:inline">Export ZIP</span>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleDownload} title="Tải xuống tài liệu" className="hidden sm:inline-flex gap-1">
-              <Download className="h-4 w-4" />
-              <span className="hidden xl:inline">Tải xuống</span>
-            </Button>
-            <span className="hidden xl:inline text-sm text-muted-foreground">{session?.user?.email}</span>
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="hidden sm:flex xl:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-              aria-label="Tìm kiếm"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setMoreMenuOpen(true)}
-              className="flex sm:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-              aria-label="Thêm"
-            >
-              <MoreHorizontal className="h-5 w-5" />
-            </button>
-            <Button variant="ghost" size="sm" onClick={async () => { await signOut(); router.push("/login"); }} className="hidden xl:inline-flex gap-1">
-              <LogOut className="h-4 w-4" />
-              <span className="hidden xl:inline">Đăng xuất</span>
-            </Button>
-          </div>
-        </header>}
+              {/* Menu Thao tác (Gom gọn các nút Download, Export, Tìm kiếm, Đăng xuất) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+                  aria-label="Tuỳ chọn"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onClick={() => setSearchOpen(true)}>
+                    <Search className="mr-2 h-4 w-4" /> Tìm kiếm (Cmd+K)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportDoc(doc._id)} disabled={isExporting}>
+                    <Download className="mr-2 h-4 w-4" /> Export ZIP (file + ghi chú)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDownload}>
+                    <Download className="mr-2 h-4 w-4" /> Tải xuống tài liệu
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => confirmLeave(() => router.push("/library"))}>
+                    Về Thư viện
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => confirmLeave(() => router.push("/notes"))}>
+                    <StickyNote className="mr-2 h-4 w-4" /> Ghi chú
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => confirmLeave(() => router.push("/settings"))}>
+                    <Settings className="mr-2 h-4 w-4" /> Cài đặt
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={async () => { await signOut(); router.push("/login"); }} className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" /> Đăng xuất
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </header>
+        )}
 
         {!readingMode && (
           <div className="flex flex-col shrink-0">
@@ -427,13 +446,15 @@ function ReaderShell({ doc, downloadUrl }: {
           const minsLeft = wordCount > 0 ? Math.round(wordsLeft / WPM) : 0;
           const pctDisplay = Math.round(pct);
           return (
-            <div className="shrink-0 border-t bg-card/80 backdrop-blur-sm px-4 py-1.5 flex items-center gap-3">
-              <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${pctDisplay}%` }} />
+            <div className="shrink-0 border-t border-border/70 bg-card/75 backdrop-blur-md px-4 py-2 flex items-center justify-center">
+              <div className="flex items-center gap-3 w-full max-w-lg">
+                <div className="flex-1 h-1.5 rounded-full bg-muted/80 overflow-hidden">
+                  <div className="h-full rounded-full bg-primary/85 transition-all duration-300" style={{ width: `${Math.max(3, pctDisplay)}%` }} />
+                </div>
+                <span className="text-[11px] font-medium text-muted-foreground tabular-nums shrink-0">
+                  {pctDisplay}%{minsLeft > 0 ? ` · Còn ~${minsLeft} phút đọc` : ""}
+                </span>
               </div>
-              <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
-                {pctDisplay}%{minsLeft > 0 ? ` · Còn ~${minsLeft} phút` : ""}
-              </span>
             </div>
           );
         })()}

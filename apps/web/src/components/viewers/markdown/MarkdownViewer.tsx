@@ -1197,13 +1197,13 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         {/* Content area */}
         <div
           ref={contentRef}
-          className="relative flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/70 dark:bg-slate-950/70"
+          className="relative flex-1 overflow-y-auto overflow-x-hidden bg-background/50"
           style={{ WebkitOverflowScrolling: "touch", willChange: "scroll-position" } as React.CSSProperties}
           onScroll={handleScroll}
           onPointerUp={handleMouseUp}
         >
-          <div className={`mx-auto px-4 py-10 sm:px-6 md:px-8 ${typography?.colWidthClass ?? "max-w-4xl"}`} style={{ zoom: scale }}>
-            <div className="bg-card text-card-foreground border border-border/60 rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.25)] px-6 py-10 sm:px-12 sm:py-12 md:px-16 md:py-16" style={{ fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
+          <div className={`mx-auto px-4 py-8 sm:px-6 md:px-8 ${typography?.colWidthClass ?? "max-w-4xl"}`} style={{ zoom: scale }}>
+            <div className="bg-card text-card-foreground border border-border/70 rounded-[24px] shadow-[0_6px_32px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_32px_rgba(0,0,0,0.25)] px-6 py-10 sm:px-14 sm:py-14 md:px-20 md:py-18" style={{ fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
               <article className="prose prose-neutral dark:prose-invert max-w-none">
                 {sections.length === 1 ? (
                   <div data-sec={0}>

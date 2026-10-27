@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { format } from "date-fns";
@@ -37,10 +37,16 @@ const FORMAT_ICONS: Record<string, React.ElementType> = {
   image: Image, audio: Music, video: Video, markdown: FileCode, web_clip: Globe,
 };
 
-const FORMAT_COLORS: Record<string, string> = {
-  pdf: "text-red-500", epub: "text-blue-500", docx: "text-blue-700",
-  pptx: "text-orange-500", image: "text-green-500", audio: "text-purple-500",
-  video: "text-pink-500", markdown: "text-gray-500", web_clip: "text-cyan-500",
+const FORMAT_SPINES: Record<string, { border: string; bg: string; text: string }> = {
+  pdf: { border: "border-l-rose-500", bg: "bg-rose-500/10", text: "text-rose-600 dark:text-rose-400" },
+  epub: { border: "border-l-amber-500", bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-400" },
+  docx: { border: "border-l-sky-500", bg: "bg-sky-500/10", text: "text-sky-700 dark:text-sky-400" },
+  pptx: { border: "border-l-orange-500", bg: "bg-orange-500/10", text: "text-orange-700 dark:text-orange-400" },
+  image: { border: "border-l-emerald-500", bg: "bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400" },
+  audio: { border: "border-l-purple-500", bg: "bg-purple-500/10", text: "text-purple-700 dark:text-purple-400" },
+  video: { border: "border-l-pink-500", bg: "bg-pink-500/10", text: "text-pink-700 dark:text-pink-400" },
+  markdown: { border: "border-l-stone-500", bg: "bg-stone-500/10", text: "text-stone-700 dark:text-stone-300" },
+  web_clip: { border: "border-l-teal-500", bg: "bg-teal-500/10", text: "text-teal-700 dark:text-teal-400" },
 };
 
 interface Doc {
@@ -57,7 +63,6 @@ interface DocumentCardProps {
   viewMode: "grid" | "list";
   isSelected?: boolean;
   onToggleSelect?: () => void;
-  /** Fix A: dữ liệu gộp từ grid — card KHÔNG tự mở subscription riêng nữa. */
   tags?: TagRow[];
   folder?: FolderRow | null;
   progressPct?: number | null;
@@ -73,6 +78,12 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   const docTags = tags;
   const currentFolder = folder;
   const { exportDoc, isExporting } = useDocExport();
+
+  const spine = FORMAT_SPINES[doc.format] ?? {
+    border: "border-l-primary",
+    bg: "bg-primary/10",
+    text: "text-primary",
+  };
 
   async function handleDownload(e: React.MouseEvent) {
     e.stopPropagation();
@@ -104,7 +115,6 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   }
 
   const Icon = FORMAT_ICONS[doc.format] ?? FileText;
-  const iconColor = FORMAT_COLORS[doc.format] ?? "text-gray-400";
 
   async function handleRename() {
     const title = newTitle.trim();
@@ -117,34 +127,35 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   }
 
   async function handleTrash() {
-    await trashDocument(doc._id);
+    try {
+      await trashDocument(doc._id);
+      toast.success(L.trashSuccess);
+    } catch {
+      toast.error(L.trashError);
+    }
     setShowTrashDialog(false);
   }
 
   const menu = (
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem onClick={() => router.push(`/reader/${doc._id}`)}>
-        <ExternalLink className="mr-2 h-4 w-4" aria-hidden /> Mở tài liệu
-      </DropdownMenuItem>
+    <DropdownMenuContent align="end" className="w-52">
       <DropdownMenuItem onClick={handleOpenInTab}>
-        <SquarePlus className="mr-2 h-4 w-4" aria-hidden /> Mở trong tab
+        <SquarePlus className="mr-2 h-4 w-4" aria-hidden /> Mở trong tab mới
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => router.push(`/reader/${doc._id}`)}>
+        <ExternalLink className="mr-2 h-4 w-4" aria-hidden /> {L.openInNewWindow}
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => exportDoc(doc._id)} disabled={isExporting}>
+        <Download className="mr-2 h-4 w-4" aria-hidden /> Export ZIP (file + ghi chú)
       </DropdownMenuItem>
       <DropdownMenuItem onClick={handleDownload}>
         <Download className="mr-2 h-4 w-4" aria-hidden /> Tải xuống
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        onClick={(e) => { e.stopPropagation(); exportDoc(doc._id); }}
-        disabled={isExporting}
-      >
-        <Download className="mr-2 h-4 w-4" aria-hidden /> Export ZIP
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}>
         <Pencil className="mr-2 h-4 w-4" aria-hidden /> {L.rename}
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => setShowFolderDialog(true)}>
-        <Folder className="mr-2 h-4 w-4" aria-hidden />
-        {currentFolder ? "Đổi folder" : L.assignFolder}
+        <Folder className="mr-2 h-4 w-4" aria-hidden /> {currentFolder ? L.moveToFolder : L.addToFolder}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => setShowTrashDialog(true)} className="text-destructive focus:text-destructive">
@@ -157,7 +168,6 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
     <>
       <TrashDialog open={showTrashDialog} onOpenChange={setShowTrashDialog} onConfirm={handleTrash} />
       <RenameDialog open={showRenameDialog} onOpenChange={setShowRenameDialog} value={newTitle} onChange={setNewTitle} onSave={handleRename} />
-      {/* Fix A: chỉ mount khi mở — hook useFoldersList bên trong không chạy nền cho từng card */}
       {showFolderDialog && (
         <FolderDialog open={showFolderDialog} onOpenChange={setShowFolderDialog} docId={doc._id} currentFolderId={currentFolder?._id ?? null} />
       )}
@@ -167,7 +177,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   if (viewMode === "list") {
     return (
       <>
-        <div className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors ${isSelected ? "ring-2 ring-primary border-primary bg-primary/5" : ""}`}>
+        <div className={`group flex items-center gap-3 rounded-2xl border border-border/80 bg-card/95 px-4 py-3 hover:bg-card hover:shadow-md transition-all duration-150 border-l-[4px] ${spine.border} ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
           {/* Checkbox */}
           {onToggleSelect && (
             <button
@@ -175,7 +185,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
               className={`shrink-0 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all
                 ${isSelected
                   ? "bg-primary border-primary"
-                  : "bg-background border-muted-foreground/40 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                  : "bg-background border-muted-foreground/30 opacity-100 md:opacity-0 md:group-hover:opacity-100"
                 }`}
               aria-label={isSelected ? "Bỏ chọn" : "Chọn tài liệu"}
               aria-pressed={isSelected}
@@ -187,30 +197,32 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
               )}
             </button>
           )}
-          <Icon className={`h-5 w-5 shrink-0 ${iconColor}`} aria-hidden />
+          <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${spine.bg} ${spine.text} shrink-0`}>
+            <Icon className="h-4 w-4" aria-hidden />
+          </div>
           <div className="flex-1 min-w-0">
             <button
               onClick={() => router.push(`/reader/${doc._id}`)}
               onMouseEnter={() => router.prefetch(`/reader/${doc._id}`)}
               onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
-              className="block truncate text-sm font-medium text-left hover:underline"
+              className="block truncate text-sm font-semibold text-foreground/90 hover:text-primary transition-colors text-left"
             >
               {doc.title}
             </button>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              <span className="text-xs text-muted-foreground">{Lf[doc.format as keyof typeof Lf] ?? doc.format}</span>
-              {doc.fileSizeBytes && <span className="text-xs text-muted-foreground">· {formatBytes(doc.fileSizeBytes)}</span>}
-              <span className="text-xs text-muted-foreground">· {format(doc.createdAt, "dd/MM/yyyy", { locale: vi })}</span>
+              <span className="text-[11px] text-muted-foreground font-medium uppercase">{Lf[doc.format as keyof typeof Lf] ?? doc.format}</span>
+              {doc.fileSizeBytes && <span className="text-[11px] text-muted-foreground">· {formatBytes(doc.fileSizeBytes)}</span>}
+              <span className="text-[11px] text-muted-foreground">· {format(doc.createdAt, "dd/MM/yyyy", { locale: vi })}</span>
               {progressPct != null && progressPct > 0 && (
-                <span className="text-xs text-primary font-medium">· {Math.round(progressPct * 100)}%</span>
+                <span className="text-[11px] text-primary font-semibold">· {Math.round(progressPct * 100)}%</span>
               )}
               {currentFolder && (
-                <Badge variant="outline" className="h-4 px-1.5 text-xs gap-1">
+                <Badge variant="outline" className="h-4 px-1.5 text-[10px] gap-1 rounded-md">
                   <Folder className="h-2.5 w-2.5" />{currentFolder.name}
                 </Badge>
               )}
               {docTags?.map((tag) => (
-                <Badge key={tag._id} variant="secondary" className="h-4 px-1.5 text-xs" style={{ borderColor: tag.color ?? undefined }}>
+                <Badge key={tag._id} variant="secondary" className="h-4 px-1.5 text-[10px] rounded-md" style={{ borderColor: tag.color ?? undefined }}>
                   {tag.name}
                 </Badge>
               ))}
@@ -219,7 +231,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
           <div className="flex items-center gap-1 shrink-0">
             <TagPopover docId={doc._id} docTags={docTags} />
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-muted transition-colors" aria-label="Tuỳ chọn">
+              <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground" aria-label="Tuỳ chọn">
                 <MoreVertical className="h-4 w-4" aria-hidden />
               </DropdownMenuTrigger>
               {menu}
@@ -233,15 +245,15 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
 
   return (
     <>
-      <div className={`group relative flex flex-col rounded-xl border bg-card p-3 hover:shadow-md transition-all ${isSelected ? "ring-2 ring-primary border-primary" : ""}`}>
-        {/* Checkbox — top-left, always visible on mobile, hover on desktop */}
+      <div className={`group relative flex flex-col rounded-[22px] border border-border/80 bg-card/95 p-4 hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-200 ease-out border-l-[4px] ${spine.border} select-none ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
+        {/* Checkbox — top-left */}
         {onToggleSelect && (
           <button
             onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
-            className={`absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all
+            className={`absolute top-2.5 left-2.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all
               ${isSelected
                 ? "bg-primary border-primary"
-                : "bg-background border-muted-foreground/40 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                : "bg-background border-muted-foreground/30 opacity-100 md:opacity-0 md:group-hover:opacity-100"
               }`}
             aria-label={isSelected ? "Bỏ chọn" : "Chọn tài liệu"}
             aria-pressed={isSelected}
@@ -255,13 +267,13 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
         )}
 
         {/* Header: icon + 3-dot */}
-        <div className="mb-2 flex items-center justify-between gap-1">
-          <div className={`flex h-7 w-7 items-center justify-center rounded-md bg-muted shrink-0 transition-all ${onToggleSelect ? "ml-5" : ""}`}>
-            <Icon className={`h-4 w-4 ${iconColor}`} aria-hidden />
+        <div className="mb-2.5 flex items-center justify-between gap-1">
+          <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${spine.bg} ${spine.text} shrink-0 transition-transform duration-200 group-hover:scale-105 ${onToggleSelect ? "ml-5" : ""}`}>
+            <Icon className="h-4 w-4" aria-hidden />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
               aria-label="Tuỳ chọn"
             >
               <MoreVertical className="h-3.5 w-3.5" aria-hidden />
@@ -270,23 +282,25 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
           </DropdownMenu>
         </div>
 
+        {/* Document Title */}
         <button
           onClick={() => router.push(`/reader/${doc._id}`)}
           onMouseEnter={() => router.prefetch(`/reader/${doc._id}`)}
           onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
-          className="mb-2 line-clamp-2 text-sm font-medium text-left leading-snug hover:underline"
+          className="mb-2.5 line-clamp-2 text-xs font-semibold leading-snug text-left text-foreground/90 group-hover:text-primary transition-colors"
         >
           {doc.title}
         </button>
 
-        <div className="mt-auto space-y-1.5">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
-            <span>{Lf[doc.format as keyof typeof Lf] ?? doc.format}</span>
+        {/* Metadata + Progress + Tags */}
+        <div className="mt-auto space-y-2">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
+            <span className="font-medium uppercase tracking-wider text-[10px]">{Lf[doc.format as keyof typeof Lf] ?? doc.format}</span>
             {doc.fileSizeBytes && <span>· {formatBytes(doc.fileSizeBytes)}</span>}
           </div>
 
           {currentFolder && (
-            <Badge variant="outline" className="text-xs gap-1 px-1.5 h-4">
+            <Badge variant="outline" className="text-[10px] gap-1 px-1.5 h-4 rounded-md">
               <Folder className="h-2.5 w-2.5" />{currentFolder.name}
             </Badge>
           )}
@@ -294,27 +308,30 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
           {docTags && docTags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {docTags.slice(0, 2).map((tag) => (
-                <Badge key={tag._id} variant="secondary" className="h-4 px-1.5 text-xs" style={{ borderColor: tag.color ?? undefined }}>
+                <Badge key={tag._id} variant="secondary" className="h-4 px-1.5 text-[10px] rounded-md" style={{ borderColor: tag.color ?? undefined }}>
                   {tag.name}
                 </Badge>
               ))}
-              {docTags.length > 2 && <Badge variant="secondary" className="h-4 px-1.5 text-xs">+{docTags.length - 2}</Badge>}
+              {docTags.length > 2 && <Badge variant="secondary" className="h-4 px-1.5 text-[10px] rounded-md">+{docTags.length - 2}</Badge>}
             </div>
           )}
 
           {progressPct != null && progressPct > 0 && (
-            <div className="space-y-0.5">
-              <span className="text-xs text-primary font-medium">{Math.round(progressPct * 100)}%</span>
-              <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+            <div className="space-y-1 pt-0.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground text-[10px]">Tiến độ</span>
+                <span className="text-primary font-semibold text-[10px]">{Math.round(progressPct * 100)}%</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-primary transition-all"
+                  className="h-full rounded-full bg-primary/85 transition-all duration-300"
                   style={{ width: `${Math.round(progressPct * 100)}%` }}
                 />
               </div>
             </div>
           )}
 
-          <div className="flex items-center gap-1 -ml-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 -ml-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-0.5">
             <TagPopover docId={doc._id} docTags={docTags} />
           </div>
         </div>
@@ -433,4 +450,3 @@ function RenameDialog({ open, onOpenChange, value, onChange, onSave }: {
     </Dialog>
   );
 }
-

@@ -7,7 +7,7 @@ import {
   LogOut, Settings, Trash2, Plus, Folder, FolderOpen,
   MoreVertical, Pencil, FolderPlus, ChevronRight, LayoutGrid,
   PanelLeftClose, PanelLeftOpen, ChevronDown, File as FileIcon, Menu, X,
-  CheckSquare, FolderInput, Search,
+  CheckSquare, FolderInput, Search, Palette,
 } from "lucide-react";
 import { AppLogo } from "@/components/AppLogo";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ import { SearchModal } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
+import { openReadingSettings } from "@/components/AppSettingsPanel";
 
 const L = labels.library;
 const N = labels.nav;
@@ -341,23 +342,24 @@ export function LibraryPageInner() {
       {/* Navbar — full width */}
       {/* Header chỉ còn cho mobile — desktop mọi điều hướng đã nằm trong sidebar (user chốt 16/07) */}
       <header className="border-b bg-card sticky top-0 z-20 xl:hidden" style={{ paddingTop: 'var(--safe-top)' }}>
-        <div className="flex h-14 items-center justify-between px-4 md:px-6">
+        <div className="flex h-12 items-center justify-between px-3 sm:px-6">
           <div className="flex items-center gap-2">
             {/* Mobile: hamburger để mở drawer */}
             <button
               onClick={() => setMobileSidebarOpen(v => !v)}
-              className="mr-1 rounded p-1.5 hover:bg-muted transition-colors xl:hidden"
+              className="h-8 w-8 rounded-xl flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors xl:hidden"
               aria-label="Mở menu"
             >
-              <Menu className="h-4 w-4 text-muted-foreground" />
+              <Menu className="h-4 w-4" />
             </button>
 
             {/* Desktop: nút MỞ sidebar — chỉ hiện khi đang ẩn (nút đóng nằm trong sidebar) */}
             {!sidebarOpen && (
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
+                className="hidden xl:flex h-8 w-8 items-center justify-center rounded-xl hover:bg-muted text-muted-foreground transition-colors mr-1"
                 aria-label="Hiện sidebar"
+                title="Hiện sidebar"
               >
                 <PanelLeftOpen className="h-4 w-4" />
               </button>
@@ -365,45 +367,47 @@ export function LibraryPageInner() {
 
             {/* Brand đã chuyển vào sidebar trên desktop — chỉ còn hiện ở mobile */}
             <div className="flex items-center gap-2 xl:hidden">
-              <AppLogo size={32} />
-              <span className="font-semibold">Web Knowledge Base</span>
+              <AppLogo size={28} />
+              <span className="font-semibold text-sm">Thư viện</span>
             </div>
           </div>
 
-          <nav className="hidden items-center gap-1 xl:flex">
-            <Button variant="secondary" size="sm" aria-current={true}>{N.library}</Button>
-            <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/notes")} onClick={() => { setActivePanel("notes"); window.history.pushState(null, "", "/notes"); }}>{N.notes}</Button>
-            <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => { setActivePanel("settings"); window.history.pushState(null, "", "/settings"); }}>
-              <Settings className="mr-1 h-4 w-4" />{N.settings}
-            </Button>
-            <Button
-              variant="ghost" size="sm"
-              onMouseEnter={() => router.prefetch("/library/trash")}
-              onClick={() => router.push("/library/trash")}
-            >
-              <Trash2 className="mr-1 h-4 w-4 text-destructive" />
-              {L.trashButton}
-            </Button>
+          {/* Center: Search Capsule (Craft Style) */}
+          <div className="flex-1 max-w-sm mx-4 hidden sm:flex items-center justify-center">
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex w-full items-center justify-between gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3.5 py-1.5 text-xs text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground hover:border-border"
             >
-              <Search className="h-3.5 w-3.5" />
-              Tìm kiếm
-              <kbd className="ml-1 rounded border bg-background px-1 py-px text-[10px]">⌘K</kbd>
+              <div className="flex items-center gap-2">
+                <Search className="h-3.5 w-3.5" />
+                <span>Tìm tài liệu, ghi chú, highlight…</span>
+              </div>
+              <kbd className="rounded-md border border-border/80 bg-background/80 px-1.5 py-0.5 text-[10px] font-mono">⌘K</kbd>
             </button>
-          </nav>
+          </div>
 
-          <div className="flex items-center gap-2">
+          {/* Right: Quick actions */}
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex xl:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              className="flex sm:hidden h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition-colors"
               aria-label="Tìm kiếm"
             >
               <Search className="h-4 w-4" />
             </button>
+
+            {/* Màu giấy & Cỡ chữ */}
+            <button
+              onClick={openReadingSettings}
+              title="Màu giấy & Cỡ chữ"
+              aria-label="Màu giấy & Cỡ chữ"
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+            >
+              <Palette className="h-4 w-4" />
+            </button>
+
             {/* Tài khoản + đăng xuất đã chuyển vào sidebar trên desktop — mobile giữ nút icon */}
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="xl:hidden" aria-label={N.logout}>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="xl:hidden h-8 w-8 p-0 rounded-xl" aria-label={N.logout}>
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -471,12 +475,12 @@ export function LibraryPageInner() {
               <Button
                 variant="outline" size="sm"
                 onClick={() => { setCreateFolderParent(scope !== "all" ? scope : undefined); setCreateFolderOpen(true); }}
-                className="hidden sm:flex"
+                className="hidden sm:flex rounded-xl"
               >
                 <FolderPlus className="mr-1.5 h-4 w-4" />
                 Tạo folder
               </Button>
-              <Button onClick={() => setUploadOpen(true)} size="sm">
+              <Button onClick={() => setUploadOpen(true)} size="sm" className="rounded-xl shadow-xs">
                 <Plus className="mr-1.5 h-4 w-4" />
                 <span className="hidden sm:inline">{L.uploadButton}</span>
                 <span className="sm:hidden">Thêm</span>

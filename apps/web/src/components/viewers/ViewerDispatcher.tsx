@@ -33,8 +33,9 @@ interface ViewerDispatcherProps {
 
 function ViewerLoading() {
   return (
-    <div className="flex flex-1 items-center justify-center py-24">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    <div className="flex flex-1 flex-col items-center justify-center py-24 gap-3">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+      <span className="text-xs text-muted-foreground font-medium animate-pulse">Đang nạp trang sách…</span>
     </div>
   );
 }
