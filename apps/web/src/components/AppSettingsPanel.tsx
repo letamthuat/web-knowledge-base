@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Settings } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Palette, X } from "lucide-react";
 import { useReadingModePrefs, useUpdateReadingModePrefs, type ReadingTheme, type FontFamily, type ColumnWidth } from "@/hooks/useReadingModePrefs";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
@@ -37,62 +37,33 @@ export function useAppTypography() {
   return getAppTypography();
 }
 
-const POSITION_KEY = "settings-btn-pos";
+/** Gọi hàm này từ bất kỳ đâu (Sidebar, Menu, Header) để mở bảng cài đặt màu giấy & cỡ chữ */
+export function openReadingSettings() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("open-reading-settings"));
+  }
+}
 
 export function AppSettingsPanel() {
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [, rerender] = useState(0);
-  const [pos, setPos] = useState<{ right: number; bottom: number } | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const dragState = useRef<{ startX: number; startY: number; startRight: number; startBottom: number; moved: boolean } | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
     setIsMobile(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", handler);
-    // Restore saved position
-    try {
-      const saved = localStorage.getItem(POSITION_KEY);
-      if (saved) setPos(JSON.parse(saved));
-    } catch { /* ignore */ }
-    return () => mq.removeEventListener("change", handler);
-  }, []);
 
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    const btn = btnRef.current;
-    if (!btn) return;
-    const rect = btn.getBoundingClientRect();
-    const right = window.innerWidth - rect.right;
-    const bottom = window.innerHeight - rect.bottom;
-    dragState.current = { startX: e.clientX, startY: e.clientY, startRight: right, startBottom: bottom, moved: false };
-    btn.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  }, []);
+    // Lắng nghe sự kiện mở từ sidebar hoặc các nút khác
+    const openHandler = () => setOpen(true);
+    window.addEventListener("open-reading-settings", openHandler);
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragState.current) return;
-    const dx = e.clientX - dragState.current.startX;
-    const dy = e.clientY - dragState.current.startY;
-    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragState.current.moved = true;
-    if (!dragState.current.moved) return;
-    const newRight = Math.max(4, Math.min(window.innerWidth - 44, dragState.current.startRight - dx));
-    const newBottom = Math.max(4, Math.min(window.innerHeight - 44, dragState.current.startBottom - dy));
-    setPos({ right: newRight, bottom: newBottom });
+    return () => {
+      mq.removeEventListener("change", handler);
+      window.removeEventListener("open-reading-settings", openHandler);
+    };
   }, []);
-
-  const onPointerUp = useCallback((e: React.PointerEvent) => {
-    if (!dragState.current) return;
-    const wasMoved = dragState.current.moved;
-    dragState.current = null;
-    if (wasMoved && pos) {
-      try { localStorage.setItem(POSITION_KEY, JSON.stringify(pos)); } catch { /* ignore */ }
-    } else if (!wasMoved) {
-      setOpen((v) => !v);
-    }
-    e.preventDefault();
-  }, [pos]);
 
   const prefs = useReadingModePrefs();
   const updatePrefs = useUpdateReadingModePrefs();
@@ -178,62 +149,125 @@ export function AppSettingsPanel() {
   }
 
   const panelContent = (
-    <div className={isMobile ? "px-1 py-2" : "p-4 w-56 max-h-[80vh] overflow-y-auto"}>
-      {/* Theme */}
-      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">Màu nền</p>
-      <div className="flex gap-2">
-        {([
-          { value: "light" as const, bg: "#ffffff", label: "Sáng" },
-          { value: "sepia" as const, bg: "#f4ecd8", label: "Sepia" },
-          { value: "dark"  as const, bg: "#1a1a1a", label: "Tối" },
-        ]).map(({ value, bg, label }) => (
-          <button key={value} onClick={() => applyTheme(value)} className="flex flex-col items-center gap-1.5 group">
-            <span className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all group-hover:scale-105 ${_theme === value ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"}`} style={{ background: bg }}>
-              {_theme === value && (
-                <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 8l3.5 3.5L13 5" stroke={value === "dark" ? "#fff" : "#000"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              )}
-            </span>
-            <span className={`text-[10px] font-medium ${_theme === value ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
-          </button>
-        ))}
+    <div className={isMobile ? "px-1 py-2" : "w-full max-h-[80vh] overflow-y-auto space-y-4"}>
+      {/* Theme selection with Apple Books paper preview */}
+      <div>
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
+          Màu nền giấy
+        </p>
+        <div className="grid grid-cols-3 gap-2.5">
+          {([
+            { value: "light" as const, bg: "#FAF9F6", border: "#E6E3DC", label: "Giấy ngà", textColor: "#221F1D" },
+            { value: "sepia" as const, bg: "#F4EEDF", border: "#DFD5C2", label: "Cổ điển", textColor: "#3E2718" },
+            { value: "dark"  as const, bg: "#161619", border: "#303038", label: "Đêm nhung", textColor: "#ECEAE4" },
+          ]).map(({ value, bg, border, label, textColor }) => (
+            <button
+              key={value}
+              onClick={() => applyTheme(value)}
+              className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl border transition-all ${
+                _theme === value
+                  ? "border-primary bg-primary/5 shadow-xs ring-2 ring-primary/20 scale-[1.02]"
+                  : "border-border/60 hover:border-border hover:bg-secondary/40"
+              }`}
+            >
+              <span
+                className="flex h-9 w-9 items-center justify-center rounded-full border shadow-2xs transition-transform"
+                style={{ background: bg, borderColor: border }}
+              >
+                {_theme === value && (
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M3.5 8.5L6.5 11.5L12.5 5"
+                      stroke={textColor}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </span>
+              <span className={`text-[11px] font-medium ${_theme === value ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                {label}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Typography */}
-      <div className="border-t pt-3 mt-3 space-y-3">
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Chữ</p>
-
-        <div className="flex gap-1.5">
-          {(["sans", "serif", "mono"] as const).map((f) => (
-            <button key={f} onClick={() => applyFont(f)}
-              className={`flex-1 rounded-lg border py-1.5 text-xs font-medium transition-all ${_font === f ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-foreground/40"}`}>
-              {f === "sans" ? "Sans" : f === "serif" ? "Serif" : "Mono"}
-            </button>
-          ))}
+      {/* Typography settings */}
+      <div className="border-t border-border/50 pt-3 space-y-3.5">
+        <div>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Kiểu chữ
+          </p>
+          <div className="flex gap-2">
+            {(["sans", "serif", "mono"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => applyFont(f)}
+                className={`flex-1 rounded-xl border py-2 text-xs font-medium transition-all ${
+                  _font === f
+                    ? "border-primary bg-primary/10 text-primary font-semibold shadow-2xs"
+                    : "border-border/60 text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                }`}
+              >
+                {f === "sans" ? "Không chân" : f === "serif" ? "Có chân" : "Đơn dòng"}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>
-          <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5"><span>Cỡ chữ</span><span>{_fontSize}px</span></div>
-          <input type="range" min="12" max="28" step="1" value={_fontSize}
+          <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
+            <span>Cỡ chữ đọc</span>
+            <span className="font-semibold text-foreground">{_fontSize}px</span>
+          </div>
+          <input
+            type="range"
+            min="12"
+            max="28"
+            step="1"
+            value={_fontSize}
             onChange={(e) => applyFontSize(Number(e.target.value))}
-            className="w-full accent-primary h-1.5 rounded-full cursor-pointer" />
+            className="w-full accent-primary h-1.5 rounded-full cursor-pointer bg-secondary"
+          />
         </div>
 
         <div>
-          <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5"><span>Dãn dòng</span><span>{_lineHeight.toFixed(1)}</span></div>
-          <input type="range" min="1.4" max="2.0" step="0.1" value={_lineHeight}
+          <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
+            <span>Khoảng cách dòng</span>
+            <span className="font-semibold text-foreground">{_lineHeight.toFixed(1)}</span>
+          </div>
+          <input
+            type="range"
+            min="1.4"
+            max="2.0"
+            step="0.1"
+            value={_lineHeight}
             onChange={(e) => applyLineHeight(Number(e.target.value))}
-            className="w-full accent-primary h-1.5 rounded-full cursor-pointer" />
+            className="w-full accent-primary h-1.5 rounded-full cursor-pointer bg-secondary"
+          />
         </div>
 
-        <div className="flex gap-1.5">
-          {([["narrow", "Hẹp"], ["medium", "Vừa"], ["wide", "Rộng"]] as const).map(([v, label]) => (
-            <button key={v} onClick={() => applyColWidth(v)}
-              className={`flex-1 rounded-lg border py-1.5 text-xs font-medium transition-all ${_colWidth === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-foreground/40"}`}>
-              {label}
-            </button>
-          ))}
+        <div>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Độ rộng khung đọc
+          </p>
+          <div className="flex gap-2">
+            {([["narrow", "Gọn gàng"], ["medium", "Vừa phải"], ["wide", "Toàn màn hình"]] as const).map(([v, label]) => (
+              <button
+                key={v}
+                onClick={() => applyColWidth(v)}
+                className={`flex-1 rounded-xl border py-2 text-[11px] font-medium transition-all ${
+                  _colWidth === v
+                    ? "border-primary bg-primary/10 text-primary font-semibold shadow-2xs"
+                    : "border-border/60 text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -241,32 +275,43 @@ export function AppSettingsPanel() {
 
   return (
     <>
-      {/* Trigger button — draggable, position saved to localStorage */}
-      <button
-        ref={btnRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        style={pos
-          ? { right: pos.right, bottom: pos.bottom }
-          : { right: 16, bottom: isMobile ? 72 : 20 }
-        }
-        className={`fixed z-50 flex h-10 w-10 cursor-grab active:cursor-grabbing touch-none items-center justify-center rounded-full border shadow-md transition-colors select-none ${open ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}
-        aria-label="Cài đặt hiển thị"
-      >
-        <Settings className="h-3.5 w-3.5" />
-      </button>
-
       {/* Mobile: BottomSheet */}
       {isMobile ? (
-        <BottomSheet open={open} onClose={() => setOpen(false)} title="Hiển thị">
+        <BottomSheet open={open} onClose={() => setOpen(false)} title="Màu giấy & Cỡ chữ">
           {panelContent}
         </BottomSheet>
       ) : (
-        /* Desktop: dropdown panel */
+        /* Desktop: Apple Books styled dialog modal */
         open && (
-          <div className="fixed bottom-16 right-4 z-50 rounded-2xl border bg-card shadow-2xl">
-            {panelContent}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Cài đặt hiển thị"
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          >
+            <div
+              className="relative w-84 max-w-sm rounded-[28px] border border-border/80 bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3.5 border-b border-border/40 mb-4">
+                <div className="flex items-center gap-2">
+                  <Palette className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm text-foreground">
+                    Màu giấy & Cỡ chữ
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  aria-label="Đóng"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {panelContent}
+            </div>
+            {/* Backdrop click to close */}
+            <div className="absolute inset-0 -z-10" onClick={() => setOpen(false)} />
           </div>
         )
       )}

@@ -29,8 +29,9 @@ import {
   Trash2, Pencil, FilePlus2, FolderPlus, FileText, Files,
   Image as ImageIcon, FileAudio, FileVideo, Presentation, BookOpen,
   Circle, CheckCircle2, CircleDot, Folder, FolderOpen, SplitSquareHorizontal,
-  AlertTriangle, X, Check, Search, GraduationCap, NotebookPen, Settings, Download,
+  AlertTriangle, X, Check, Search, GraduationCap, NotebookPen, Settings, Download, Palette,
 } from "lucide-react";
+import { openReadingSettings } from "@/components/AppSettingsPanel";
 import { usePwa } from "@/contexts/PwaContext";
 import { HandbookTree } from "./HandbookTree";
 import { useStudySpaces, useDueCountsBySpace } from "@/lib/api/study";
@@ -506,6 +507,15 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
               <span className="truncate">Cài ứng dụng</span>
             </button>
           )}
+
+          <NavRow
+            icon={Palette}
+            label="Màu giấy & Cỡ chữ"
+            onClick={() => {
+              openReadingSettings();
+              if (onLinkClick) onLinkClick();
+            }}
+          />
 
           <NavRow icon={Settings} label="Cài đặt" active={activePanel === "settings"} onClick={() => goPanel("settings", "/settings")} />
           <NavRow
