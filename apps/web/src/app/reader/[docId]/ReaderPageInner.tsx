@@ -145,7 +145,7 @@ function ReaderShell({ doc, downloadUrl }: {
   }, []);
 
   const typography = useAppTypography();
-  const { activePanel, setActivePanel, sidebarOpen, setSidebarOpen } = useActiveTab();
+  const { activePanel, setActivePanel, navigate, sidebarOpen, setSidebarOpen } = useActiveTab();
   const { exportDoc, isExporting } = useDocExport();
 
   const handleNewNote = useCallback(async () => {
@@ -452,13 +452,13 @@ function ReaderShell({ doc, downloadUrl }: {
                     <Download className="mr-2 h-4 w-4" /> Tải xuống tài liệu
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => confirmLeave(() => router.push("/library"))}>
+                  <DropdownMenuItem onClick={() => confirmLeave(() => navigate("/library"))}>
                     Về Thư viện
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => confirmLeave(() => router.push("/notes"))}>
+                  <DropdownMenuItem onClick={() => confirmLeave(() => navigate("/notes"))}>
                     <StickyNote className="mr-2 h-4 w-4" /> Ghi chú
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => confirmLeave(() => router.push("/settings"))}>
+                  <DropdownMenuItem onClick={() => confirmLeave(() => navigate("/settings"))}>
                     <Settings className="mr-2 h-4 w-4" /> Cài đặt
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -579,7 +579,7 @@ export function evictCachedUrl(docId: string) {
 
 // ReaderDocLoader — used by AppShell keep-alive: receives docId as prop instead of useParams
 export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
-  const router = useRouter();
+  const { navigate } = useActiveTab();
   const doc = useDocument(docId);
 
   const [downloadUrl, setDownloadUrl] = useState<string | null>(() => getCachedUrl(docId));
@@ -615,7 +615,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Không tìm thấy tài liệu.</p>
-        <Button variant="outline" onClick={() => router.push("/library")}>Về thư viện</Button>
+        <Button variant="outline" onClick={() => navigate("/library")}>Về thư viện</Button>
       </div>
     );
   }
@@ -624,7 +624,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden bg-background">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4" style={{ paddingTop: 'var(--safe-top)' }}>
-          <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/library")} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Thư viện
           </Button>
@@ -644,7 +644,7 @@ export function ReaderDocLoader({ docId }: { docId: Id<"documents"> }) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden bg-background">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4" style={{ paddingTop: 'var(--safe-top)' }}>
-          <Button variant="ghost" size="sm" onClick={() => router.push("/library")} className="gap-1.5">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/library")} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Thư viện
           </Button>

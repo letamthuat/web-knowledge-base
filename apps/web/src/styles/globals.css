@@ -275,6 +275,47 @@ html.rm-dark .hljs { color: hsl(var(--code-fg)); }
   }
 }
 
+/* ─── View Transitions (chuyển màn kiểu app native) ─────────────────────────── */
+/* Panel cũ mờ nhanh, panel mới "nổi" lên bằng lò xo */
+::view-transition-old(root) {
+  animation: 140ms ease-out both vt-fade-out;
+}
+::view-transition-new(root) {
+  animation: 380ms var(--ease-spring) both vt-rise-in;
+}
+/* Sidebar desktop đứng yên khi đổi panel */
+::view-transition-group(app-sidebar) {
+  animation: none;
+}
+::view-transition-old(app-sidebar),
+::view-transition-new(app-sidebar) {
+  animation: none;
+}
+/* Card tài liệu nở thành trang đọc */
+::view-transition-group(doc-hero) {
+  animation-duration: 440ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 22px;
+  overflow: hidden;
+}
+::view-transition-old(doc-hero),
+::view-transition-new(doc-hero) {
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+::view-transition-old(doc-hero) {
+  animation: 200ms ease-out both vt-fade-out;
+}
+::view-transition-new(doc-hero) {
+  animation: 300ms ease-out 60ms both vt-fade-in;
+}
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-rise-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.992); }
+}
+
 /* Tiêu đề biên tập: Newsreader với optical size */
 .font-display {
   font-optical-sizing: auto;

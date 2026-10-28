@@ -1,8 +1,8 @@
 "use client";
 
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 import { Search, FileText, StickyNote, Highlighter, X, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe } from "lucide-react";
 import { useSearch, type FilterType } from "@/hooks/useSearch";
 import { snippet } from "@/lib/search/snippet";
@@ -90,7 +90,7 @@ const TYPE_OPTIONS: { label: string; value: FilterType }[] = [
 ];
 
 export function SearchModal({ open, onClose }: SearchModalProps) {
-  const router = useRouter();
+  const { navigate } = useActiveTab();
   const [q, setQ] = useState("");
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [filterFormat, setFilterFormat] = useState("");
@@ -125,12 +125,12 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
   function goToDoc(docId: string) {
     onClose();
     const url = q.trim() ? `/reader/${docId}?q=${encodeURIComponent(q.trim())}` : `/reader/${docId}`;
-    router.push(url);
+    navigate(url);
   }
 
   function goToNote(noteId: string) {
     onClose();
-    router.push(`/notes?note=${noteId}`);
+    navigate(`/notes?note=${noteId}`);
   }
 
   const totalResults = docs.length + notes.length + highlights.length;

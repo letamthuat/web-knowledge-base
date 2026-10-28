@@ -1,5 +1,6 @@
 "use client";
 
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAiSettings, saveAiSettings } from "@/lib/api/ai-settings";
@@ -301,6 +302,7 @@ function AiSettingsSection() {
 
 export function SettingsPageInner() {
   const router = useRouter();
+  const { navigate } = useActiveTab();
   const stats = useStorageStats();
   const { downloadBackup, isDownloading } = useBackupDownload();
   const [confirm, setConfirm] = useState(false);
@@ -345,7 +347,7 @@ export function SettingsPageInner() {
       <MobileSidebarDrawer open={navOpen} onClose={() => setNavOpen(false)} />
 
       <div className="mx-auto max-w-2xl px-4 py-12">
-        <Button variant="ghost" size="sm" className="mb-8" onClick={() => router.push("/library")}>
+        <Button variant="ghost" size="sm" className="mb-8" onClick={() => navigate("/library")}>
           ← Quay lại thư viện
         </Button>
 
@@ -374,7 +376,7 @@ export function SettingsPageInner() {
                   <p className="text-xl font-bold">{stats.docCount}</p>
                   {stats.trashedCount > 0 && (
                     <button
-                      onClick={() => router.push("/library/trash")}
+                      onClick={() => navigate("/library/trash")}
                       className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors mt-0.5"
                     >
                       {stats.trashedCount} trong thùng rác (xem)

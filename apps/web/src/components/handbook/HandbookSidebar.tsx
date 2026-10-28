@@ -262,7 +262,7 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
   const router = useRouter();
   const domains = useDomains();
   const { openTab } = useTabSync();
-  const { activePanel, setActivePanel, openSecondary, closeSecondary } = useActiveTab();
+  const { activePanel, setActivePanel, navigate, openSecondary, closeSecondary } = useActiveTab();
   const { isStandalone, isInstallable, isIOS, promptInstall, openIOSGuide } = usePwa();
   const createDomain = (a: { name: string; color?: string }) => apiCreateDomain(a.name, a.color);
 
@@ -293,19 +293,17 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
   };
 
   // Điều hướng panel chung: đổi panel + đẩy URL (cùng pattern toàn app)
-  const goPanel = useCallback((panel: string, url: string) => {
-    setActivePanel(panel);
-    window.history.pushState(null, "", url);
+  const goPanel = useCallback((_panel: string, url: string) => {
+    navigate(url);
     if (onLinkClick) onLinkClick();
-  }, [setActivePanel, onLinkClick]);
+  }, [navigate, onLinkClick]);
 
   const openDoc = useCallback((docId: Id<"documents">) => {
     closeSecondary();
     openTab(docId).catch(() => {});
-    setActivePanel(`reader:${docId}`);
-    window.history.pushState(null, "", `/reader/${docId}`);
+    navigate(`/reader/${docId}`);
     if (onLinkClick) onLinkClick();
-  }, [closeSecondary, openTab, setActivePanel, onLinkClick]);
+  }, [closeSecondary, openTab, navigate, onLinkClick]);
 
   const handleCreateDomain = useCallback(() => {
     setRenameDialog({
@@ -521,7 +519,7 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
             label="Thùng rác"
             iconCls="text-destructive"
             active={activePanel === "trash"}
-            onClick={() => { router.push("/library/trash"); if (onLinkClick) onLinkClick(); }}
+            onClick={() => { navigate("/library/trash"); if (onLinkClick) onLinkClick(); }}
           />
         </div>
       </div>
@@ -671,6 +669,7 @@ export function HandbookSidebar() {
         style={{
           width: sidebarOpen ? width : 0,
           contain: "paint layout",
+          viewTransitionName: "app-sidebar",
         }}
       >
         <div style={{ width: `${width}px`, minWidth: `${width}px`, height: "100%" }}>

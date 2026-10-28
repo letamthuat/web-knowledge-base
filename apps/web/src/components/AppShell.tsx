@@ -20,6 +20,7 @@ import { X } from "lucide-react";
 import { ReaderDocLoader } from "@/app/reader/[docId]/ReaderPageInner";
 import { HandbookSidebar } from "@/components/handbook/HandbookSidebar";
 import { GlobalSearch } from "@/components/search/SearchModal";
+import { pathnameToPanel } from "@/lib/panels";
 
 const LibraryPageInner = dynamic(
   () => import("@/components/library/LibraryPageInner").then((m) => m.LibraryPageInner),
@@ -51,20 +52,11 @@ if (typeof window !== "undefined") {
   import("@/components/study/StudyPageInner");
 }
 
-function pathnameToPanel(pathname: string): string | null {
-  if (pathname === "/library/trash") return "trash";
-  if (pathname === "/library" || pathname.startsWith("/library/")) return "library";
-  if (pathname === "/notes"   || pathname.startsWith("/notes/"))   return "notes";
-  if (pathname === "/study"   || pathname.startsWith("/study/"))   return "study";
-  if (pathname === "/settings"|| pathname.startsWith("/settings/"))return "settings";
-  const m = pathname.match(/^\/reader\/([^/]+)/);
-  if (m) return `reader:${m[1]}`;
-  return null;
-}
 
-const TabPanel = memo(function TabPanel({ active, children }: { active: boolean; children: ReactNode }) {
+const TabPanel = memo(function TabPanel({ id, active, children }: { id: string; active: boolean; children: ReactNode }) {
   return (
     <div
+      data-panel={id}
       style={
         active
           ? { position: "absolute", inset: 0, visibility: "visible", pointerEvents: "auto", overflowY: "auto", overflowX: "hidden" }
@@ -138,24 +130,25 @@ function AppShellContent({ children }: { children: ReactNode }) {
       <div ref={split.containerRef} style={{ position: "relative", flex: 1, minWidth: 0, display: "flex" }}>
         {/* Pane trái = các panel chính */}
         <div style={{ position: "relative", minWidth: 0, width: splitActive ? `${split.leftPercent}%` : "100%", height: "100%" }}>
-          <TabPanel active={current === "library"}>
+          <TabPanel id="library" active={current === "library"}>
             <LibraryPageInner />
           </TabPanel>
-          <TabPanel active={current === "notes"}>
+          <TabPanel id="notes" active={current === "notes"}>
             <NotesPageInner />
           </TabPanel>
-          <TabPanel active={current === "settings"}>
+          <TabPanel id="settings" active={current === "settings"}>
             <SettingsPageInner />
           </TabPanel>
-          <TabPanel active={current === "trash"}>
+          <TabPanel id="trash" active={current === "trash"}>
             <TrashPageInner />
           </TabPanel>
-          <TabPanel active={current === "study"}>
+          <TabPanel id="study" active={current === "study"}>
             <StudyPageInner />
           </TabPanel>
           {mountedDocIds.current.map((docId) => (
             <TabPanel
               key={docId}
+              id={`reader:${docId}`}
               active={current === `reader:${docId}`}
             >
               <ReaderDocLoader docId={docId as Id<"documents">} />

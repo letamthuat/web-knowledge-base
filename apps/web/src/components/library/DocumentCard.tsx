@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
   FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe,
   MoreVertical, Pencil, Trash2, Folder, FolderX, ExternalLink, SquarePlus, Download,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { Id } from "@/_generated/dataModel";
 import type { TagRow } from "@/lib/api/tags";
 import { useFoldersList, assignDocToFolder, removeDocFromFolder, type FolderRow } from "@/lib/api/folders";
@@ -69,7 +69,10 @@ interface DocumentCardProps {
 }
 
 export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect, tags, folder, progressPct }: DocumentCardProps) {
-  const router = useRouter();
+  const { navigate } = useActiveTab();
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Mở tại chỗ (không qua server) + card morph thành trang đọc
+  const openDoc = () => navigate(`/reader/${doc._id}`, { from: cardRef.current });
   const [showTrashDialog, setShowTrashDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showFolderDialog, setShowFolderDialog] = useState(false);
@@ -106,12 +109,11 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
 
   async function handleOpenInTab(e: React.MouseEvent) {
     e.stopPropagation();
-    try {
-      await openTab(doc._id);
-      router.push(`/reader/${doc._id}`);
-    } catch (err: unknown) {
+    // Ghi tab chạy nền — không bắt người dùng chờ 3-4 round-trip mới chuyển màn
+    openTab(doc._id).catch((err: unknown) => {
       toast.error(err instanceof Error ? err.message : "Không thể mở tab");
-    }
+    });
+    openDoc();
   }
 
   const Icon = FORMAT_ICONS[doc.format] ?? FileText;
@@ -141,7 +143,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
       <DropdownMenuItem onClick={handleOpenInTab}>
         <SquarePlus className="mr-2 h-4 w-4" aria-hidden /> Mở trong tab mới
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => router.push(`/reader/${doc._id}`)}>
+      <DropdownMenuItem onClick={openDoc}>
         <ExternalLink className="mr-2 h-4 w-4" aria-hidden /> Mở tài liệu
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => exportDoc(doc._id)} disabled={isExporting}>
@@ -177,7 +179,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   if (viewMode === "list") {
     return (
       <>
-        <div className={`group flex items-center gap-3 rounded-2xl border border-border/80 bg-card/95 px-4 py-3 hover:bg-card hover:shadow-md transition-[background-color,box-shadow] duration-150 border-l-[4px] ${spine.border} ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
+        <div ref={cardRef} className={`group flex items-center gap-3 rounded-2xl border border-border/80 bg-card/95 px-4 py-3 hover:bg-card hover:shadow-md transition-[background-color,box-shadow] duration-150 border-l-[4px] ${spine.border} ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
           {/* Checkbox */}
           {onToggleSelect && (
             <button
@@ -202,8 +204,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
           </div>
           <div className="flex-1 min-w-0">
             <button
-              onClick={() => router.push(`/reader/${doc._id}`)}
-              onMouseEnter={() => router.prefetch(`/reader/${doc._id}`)}
+              onClick={openDoc}
               onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
               className="block truncate text-sm font-semibold text-foreground/90 hover:text-primary transition-colors text-left"
             >
@@ -245,7 +246,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
 
   return (
     <>
-      <div className={`group relative flex flex-col rounded-[22px] border border-border/80 bg-card/95 p-4 hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-[transform,box-shadow] duration-200 ease-out motion-reduce:hover:translate-y-0 border-l-[4px] ${spine.border} select-none ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
+      <div ref={cardRef} className={`group relative flex flex-col rounded-[22px] border border-border/80 bg-card/95 p-4 hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-[transform,box-shadow] duration-200 ease-out motion-reduce:hover:translate-y-0 border-l-[4px] ${spine.border} select-none ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
         {/* Checkbox — top-left */}
         {onToggleSelect && (
           <button
@@ -284,8 +285,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
 
         {/* Document Title */}
         <button
-          onClick={() => router.push(`/reader/${doc._id}`)}
-          onMouseEnter={() => router.prefetch(`/reader/${doc._id}`)}
+          onClick={openDoc}
           onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
           className="mb-2.5 line-clamp-2 text-xs font-semibold leading-snug text-left text-foreground/90 group-hover:text-primary transition-colors"
         >

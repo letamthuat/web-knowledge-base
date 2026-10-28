@@ -1,7 +1,7 @@
 "use client";
 
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useRecentHistory } from "@/lib/api/reading-progress";
 import { format, isToday, isYesterday } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -43,7 +43,7 @@ function formatProgressTime(timestamp: number | string | null | undefined): stri
 }
 
 export function RecentHistory() {
-  const router = useRouter();
+  const { navigate } = useActiveTab();
   const history = useRecentHistory(8);
 
   const greeting = useMemo(() => {
@@ -90,8 +90,7 @@ export function RecentHistory() {
             return (
               <button
                 key={doc._id}
-                onClick={() => router.push(`/reader/${doc._id}`)}
-                onMouseEnter={() => router.prefetch(`/reader/${doc._id}`)}
+                onClick={() => navigate(`/reader/${doc._id}`)}
                 className={`group relative flex w-48 shrink-0 flex-col rounded-[20px] border border-border/80 bg-card/95 p-4 text-left shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-200 ease-out border-l-[4px] ${spine.border} snap-start`}
               >
                 {/* Header: Format icon + format label */}

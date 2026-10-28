@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, PanelLeftClose, StickyNote } from "lucide-react";
 import { getDownloadUrl } from "@/lib/api/documents";
 import { getCachedUrl, setCachedUrl } from "@/app/reader/[docId]/ReaderPageInner";
@@ -53,7 +52,6 @@ interface SortableTabItemProps {
 }
 
 function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemProps) {
-  const router = useRouter();
   const dotColor = FORMAT_DOTS[tab.docFormat ?? ""] ?? "bg-primary";
 
   const {
@@ -82,9 +80,7 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab.docId]);
 
-  const handleMouseEnter = () => {
-    router.prefetch(`/reader/${tab.docId}`);
-  };
+  const handleMouseEnter = () => {};
 
   return (
     <div
@@ -136,10 +132,9 @@ interface TabBarProps {
 const closedTabStack: string[] = [];
 
 export function TabBar({ currentDocId, showAddButton = false, notesActive = false, noteTabs = [], activeNoteId, onCloseNoteTab, onSelectNoteTab, onAddNote }: TabBarProps) {
-  const router = useRouter();
   const { audioRecorder, screenRecorder } = useRecording();
   const { tabs, isLoading, closeTab, closeAll, reorderTabs, openTab, setActive } = useTabSync();
-  const { setActivePanel } = useActiveTab();
+  const { setActivePanel, navigate } = useActiveTab();
   const [optimisticTabs, setOptimisticTabs] = useState<TabDoc[] | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
@@ -184,13 +179,13 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
         const docId = closedTabStack.pop();
         if (!docId) return;
         openTab(docId as never).then(() => {
-          router.push(`/reader/${docId}`);
+          navigate(`/reader/${docId}`);
         }).catch(() => {});
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openTab, router]);
+  }, [openTab, navigate]);
 
   if ((isLoading && noteTabs.length === 0) || (tabs.length === 0 && !notesActive && noteTabs.length === 0 && !showAddButton)) return null;
 
@@ -201,8 +196,8 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
     await closeTab(tab._id);
     if (tab.isActive) {
       const next = tabsRef.current.find((t: TabDoc) => t._id !== tab._id);
-      if (next) router.push(`/reader/${next.docId}`);
-      else router.push("/library");
+      if (next) navigate(`/reader/${next.docId}`);
+      else navigate("/library");
     }
   }
 
@@ -212,7 +207,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
     // Close all note tabs too
     noteTabs.forEach((nt) => onCloseNoteTab?.(nt.noteId));
     await closeAll();
-    router.push("/library");
+    navigate("/library");
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -253,14 +248,14 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
           {addMenuOpen && (
             <div className="absolute left-0 top-full z-50 mt-1.5 w-48 rounded-2xl border border-border/80 bg-popover/95 p-1 backdrop-blur-md shadow-xl">
               <button
-                onClick={() => { setAddMenuOpen(false); router.push("/library"); }}
+                onClick={() => { setAddMenuOpen(false); navigate("/library"); }}
                 className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
               >
                 <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                 Mở tài liệu
               </button>
               <button
-                onClick={() => { setAddMenuOpen(false); onAddNote ? onAddNote() : router.push("/notes"); }}
+                onClick={() => { setAddMenuOpen(false); onAddNote ? onAddNote() : navigate("/notes"); }}
                 className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
               >
                 <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />

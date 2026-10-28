@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useTabSync, TabDoc } from "@/hooks/useTabSync";
 import { Id } from "@/_generated/dataModel";
 import { X, Plus, PanelLeftClose, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, StickyNote } from "lucide-react";
@@ -23,7 +23,7 @@ interface TabDropdownProps {
 const closedTabStack: string[] = [];
 
 export function TabDropdown({ currentDocId, noteTabs = [], activeNoteId, onSelectNoteTab, onCloseNoteTab }: TabDropdownProps) {
-  const router = useRouter();
+  const { navigate } = useActiveTab();
   const { tabs, isLoading, closeTab, closeAll } = useTabSync();
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
@@ -36,8 +36,8 @@ export function TabDropdown({ currentDocId, noteTabs = [], activeNoteId, onSelec
     await closeTab(tab._id);
     if (tab.isActive) {
       const next = tabsRef.current.find((t: TabDoc) => t._id !== tab._id);
-      if (next) router.push(`/reader/${next.docId}`);
-      else router.push("/library");
+      if (next) navigate(`/reader/${next.docId}`);
+      else navigate("/library");
     }
   }
 
@@ -45,14 +45,14 @@ export function TabDropdown({ currentDocId, noteTabs = [], activeNoteId, onSelec
     tabsRef.current.forEach((t) => closedTabStack.push(t.docId as string));
     if (closedTabStack.length > 20) closedTabStack.splice(0, closedTabStack.length - 20);
     await closeAll();
-    router.push("/library");
+    navigate("/library");
   }
 
   return (
     <div className="flex h-10 shrink-0 items-center gap-1 border-b bg-muted/40 px-2">
       {/* Nút thêm tab */}
       <button
-        onClick={() => router.push("/library")}
+        onClick={() => navigate("/library")}
         aria-label="Mở tài liệu mới"
         title="Mở tài liệu mới"
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
@@ -104,7 +104,7 @@ export function TabDropdown({ currentDocId, noteTabs = [], activeNoteId, onSelec
             tab={tab}
             isActive={currentDocId !== null && tab.docId === currentDocId}
             onSelect={() => {
-              if (tab.docId !== currentDocId) router.push(`/reader/${tab.docId}`);
+              if (tab.docId !== currentDocId) navigate(`/reader/${tab.docId}`);
             }}
             onClose={() => handleClose(tab)}
           />

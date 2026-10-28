@@ -46,7 +46,7 @@ export function LibraryPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { noteTabs, activeNoteId, closeNoteTab, setActiveNoteId } = useNoteTabs();
-  const { setActivePanel, sidebarOpen, setSidebarOpen } = useActiveTab();
+  const { setActivePanel, navigate, sidebarOpen, setSidebarOpen } = useActiveTab();
   const { data: session, isPending } = useSession();
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -308,7 +308,7 @@ export function LibraryPageInner() {
             {docsInFolder.map((doc: any) => (
               <button
                 key={doc._id}
-                onClick={() => { router.push(`/reader/${doc._id}`); setMobileSidebarOpen(false); }}
+                onClick={() => { navigate(`/reader/${doc._id}`); setMobileSidebarOpen(false); }}
                 className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
                 style={{ paddingLeft: (depth + 1) * 16 + 16 }}
                 title={doc.title}
