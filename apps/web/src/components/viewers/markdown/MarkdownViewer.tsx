@@ -1146,7 +1146,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
       {/* ── Main content — independent scroll ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Toolbar: TOC toggle + zoom + notes */}
-        <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
+        <div className="reader-autohide flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
           <div>
             {hasToc && (
               <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={toggleToc}>

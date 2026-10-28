@@ -316,6 +316,69 @@ html.rm-dark .hljs { color: hsl(var(--code-fg)); }
   from { opacity: 0; transform: translateY(10px) scale(0.992); }
 }
 
+/* ─── Reader nhập vai (mobile/tablet) ─────────────────────────────────────── */
+/* Header, tab, toolbar, footer thu lại khi cuộn xuống — ReaderShell gắn data-chrome="hidden" */
+@media (max-width: 1279px) {
+  /* 112px ≥ header 48px + tai thỏ ~59px; nhỏ để hiệu ứng thu không bị "trễ" */
+  .reader-autohide {
+    max-height: 112px;
+    transition: max-height 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms ease-out, border-color 160ms;
+  }
+  [data-chrome="hidden"] .reader-autohide {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    border-color: transparent;
+    pointer-events: none;
+  }
+  /* Header ẩn → chữ không chui dưới tai thỏ / status bar */
+  [data-chrome] {
+    transition: padding-top 280ms var(--ease-spring);
+  }
+  [data-chrome="hidden"] {
+    padding-top: var(--safe-top);
+  }
+}
+
+/* Viên tiến độ nổi khi chrome ẩn */
+.reader-pill {
+  animation: pill-in 420ms var(--ease-spring) both;
+}
+@keyframes pill-in {
+  from { opacity: 0; transform: translate(-50%, 16px) scale(0.92); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Panel highlight / ghi chú → bottom sheet trên màn nhỏ (thay vì bóp chữ còn ~120px) */
+@media (max-width: 767px) {
+  .reader-sheet {
+    position: fixed !important;
+    inset: auto 0 0 0;
+    z-index: 60;
+    width: auto !important;
+    height: min(72dvh, 560px);
+    border-left: 0;
+    border-top: 1px solid hsl(var(--border));
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -16px 48px rgb(0 0 0 / 0.18);
+    padding-bottom: var(--safe-bottom);
+    animation: sheet-up 380ms var(--ease-spring) both;
+  }
+  .reader-sheet::before {
+    content: "";
+    display: block;
+    flex-shrink: 0;
+    width: 36px;
+    height: 4px;
+    margin: 8px auto 2px;
+    border-radius: 999px;
+    background: hsl(var(--muted-foreground) / 0.35);
+  }
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+}
+
 /* Tiêu đề biên tập: Newsreader với optical size */
 .font-display {
   font-optical-sizing: auto;

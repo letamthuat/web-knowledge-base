@@ -102,7 +102,7 @@ export function NotesSidePanel({ onClose }: NotesSidePanelProps) {
   const selectedNote = (notes as any[]).find((n) => n._id === selectedId) ?? null;
 
   return (
-    <aside className="relative flex shrink-0 flex-col border-l bg-card" style={{ width }}>
+    <aside className="reader-sheet relative flex shrink-0 flex-col border-l bg-card" style={{ width }}>
       {/* Resize handle — left edge */}
       <div
         onMouseDown={onMouseDown}

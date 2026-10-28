@@ -38,7 +38,7 @@ interface NotePanelProps {
 
 export function NotePanel({ notes, onClose, onScrollTo, onEdit }: NotePanelProps) {
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-l bg-card">
+    <aside className="reader-sheet flex w-64 shrink-0 flex-col border-l bg-card">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
         <div className="flex items-center gap-2">

@@ -69,7 +69,7 @@ export function AnnotationPanel({
   const totalNotesCount = hlNotesCount + docNotes.length;
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-l bg-card">
+    <aside className="reader-sheet flex w-64 shrink-0 flex-col border-l bg-card">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
         <div className="flex gap-1">

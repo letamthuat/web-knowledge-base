@@ -220,7 +220,7 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Toolbar */}
-        <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
+        <div className="reader-autohide flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
           <div>
             {toc.length > 0 && (
               <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setTocOpen((v) => !v)}>
