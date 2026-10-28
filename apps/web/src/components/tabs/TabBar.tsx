@@ -112,7 +112,7 @@ function SortableTabItem({ tab, isActive, onClose, onClick }: SortableTabItemPro
           "ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-all",
           isActive
             ? "opacity-60 hover:opacity-100 hover:bg-muted"
-            : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-muted",
+            : "opacity-60 can-hover:opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-muted",
         ].join(" ")}
       >
         <X className="h-2.5 w-2.5" />
@@ -233,7 +233,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
   }
 
   return (
-    <div className="flex h-11 shrink-0 items-center gap-1.5 border-b border-border/70 bg-card/50 backdrop-blur-md px-3">
+    <div className="flex h-11 shrink-0 items-center gap-1.5 border-b border-border/70 bg-card px-3">
       {/* + dropdown — mở tài liệu hoặc ghi chú */}
       {showAddButton && (
         <div ref={addMenuRef} className="relative shrink-0">
@@ -353,7 +353,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                       "ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-all",
                       isNoteActive
                         ? "opacity-60 hover:opacity-100 hover:bg-violet-500/20"
-                        : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-violet-500/20",
+                        : "opacity-60 can-hover:opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100 hover:bg-violet-500/20",
                     ].join(" ")}
                   >
                     <X className="h-2.5 w-2.5" />

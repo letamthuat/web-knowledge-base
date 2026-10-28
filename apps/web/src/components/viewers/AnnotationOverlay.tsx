@@ -9,6 +9,7 @@
  * Accepts the return value of useHighlightActions() spread directly.
  */
 
+import { useMemo } from "react";
 import { Id } from "@/_generated/dataModel";
 import { HighlightLayer } from "@/components/viewers/markdown/HighlightLayer";
 import { HighlightMenu } from "@/components/viewers/markdown/HighlightMenu";
@@ -65,12 +66,17 @@ export function AnnotationOverlay({
   docNotePopover, setDocNotePopover,
   handleClickHighlight, handleClickNoteHighlight, openNotePopover, scrollToHighlight,
 }: AnnotationOverlayProps) {
+  // Mảng ổn định — tránh HighlightLayer gỡ/bọc lại mọi <mark> mỗi lần viewer re-render
+  const layerHighlights = useMemo(
+    () => highlights.map((h) => ({ ...h, customColor: h.customColor })),
+    [highlights]
+  );
   return (
     <>
       {/* Highlight layer */}
       <HighlightLayer
         contentRef={contentRef}
-        highlights={highlights.map((h) => ({ ...h, customColor: h.customColor }))}
+        highlights={layerHighlights}
         onClickHighlight={handleClickHighlight}
         onClickNoteHighlight={handleClickNoteHighlight}
         contentKey={contentKey}

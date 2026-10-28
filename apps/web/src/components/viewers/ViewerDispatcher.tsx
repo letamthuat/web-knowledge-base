@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { memo } from "react";
 import { Id } from "@/_generated/dataModel";
 import { PlaceholderViewer } from "./PlaceholderViewer";
 import { HandbookResolverProvider } from "@/components/handbook/HandbookResolverContext";
@@ -77,7 +78,8 @@ const PPTXViewer = dynamic(
   { ssr: false, loading: () => <ViewerLoading /> }
 );
 
-export function ViewerDispatcher({ doc, downloadUrl, highlightQuery, typography, onTranscribeRunningChange }: ViewerDispatcherProps) {
+// memo: ReaderShell re-render (tabs, save status…) không được kéo viewer re-render theo
+export const ViewerDispatcher = memo(function ViewerDispatcher({ doc, downloadUrl, highlightQuery, typography, onTranscribeRunningChange }: ViewerDispatcherProps) {
   const rendered = (() => {
     switch (doc.format) {
       case "pdf":       return <PDFViewer doc={doc} downloadUrl={downloadUrl} />;
@@ -103,4 +105,4 @@ export function ViewerDispatcher({ doc, downloadUrl, highlightQuery, typography,
       {rendered}
     </div>
   );
-}
+});

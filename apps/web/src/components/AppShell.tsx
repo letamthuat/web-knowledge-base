@@ -19,6 +19,7 @@ import { X } from "lucide-react";
 // Direct import so the chunk is always bundled with AppShell — no lazy load delay on first switch
 import { ReaderDocLoader } from "@/app/reader/[docId]/ReaderPageInner";
 import { HandbookSidebar } from "@/components/handbook/HandbookSidebar";
+import { GlobalSearch } from "@/components/search/SearchModal";
 
 const LibraryPageInner = dynamic(
   () => import("@/components/library/LibraryPageInner").then((m) => m.LibraryPageInner),
@@ -129,6 +130,9 @@ function AppShellContent({ children }: { children: ReactNode }) {
     <div style={{ position: "fixed", inset: 0, overflow: "hidden", display: "flex" }}>
       {/* Sidebar chung — Domain/Handbook + Tài liệu lẻ (ẩn trên mobile) */}
       <HandbookSidebar />
+
+      {/* Ô tìm kiếm duy nhất (Cmd/Ctrl+K + openSearch()), portal ra body */}
+      <GlobalSearch />
 
       {/* Vùng nội dung (có thể split 2 pane) */}
       <div ref={split.containerRef} style={{ position: "relative", flex: 1, minWidth: 0, display: "flex" }}>

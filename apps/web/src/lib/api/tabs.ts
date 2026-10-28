@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
+import { suppressEcho } from "@/lib/supabase/realtime";
+import { uuidv7 } from "uuidv7";
 
 const MAX_TABS = 10;
 
@@ -180,8 +182,12 @@ export async function updateScrollState(
   scrollState: string,
   clientMutationId?: string,
 ): Promise<void> {
+  // Bỏ echo realtime của chính mình: ghi scroll mỗi 10s khi đọc không được kéo
+  // mọi useTabSync refetch → AppShell re-render giữa lúc đang cuộn.
+  const key = clientMutationId ?? uuidv7();
+  suppressEcho(key);
   await supabase
     .from("tabs")
-    .update({ scrollState, updatedAt: Date.now(), clientMutationId: clientMutationId ?? null })
+    .update({ scrollState, updatedAt: Date.now(), clientMutationId: key })
     .eq("_id", tabId);
 }

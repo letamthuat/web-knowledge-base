@@ -40,7 +40,7 @@ import { AppLogo } from "@/components/AppLogo";
 import { useSession, signOut } from "@/lib/auth-client";
 import { labels } from "@/lib/i18n/labels";
 import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { SearchModal } from "@/components/search/SearchModal";
+import { openSearch } from "@/components/search/SearchModal";
 import { RowMenu } from "./RowMenu";
 import { ImportZipDialog } from "./ImportZipDialog";
 import type { HandbookFile } from "@/lib/handbook/buildTree";
@@ -268,7 +268,6 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
   const [filter, setFilter] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false); // modal tìm kiếm toàn cục
   // Mặc định khi mới vào: THU HẾT (user chốt) — bung mục nào là chủ động của user
   const [libOpen, setLibOpen] = useState(false); // cây thư viện nằm TRONG module Thư viện
   const [hbOpen, setHbOpen] = useState(false); // nhóm Handbook trong Thư viện
@@ -335,8 +334,6 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
         />
       )}
 
-      {/* Tìm kiếm toàn cục — dùng SearchModal thật sẵn có (tài liệu + ghi chú + highlight) */}
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* Brand — Apple Books & Craft refined header */}
       <div className="flex shrink-0 items-center gap-3 border-b border-border/50 px-3.5 py-3.5 bg-card/40">
@@ -362,7 +359,7 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
       {/* Khối MODULE — 6 mục cùng một cấp; cây thư viện nằm TRONG mục Thư viện */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 pt-2.5">
         <div className="space-y-0.5">
-          <NavRow icon={Search} label="Tìm kiếm" onClick={() => setSearchOpen(true)} />
+          <NavRow icon={Search} label="Tìm kiếm" onClick={() => openSearch()} />
 
           {/* Học tập — bung/thu hiện các không gian học */}
           <ExpandableNavRow

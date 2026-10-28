@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Search, FileText, StickyNote, Highlighter, X, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe } from "lucide-react";
 import { useSearch, type FilterType } from "@/hooks/useSearch";
@@ -23,6 +24,48 @@ function bodyPreview(body: string): string {
   } catch {
     return body.slice(0, 120) || "(Chưa có nội dung)";
   }
+}
+
+const OPEN_SEARCH_EVENT = "open-search";
+let searchIsOpen = false;
+
+/** Mở ô tìm kiếm toàn cục từ bất kỳ đâu (sidebar, header, menu). */
+export function openSearch() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(OPEN_SEARCH_EVENT));
+  }
+}
+
+/** Cho các phím tắt khác (vd Esc ở Reader) biết search đang mở. */
+export function isSearchOpen() {
+  return searchIsOpen;
+}
+
+/** Bản SearchModal duy nhất của app — mount 1 lần trong AppShell, nghe Cmd/Ctrl+K + openSearch(). */
+export function GlobalSearch() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const openHandler = () => setOpen(true);
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen(true);
+      }
+    }
+    window.addEventListener(OPEN_SEARCH_EVENT, openHandler);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener(OPEN_SEARCH_EVENT, openHandler);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  useEffect(() => {
+    searchIsOpen = open;
+  }, [open]);
+
+  return <SearchModal open={open} onClose={() => setOpen(false)} />;
 }
 
 interface SearchModalProps {
@@ -77,16 +120,6 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Body scroll lock — prevent background scroll on iOS when modal is open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
   if (!open) return null;
 
   function goToDoc(docId: string) {
@@ -102,7 +135,8 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
 
   const totalResults = docs.length + notes.length + highlights.length;
 
-  return (
+  // Portal ra body: sidebar/drawer có `contain`/`transform` sẽ kẹp `position: fixed` vào cột hẹp
+  return createPortal(
     <div
       className="fixed inset-0 z-[70] flex flex-col sm:items-start sm:justify-center bg-black/50 sm:pt-[15vh]"
       onClick={onClose}
@@ -265,7 +299,8 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -30,7 +30,7 @@ import { TabBar } from "@/components/tabs/TabBar";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { FilterBar, parseFilters, hasActiveFilters } from "@/components/library/FilterBar";
 import { UploadDropzone } from "@/components/library/UploadDropzone";
-import { SearchModal } from "@/components/search/SearchModal";
+import { openSearch } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
@@ -65,19 +65,7 @@ export function LibraryPageInner() {
   const [renameFolderName, setRenameFolderName] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
-  const [searchOpen, setSearchOpen] = useState(false);
 
-  // Cmd/Ctrl+K global shortcut
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
 
   // Multi-select
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -292,7 +280,7 @@ export function LibraryPageInner() {
           {/* 3-dot: visible always on mobile (no hover), hover on desktop */}
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="shrink-0 rounded p-1 hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+              className="shrink-0 rounded p-1 hover:bg-muted transition-all opacity-100 can-hover:opacity-0 group-hover:opacity-100"
               aria-label="Tuỳ chọn folder"
             >
               <MoreVertical className="h-3 w-3" />
@@ -338,7 +326,7 @@ export function LibraryPageInner() {
 
 
   return (
-    <div className="min-h-dvh bg-background pb-14 xl:pb-0">
+    <div className="min-h-dvh bg-background pb-[var(--safe-bottom)]">
       {/* Navbar — full width */}
       {/* Header chỉ còn cho mobile — desktop mọi điều hướng đã nằm trong sidebar (user chốt 16/07) */}
       <header className="border-b bg-card sticky top-0 z-20 xl:hidden" style={{ paddingTop: 'var(--safe-top)' }}>
@@ -375,7 +363,7 @@ export function LibraryPageInner() {
           {/* Center: Search Capsule (Craft Style) */}
           <div className="flex-1 max-w-sm mx-4 hidden sm:flex items-center justify-center">
             <button
-              onClick={() => setSearchOpen(true)}
+              onClick={() => openSearch()}
               className="flex w-full items-center justify-between gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3.5 py-1.5 text-xs text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground hover:border-border"
             >
               <div className="flex items-center gap-2">
@@ -389,7 +377,7 @@ export function LibraryPageInner() {
           {/* Right: Quick actions */}
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setSearchOpen(true)}
+              onClick={() => openSearch()}
               className="flex sm:hidden h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition-colors"
               aria-label="Tìm kiếm"
             >
@@ -633,7 +621,6 @@ export function LibraryPageInner() {
         </DialogContent>
       </Dialog>
 
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

@@ -82,6 +82,10 @@ function extractToc(markdown: string): TocEntry[] {
   return entries;
 }
 
+// Mảng plugin ở module scope: inline array mới mỗi render khiến ReactMarkdown parse lại toàn bộ
+const REMARK_PLUGINS = [remarkGfm, remarkMath];
+const REHYPE_PLUGINS = [rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw];
+
 // LazySection: renders a placeholder until the section is near the viewport,
 // then mounts ReactMarkdown. Prevents rendering thousands of DOM nodes upfront.
 const LazySection = memo(function LazySection({
@@ -117,8 +121,8 @@ const LazySection = memo(function LazySection({
     <div ref={ref} data-sec={sectionIndex} style={!mounted ? { minHeight: estimatedHeight } : undefined}>
       {mounted && (
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
+          remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={REHYPE_PLUGINS}
           components={components}
         >
           {content}
@@ -625,6 +629,11 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
 
   // ── Highlight state ──
   const { highlights, addHighlight, removeHighlight, updateNote, addBookmark } = useHighlights(doc._id);
+  // Mảng ổn định: mảng mới mỗi render khiến HighlightLayer gỡ + bọc lại mọi <mark> (rất nặng khi cuộn)
+  const layerHighlights = useMemo(
+    () => (highlights as any[]).map((h) => ({ ...h, customColor: h.customColor })),
+    [highlights]
+  );
   const [hlMenu, setHlMenu] = useState<{
     x: number; y: number;
     existingId?: Id<"highlights">; existingColor?: HighlightColor;
@@ -818,6 +827,17 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
 
   const toc = useMemo(() => (content ? extractToc(content) : []), [content]);
   const sections = useMemo(() => (content ? splitIntoSections(content) : []), [content]);
+  // Doc ngắn (1 section): chỉ parse lại khi nội dung/components đổi — không phải mỗi lần đổi heading active
+  const singleSectionEl = useMemo(
+    () => sections.length === 1 ? (
+      <div data-sec={0}>
+        <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={mdComponents}>
+          {sections[0]}
+        </ReactMarkdown>
+      </div>
+    ) : null,
+    [sections, mdComponents]
+  );
 
   // Restore scroll position after content renders
   useEffect(() => {
@@ -1198,23 +1218,15 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         <div
           ref={contentRef}
           className="relative flex-1 overflow-y-auto overflow-x-hidden bg-background/50"
-          style={{ WebkitOverflowScrolling: "touch", willChange: "scroll-position" } as React.CSSProperties}
+          style={{ overscrollBehavior: "contain" }}
           onScroll={handleScroll}
           onPointerUp={handleMouseUp}
         >
           <div className={`mx-auto px-4 py-8 sm:px-6 md:px-8 ${typography?.colWidthClass ?? "max-w-4xl"}`} style={{ zoom: scale }}>
-            <div className="bg-card text-card-foreground border border-border/70 rounded-[24px] shadow-[0_6px_32px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_32px_rgba(0,0,0,0.25)] px-6 py-10 sm:px-14 sm:py-14 md:px-20 md:py-18" style={{ fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
+            <div className="bg-card text-card-foreground border border-border/70 rounded-[24px] shadow-[0_6px_32px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_32px_rgba(0,0,0,0.25)] px-6 py-10 sm:px-14 sm:py-14 md:px-20 md:py-[4.5rem]" style={{ fontFamily: typography?.fontFamily, fontSize: typography?.fontSize, lineHeight: typography?.lineHeight }}>
               <article className="prose prose-neutral dark:prose-invert max-w-none">
                 {sections.length === 1 ? (
-                  <div data-sec={0}>
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeKatex, rehypeRaw]}
-                      components={mdComponents}
-                    >
-                      {sections[0]}
-                    </ReactMarkdown>
-                  </div>
+                  singleSectionEl
                 ) : (
                   sections.map((section, i) => (
                     <LazySection
@@ -1234,7 +1246,7 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
         {/* Highlight layer — re-anchors saved highlights onto DOM */}
         <HighlightLayer
           contentRef={contentRef}
-          highlights={(highlights as any[]).map((h) => ({ ...h, customColor: h.customColor }))}
+          highlights={layerHighlights}
           onClickHighlight={handleClickHighlight}
           onClickNoteHighlight={handleClickNoteHighlight}
         />

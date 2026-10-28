@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v8";
+const CACHE_VERSION = "v9";
 const CACHE_NAME = `wkb-shell-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -14,7 +14,8 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
   );
-  self.skipWaiting();
+  // KHÔNG skipWaiting ở đây: bản mới chờ tới khi user bấm "Cập nhật"
+  // (PwaUpdateToast → message SKIP_WAITING), tránh app tự reload khi đang đọc.
 });
 
 // ─── Activate ───────────────────────────────────────────────────────────────

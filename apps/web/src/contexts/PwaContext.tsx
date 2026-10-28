@@ -144,9 +144,11 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
+    // Lần cài SW đầu tiên cũng bắn controllerchange (clients.claim) — không reload lúc đó
+    const hadController = !!navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (!refreshing) {
+      if (hadController && !refreshing) {
         refreshing = true;
         window.location.reload();
       }

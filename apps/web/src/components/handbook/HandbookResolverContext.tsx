@@ -39,13 +39,16 @@ export function HandbookResolverProvider({
     return () => { cancelled = true; };
   }, [handbookId]);
 
+  // Khóa chỉ gồm path/docId/format — progressPct đổi mỗi 5s khi đọc không được làm
+  // resolver đổi (sẽ dựng lại mdComponents → re-parse markdown + tải lại ảnh).
+  const filesKey = JSON.stringify((files ?? []).map((f) => [f.relPath, f.docId, f.format]));
   const filesByPath = useMemo(() => {
     const m = new Map<string, { docId: Id<"documents">; format: string }>();
-    for (const f of files ?? []) {
-      m.set(f.relPath, { docId: f.docId as Id<"documents">, format: f.format });
+    for (const [relPath, docId, format] of JSON.parse(filesKey) as [string, string, string][]) {
+      m.set(relPath, { docId: docId as Id<"documents">, format });
     }
     return m;
-  }, [files]);
+  }, [filesKey]);
 
   const getImageUrl = useCallback((relPath: string) => assetUrls[relPath], [assetUrls]);
 

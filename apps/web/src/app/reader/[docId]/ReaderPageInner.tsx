@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo, memo, useSyncExternalStore } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Id } from "@/_generated/dataModel";
 import { useDocument, getDownloadUrl } from "@/lib/api/documents";
@@ -25,11 +25,59 @@ import { TabDropdown } from "@/components/tabs/TabDropdown";
 import { useTabSync } from "@/hooks/useTabSync";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { useAllNotes } from "@/hooks/useNotes";
-import { SearchModal } from "@/components/search/SearchModal";
+import { openSearch, isSearchOpen } from "@/components/search/SearchModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useAppTypography, openReadingSettings } from "@/components/AppSettingsPanel";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useDocExport } from "@/hooks/useDocExport";
+
+/** Store nhỏ cho % đọc: cập nhật mỗi 1% khi cuộn mà KHÔNG re-render cả ReaderShell/viewer. */
+type PctStore = { get: () => number | null; set: (v: number) => void; subscribe: (l: () => void) => () => void };
+function createPctStore(): PctStore {
+  let value: number | null = null;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => value,
+    set: (v) => {
+      if (v === value) return;
+      value = v;
+      listeners.forEach((l) => l());
+    },
+    subscribe: (l) => {
+      listeners.add(l);
+      return () => { listeners.delete(l); };
+    },
+  };
+}
+
+const ReaderProgressBar = memo(function ReaderProgressBar({ store, savedPct, extractedText }: {
+  store: PctStore;
+  savedPct: number | null;
+  extractedText: string;
+}) {
+  const localPct = useSyncExternalStore(store.subscribe, store.get, store.get);
+  // Đếm từ 1 lần cho mỗi tài liệu — không split cả văn bản mỗi lần cuộn
+  const wordCount = useMemo(() => (extractedText ? extractedText.trim().split(/\s+/).length : 0), [extractedText]);
+
+  const pct = localPct ?? savedPct;
+  if (pct == null || pct <= 0) return null;
+  const WPM = 200;
+  const wordsLeft = wordCount > 0 ? Math.round(wordCount * (1 - pct / 100)) : 0;
+  const minsLeft = wordCount > 0 ? Math.round(wordsLeft / WPM) : 0;
+  const pctDisplay = Math.round(pct);
+  return (
+    <div className="shrink-0 border-t border-border/70 bg-card px-4 py-2 flex items-center justify-center">
+      <div className="flex items-center gap-3 w-full max-w-lg">
+        <div className="flex-1 h-1.5 rounded-full bg-muted/80 overflow-hidden">
+          <div className="h-full rounded-full bg-primary/85 transition-[width] duration-300" style={{ width: `${Math.max(3, pctDisplay)}%` }} />
+        </div>
+        <span className="text-[11px] font-medium text-muted-foreground tabular-nums shrink-0">
+          {pctDisplay}%{minsLeft > 0 ? ` · Còn ~${minsLeft} phút đọc` : ""}
+        </span>
+      </div>
+    </div>
+  );
+});
 
 function ReaderShell({ doc, downloadUrl }: {
   doc: { _id: Id<"documents">; format: string; title: string; mimeType?: string; durationMs?: number; fileSizeBytes?: number; handbookId?: Id<"handbooks">; relPath?: string };
@@ -55,11 +103,11 @@ function ReaderShell({ doc, downloadUrl }: {
     action();
   }
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [readingMode, setReadingMode] = useState(false);
-  const [localPct, setLocalPct] = useState<number | null>(null);
-  const headerTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pctStoreRef = useRef<PctStore | null>(null);
+  if (!pctStoreRef.current) pctStoreRef.current = createPctStore();
+  const pctStore = pctStoreRef.current;
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +145,7 @@ function ReaderShell({ doc, downloadUrl }: {
   }, []);
 
   const typography = useAppTypography();
-  const { setActivePanel, sidebarOpen, setSidebarOpen } = useActiveTab();
+  const { activePanel, setActivePanel, sidebarOpen, setSidebarOpen } = useActiveTab();
   const { exportDoc, isExporting } = useDocExport();
 
   const handleNewNote = useCallback(async () => {
@@ -116,20 +164,18 @@ function ReaderShell({ doc, downloadUrl }: {
   const TEXT_FORMATS = new Set(["markdown", "epub", "docx", "web_clip"]);
   const READING_MODE_FORMATS = new Set(["pdf", "epub", "docx", "markdown", "web_clip"]);
 
-  // Cmd/Ctrl+K + Reading Mode shortcuts
+  // Reading Mode shortcuts (Cmd/Ctrl+K do GlobalSearch lo)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      // Reader ẩn (keep-alive) không được bắt phím của panel khác
+      if (activePanel !== null && activePanel !== `reader:${doc._id}`) return;
+      const t = e.target as HTMLElement | null;
+      if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t?.isContentEditable) return;
+      // Đang gõ IME (Telex/VNI) — không được nuốt phím
+      if (e.isComposing || e.key === "Process") return;
 
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-        return;
-      }
-
-      // Cmd/Ctrl+Shift+R or F → toggle reading mode
-      if (((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "r") ||
-          (e.key === "f" && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey)) {
+      // Shift+F → toggle reading mode (không dùng "f" trần: trùng dấu huyền Telex)
+      if (e.shiftKey && e.key === "F" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         if (!READING_MODE_FORMATS.has(doc.format)) {
           toast("Reading Mode chỉ dành cho định dạng đọc");
@@ -140,7 +186,7 @@ function ReaderShell({ doc, downloadUrl }: {
       }
 
       // Esc → exit reading mode (only when search modal is closed)
-      if (e.key === "Escape" && !searchOpen) {
+      if (e.key === "Escape" && !isSearchOpen()) {
         if (document.fullscreenElement) {
           document.exitFullscreen().catch(() => {});
         } else {
@@ -150,7 +196,7 @@ function ReaderShell({ doc, downloadUrl }: {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [doc.format, searchOpen, toggleFullscreen]);
+  }, [activePanel, doc._id, doc.format, toggleFullscreen]);
 
 
   // Find the tab for this doc so we can persist scroll state into it
@@ -163,9 +209,9 @@ function ReaderShell({ doc, downloadUrl }: {
   const savePositionWithTab = useCallback(
     (pos: ReadingPosition, total?: number) => {
       savePosition(pos, total);
-      // Update localPct immediately for realtime progress bar
+      // Cập nhật thanh % qua store riêng — chỉ ReaderProgressBar re-render
       const pct = toProgressPct(pos, total);
-      if (pct !== null) setLocalPct(Math.round(pct * 100));
+      if (pct !== null) pctStore.set(Math.round(pct * 100));
       if (currentTabId) {
         if (!scrollStateTimerRef.current) {
           scrollStateTimerRef.current = setTimeout(() => {
@@ -176,7 +222,7 @@ function ReaderShell({ doc, downloadUrl }: {
         }
       }
     },
-    [savePosition, updateScrollState, currentTabId]
+    [savePosition, updateScrollState, currentTabId, pctStore]
   );
   const FORMAT_EXT: Record<string, string> = {
     pdf: ".pdf", epub: ".epub", docx: ".docx", pptx: ".pptx",
@@ -217,26 +263,40 @@ function ReaderShell({ doc, downloadUrl }: {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const isEdgeSwipe = useRef(false);
+  // Reader ẩn (keep-alive) không được mở drawer khi vuốt ở panel khác
+  const isActiveReaderRef = useRef(true);
+  isActiveReaderRef.current = activePanel === null || activePanel === `reader:${doc._id}`;
 
   useEffect(() => {
     if (!isMobile) return;
 
-    function onTouchStart(e: TouchEvent) {
-      touchStartX.current = e.touches[0].clientX;
-      touchStartY.current = e.touches[0].clientY;
-      isEdgeSwipe.current = touchStartX.current < 40 || drawerOpenRef.current;
-    }
-
+    // touchmove non-passive chỉ gắn trong lúc vuốt từ mép (40px) — gắn thường trực
+    // trên document sẽ bắt trình duyệt chờ JS ở MỌI lần cuộn → giật.
     function onTouchMove(e: TouchEvent) {
       if (!isEdgeSwipe.current) return;
       const dx = e.touches[0].clientX - touchStartX.current;
       const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
-      if (dy > 30) { isEdgeSwipe.current = false; return; }
+      if (dy > 30) { isEdgeSwipe.current = false; detachMove(); return; }
       // Prevent browser back/forward navigation when handling edge swipe
       if (Math.abs(dx) > 10) e.preventDefault();
     }
 
+    function detachMove() {
+      document.removeEventListener("touchmove", onTouchMove);
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (!isActiveReaderRef.current) { isEdgeSwipe.current = false; return; }
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+      isEdgeSwipe.current = touchStartX.current < 40 || drawerOpenRef.current;
+      if (isEdgeSwipe.current) {
+        document.addEventListener("touchmove", onTouchMove, { passive: false });
+      }
+    }
+
     function onTouchEnd(e: TouchEvent) {
+      detachMove();
       if (!isEdgeSwipe.current) return;
       const dx = e.changedTouches[0].clientX - touchStartX.current;
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
@@ -246,12 +306,13 @@ function ReaderShell({ doc, downloadUrl }: {
     }
 
     document.addEventListener("touchstart", onTouchStart, { passive: true });
-    document.addEventListener("touchmove", onTouchMove, { passive: false });
     document.addEventListener("touchend", onTouchEnd, { passive: true });
+    document.addEventListener("touchcancel", detachMove, { passive: true });
     return () => {
       document.removeEventListener("touchstart", onTouchStart);
-      document.removeEventListener("touchmove", onTouchMove);
       document.removeEventListener("touchend", onTouchEnd);
+      document.removeEventListener("touchcancel", detachMove);
+      detachMove();
     };
   }, [isMobile]);
 
@@ -281,8 +342,23 @@ function ReaderShell({ doc, downloadUrl }: {
     recordOpen(doc._id, progress?.positionType, progress?.positionValue).catch(() => {});
   }, [progress, doc._id]);
 
+  // Context + typography ổn định → viewer (memo) không re-render khi ReaderShell re-render
+  const progressCtx = useMemo(
+    () => ({ savePosition: savePositionWithTab, jumpTo, registerJump }),
+    [savePositionWithTab, jumpTo, registerJump]
+  );
+  const isTextFormat = TEXT_FORMATS.has(doc.format);
+  const viewerTypography = useMemo(
+    () => isTextFormat
+      ? { fontFamily: typography.fontFamily, fontSize: typography.fontSize, lineHeight: typography.lineHeight, colWidthClass: typography.colWidthClass }
+      : undefined,
+    [isTextFormat, typography.fontFamily, typography.fontSize, typography.lineHeight, typography.colWidthClass]
+  );
+  const extractedText = (doc as unknown as { extractedText?: string }).extractedText ?? "";
+  const savedPct = progress?.progressPct != null ? Math.round(progress.progressPct * 100) : null;
+
   return (
-    <ReaderProgressContext.Provider value={{ saveNow, saveStatus, savePosition: savePositionWithTab, jumpTo, registerJump }}>
+    <ReaderProgressContext.Provider value={progressCtx}>
       <div ref={containerRef} className="flex h-full flex-col overflow-hidden bg-background transition-colors">
         {/* Reading Mode exit button */}
         {readingMode && (
@@ -300,7 +376,7 @@ function ReaderShell({ doc, downloadUrl }: {
         <MobileSidebarDrawer open={isMobile && drawerOpen} onClose={() => setDrawerOpen(false)} />
         {!readingMode && (
           <header
-            className="flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-card/90 px-3 sm:px-4 backdrop-blur-md transition-all duration-200"
+            className="flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-card px-3 sm:px-4"
             style={{ paddingTop: 'var(--safe-top)' }}
           >
             {/* Left: Sidebar toggle / Logo */}
@@ -366,7 +442,7 @@ function ReaderShell({ doc, downloadUrl }: {
                   <MoreHorizontal className="h-4 w-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
-                  <DropdownMenuItem onClick={() => setSearchOpen(true)}>
+                  <DropdownMenuItem onClick={() => openSearch()}>
                     <Search className="mr-2 h-4 w-4" /> Tìm kiếm (Cmd+K)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => exportDoc(doc._id)} disabled={isExporting}>
@@ -430,36 +506,14 @@ function ReaderShell({ doc, downloadUrl }: {
             doc={doc}
             downloadUrl={downloadUrl}
             highlightQuery={highlightQuery}
-            typography={TEXT_FORMATS.has(doc.format) ? { fontFamily: typography.fontFamily, fontSize: typography.fontSize, lineHeight: typography.lineHeight, colWidthClass: typography.colWidthClass } : undefined}
+            typography={viewerTypography}
             onTranscribeRunningChange={setTranscribeRunning}
           />
         </div>
 
         {/* Progress bar + time estimate */}
-        {(() => {
-          const pct = localPct ?? (progress?.progressPct != null ? Math.round(progress.progressPct * 100) : null);
-          if (pct == null || pct <= 0) return null;
-          const extractedText = (doc as unknown as { extractedText?: string }).extractedText ?? "";
-          const wordCount = extractedText ? extractedText.trim().split(/\s+/).length : 0;
-          const WPM = 200;
-          const wordsLeft = wordCount > 0 ? Math.round(wordCount * (1 - pct / 100)) : 0;
-          const minsLeft = wordCount > 0 ? Math.round(wordsLeft / WPM) : 0;
-          const pctDisplay = Math.round(pct);
-          return (
-            <div className="shrink-0 border-t border-border/70 bg-card/75 backdrop-blur-md px-4 py-2 flex items-center justify-center">
-              <div className="flex items-center gap-3 w-full max-w-lg">
-                <div className="flex-1 h-1.5 rounded-full bg-muted/80 overflow-hidden">
-                  <div className="h-full rounded-full bg-primary/85 transition-all duration-300" style={{ width: `${Math.max(3, pctDisplay)}%` }} />
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground tabular-nums shrink-0">
-                  {pctDisplay}%{minsLeft > 0 ? ` · Còn ~${minsLeft} phút đọc` : ""}
-                </span>
-              </div>
-            </div>
-          );
-        })()}
+        <ReaderProgressBar store={pctStore} savedPct={savedPct} extractedText={extractedText} />
       </div>
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <BottomSheet open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} title="Thêm">
         <div className="flex flex-col gap-2 py-2">
           <button
@@ -485,7 +539,7 @@ function ReaderShell({ doc, downloadUrl }: {
             Tải xuống tài liệu
           </button>
           <button
-            onClick={() => { setMoreMenuOpen(false); setSearchOpen(true); }}
+            onClick={() => { setMoreMenuOpen(false); openSearch(); }}
             className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm hover:bg-muted transition-colors"
           >
             <Search className="h-5 w-5 text-muted-foreground" />

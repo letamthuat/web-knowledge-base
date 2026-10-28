@@ -16,7 +16,7 @@ import { useAllNotes } from "@/hooks/useNotes";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
 import type { SaveStatus } from "@/hooks/useReadingProgress";
 import { Id } from "@/_generated/dataModel";
-import { SearchModal } from "@/components/search/SearchModal";
+import { openSearch } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useAppTypography } from "@/components/AppSettingsPanel";
@@ -28,7 +28,6 @@ export function NotesPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
-  const [searchOpen, setSearchOpen] = useState(false);
   const { notes, addNote, updateNote, removeNote } = useAllNotes();
   const [newNoteId, setNewNoteId] = useState<Id<"notes"> | null>(null);
   const [pendingNoteId, setPendingNoteId] = useState<Id<"notes"> | null>(null);
@@ -58,17 +57,6 @@ export function NotesPageInner() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Cmd/Ctrl+K
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
 
   // Auto-select note from ?note=id URL param (navigated from search result)
   useEffect(() => {
@@ -169,7 +157,7 @@ export function NotesPageInner() {
             <Settings className="mr-1 h-4 w-4" />{N.settings}
           </Button>
           <button
-            onClick={() => setSearchOpen(true)}
+            onClick={() => openSearch()}
             className="flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <Search className="h-3.5 w-3.5" />
@@ -181,7 +169,7 @@ export function NotesPageInner() {
         <div className="flex items-center gap-2">
           <span className="hidden text-sm text-muted-foreground xl:inline">{session?.user?.email}</span>
           <button
-            onClick={() => setSearchOpen(true)}
+            onClick={() => openSearch()}
             className="flex xl:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
             aria-label="Tìm kiếm"
           >
@@ -235,7 +223,7 @@ export function NotesPageInner() {
       </div>
 
       {/* Main content */}
-      <div className="relative flex flex-1 min-h-0 pb-14 xl:pb-0">
+      <div className="relative flex flex-1 min-h-0 pb-[var(--safe-bottom)]">
         {/* Sidebar — BottomSheet on mobile, inline on desktop */}
         {isMobile ? (
           <BottomSheet open={sidebarOpen} onClose={() => setSidebarOpen(false)} title="Danh sách ghi chú">
@@ -291,7 +279,6 @@ export function NotesPageInner() {
           </div>
         )}
       </div>
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

@@ -169,7 +169,7 @@ export function WebClipViewer({ doc, downloadUrl }: WebClipViewerProps) {
         <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto"
-            style={{ WebkitOverflowScrolling: "touch", willChange: "scroll-position" } as React.CSSProperties}
+            style={{ overscrollBehavior: "contain" }}
             onScroll={handleScroll}
           >
           {mode === "clean" && cleanHtml ? (

@@ -1,7 +1,7 @@
 "use client";
 // Domain handbooks trên Supabase (phần đọc + CRUD/folder ops thuần DB).
 // ZIP ingest (finalizeImport) + getAssetUrls = Phase 4 (server routes).
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { subscribeTable } from "@/lib/supabase/realtime";
@@ -58,9 +58,11 @@ type FileJoinRow = {
 // Files (documents status=ready) trong 1 handbook + progressPct (join reading_progress).
 export function useHandbookFiles(handbookId: string | undefined, enabled = true): HandbookFile[] | undefined {
   const [data, setData] = useState<HandbookFile[] | undefined>(undefined);
+  const lastJsonRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!enabled || !handbookId) { setData(undefined); return; }
+    if (!enabled || !handbookId) { lastJsonRef.current = null; setData(undefined); return; }
     let active = true;
+    lastJsonRef.current = null;
     async function load() {
       const { data: rows } = await supabase
         .from("documents")
@@ -76,6 +78,10 @@ export function useHandbookFiles(handbookId: string | undefined, enabled = true)
           title: d.title,
           progressPct: d.reading_progress?.[0]?.progressPct ?? null,
         }));
+      // Dữ liệu y hệt → giữ reference cũ, tránh resolver/mdComponents dựng lại (ảnh tải lại, re-parse)
+      const json = JSON.stringify(files);
+      if (json === lastJsonRef.current) return;
+      lastJsonRef.current = json;
       setData(files);
     }
     void load();

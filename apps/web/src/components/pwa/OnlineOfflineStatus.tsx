@@ -28,7 +28,7 @@ export function OnlineOfflineStatus() {
       <aside
         role="status"
         aria-live="polite"
-        className="fixed top-3 left-1/2 -translate-x-1/2 z-[75] px-4 py-1.5 rounded-full bg-card/90 text-foreground border border-amber-500/40 shadow-[0_8px_25px_rgba(0,0,0,0.1)] backdrop-blur-xl flex items-center gap-2.5 text-xs font-medium animate-in fade-in slide-in-from-top-3 duration-300"
+        className="fixed top-3 left-1/2 -translate-x-1/2 z-[75] px-4 py-1.5 rounded-full bg-card text-foreground border border-amber-500/40 shadow-[0_8px_25px_rgba(0,0,0,0.1)] flex items-center gap-2.5 text-xs font-medium animate-in fade-in slide-in-from-top-3 duration-300"
         style={{ marginTop: "var(--safe-top)" }}
       >
         <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
@@ -44,7 +44,7 @@ export function OnlineOfflineStatus() {
       <aside
         role="status"
         aria-live="polite"
-        className="fixed top-3 left-1/2 -translate-x-1/2 z-[75] px-4 py-1.5 rounded-full bg-card/90 text-foreground border border-emerald-500/40 shadow-[0_8px_25px_rgba(0,0,0,0.1)] backdrop-blur-xl flex items-center gap-2.5 text-xs font-medium animate-in fade-in slide-in-from-top-3 duration-300"
+        className="fixed top-3 left-1/2 -translate-x-1/2 z-[75] px-4 py-1.5 rounded-full bg-card text-foreground border border-emerald-500/40 shadow-[0_8px_25px_rgba(0,0,0,0.1)] flex items-center gap-2.5 text-xs font-medium animate-in fade-in slide-in-from-top-3 duration-300"
         style={{ marginTop: "var(--safe-top)" }}
       >
         <span className="flex h-2 w-2 rounded-full bg-emerald-500" />

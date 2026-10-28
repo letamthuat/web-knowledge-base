@@ -292,8 +292,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
           alignItems: "center",
           paddingTop: 24,
           paddingBottom: 24,
-          WebkitOverflowScrolling: "touch",
-          willChange: "scroll-position",
+          overscrollBehavior: "contain",
           ...safePad,
         } as React.CSSProperties}
       >

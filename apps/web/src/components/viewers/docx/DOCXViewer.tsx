@@ -123,10 +123,17 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
     return () => observer.disconnect();
   }, [toc]);
 
+  // Throttle qua rAF — tối đa 1 lần/frame thay vì mỗi sự kiện scroll
+  const scrollRafRef = useRef<number | undefined>(undefined);
+  useEffect(() => () => { if (scrollRafRef.current !== undefined) cancelAnimationFrame(scrollRafRef.current); }, []);
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
-    const pct = el.scrollTop / (el.scrollHeight - el.clientHeight || 1);
-    savePosition({ type: "scroll_pct", pct: Math.min(1, Math.max(0, pct)) });
+    if (scrollRafRef.current !== undefined) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = undefined;
+      const pct = el.scrollTop / (el.scrollHeight - el.clientHeight || 1);
+      savePosition({ type: "scroll_pct", pct: Math.min(1, Math.max(0, pct)) });
+    });
   }, [savePosition]);
 
   const scrollToHeading = useCallback((id: string) => {
@@ -251,7 +258,7 @@ export function DOCXViewer({ doc, downloadUrl }: DOCXViewerProps) {
           </div>
         </div>
         <div className="flex flex-1 overflow-hidden">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch", willChange: "scroll-position" } as React.CSSProperties} onScroll={handleScroll}>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ overscrollBehavior: "contain" }} onScroll={handleScroll}>
             <div
               ref={contentRef}
               className="mx-auto max-w-3xl px-3 py-6 sm:px-8 sm:py-10"
