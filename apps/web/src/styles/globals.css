@@ -322,27 +322,42 @@ html.rm-dark .hljs { color: hsl(var(--code-fg)); }
 }
 
 /* ─── Reader nhập vai (mobile/tablet) ─────────────────────────────────────── */
-/* Header, tab, toolbar, footer thu lại khi cuộn xuống — ReaderShell gắn data-chrome="hidden" */
+/* Header/tab/footer trượt bằng transform (GPU). Khung nội dung dùng FLIP: bố cục nhảy
+   NGAY về vị trí cuối bằng margin (layout đúng 1 lần), animation transform ngắn tạo cảm giác
+   trượt rồi tự gỡ → lúc ẩn hẳn không còn transform, menu highlight/popover fixed vẫn đúng chỗ.
+   ReaderShell đo --chrome-head/-shift/-foot ngay trước khi ẩn. */
+.reader-safe-cover { opacity: 0; }
 @media (max-width: 1279px) {
-  /* 112px ≥ header 48px + tai thỏ ~59px; nhỏ để hiệu ứng thu không bị "trễ" */
-  .reader-autohide {
-    max-height: 112px;
-    transition: max-height 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms ease-out, border-color 160ms;
+  .reader-chrome-top,
+  .reader-chrome-bottom {
+    transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
   }
-  [data-chrome="hidden"] .reader-autohide {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    border-color: transparent;
-    pointer-events: none;
+  .reader-body {
+    animation: reader-body-show 320ms cubic-bezier(0.16, 1, 0.3, 1);
   }
-  /* Header ẩn → chữ không chui dưới tai thỏ / status bar */
-  [data-chrome] {
-    transition: padding-top 280ms var(--ease-spring);
+  .reader-safe-cover {
+    transition: opacity 160ms ease-out;
   }
-  [data-chrome="hidden"] {
-    padding-top: var(--safe-top);
+  [data-chrome="hidden"] .reader-chrome-top {
+    transform: translate3d(0, calc(-1 * var(--chrome-head, 0px)), 0);
   }
+  [data-chrome="hidden"] .reader-chrome-bottom {
+    transform: translate3d(0, calc(var(--chrome-foot, 0px) + var(--safe-bottom)), 0);
+  }
+  [data-chrome="hidden"] .reader-body {
+    margin-top: calc(-1 * var(--chrome-shift, 0px));
+    margin-bottom: calc(-1 * var(--chrome-foot, 0px));
+    animation: reader-body-hide 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  [data-chrome="hidden"] .reader-safe-cover {
+    opacity: 1;
+  }
+}
+@keyframes reader-body-hide {
+  from { transform: translate3d(0, var(--chrome-shift, 0px), 0); }
+}
+@keyframes reader-body-show {
+  from { transform: translate3d(0, calc(-1 * var(--chrome-shift, 0px)), 0); }
 }
 
 /* Viên tiến độ nổi khi chrome ẩn */

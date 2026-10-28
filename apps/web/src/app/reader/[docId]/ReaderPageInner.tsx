@@ -89,7 +89,7 @@ const ReaderProgressBar = memo(function ReaderProgressBar({ store, savedPct, ext
         {minsLeft > 0 && <span>· còn ~{minsLeft} phút</span>}
       </button>
     )}
-    <div className="reader-autohide shrink-0 border-t border-border/70 bg-card px-4 py-2 flex items-center justify-center">
+    <div className="reader-chrome-bottom relative z-10 shrink-0 border-t border-border/70 bg-card px-4 py-2 flex items-center justify-center">
       <div className="flex items-center gap-3 w-full max-w-lg">
         <div className="flex-1 h-1.5 rounded-full bg-muted/80 overflow-hidden">
           <div className="h-full rounded-full bg-primary/85 transition-[width] duration-300" style={{ width: `${Math.max(3, pctDisplay)}%` }} />
@@ -287,8 +287,23 @@ function ReaderShell({ doc, downloadUrl }: {
   const setChrome = useCallback((hidden: boolean) => {
     if (chromeHiddenRef.current === hidden) return;
     chromeHiddenRef.current = hidden;
-    // Chrome thu/giãn làm khung cuộn đổi cao → bỏ qua scroll trong lúc chuyển (tránh bật tắt qua lại)
-    chromeLockRef.current = performance.now() + 320;
+    const root = containerRef.current;
+    if (hidden && root) {
+      // Đo lúc chrome còn hiện: header + tab (trượt lên), toolbar viewer (trượt theo nội dung), footer (trượt xuống)
+      let head = 0;
+      let safeTop = 0;
+      root.querySelectorAll<HTMLElement>(".reader-chrome-top").forEach((el, i) => {
+        head += el.offsetHeight;
+        if (i === 0) safeTop = parseFloat(getComputedStyle(el).paddingTop) || 0;
+      });
+      const toolbar = root.querySelector<HTMLElement>(".reader-body .reader-autohide")?.offsetHeight ?? 0;
+      const foot = root.querySelector<HTMLElement>(".reader-chrome-bottom")?.offsetHeight ?? 0;
+      root.style.setProperty("--chrome-head", `${head}px`);
+      root.style.setProperty("--chrome-shift", `${Math.max(0, head + toolbar - safeTop)}px`);
+      root.style.setProperty("--chrome-foot", `${foot}px`);
+    }
+    // Khung cuộn đổi cao 1 lần lúc bắt đầu ẩn / sau khi hiện xong → bỏ qua scroll trong lúc chuyển
+    chromeLockRef.current = performance.now() + 360;
     setChromeHidden(hidden);
   }, []);
 
@@ -319,7 +334,7 @@ function ReaderShell({ doc, downloadUrl }: {
       down = null;
       if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10 || e.timeStamp - d.t > 300) return;
       const t = e.target as HTMLElement | null;
-      if (!t || t.closest("a, button, input, textarea, select, label, mark, [role], [contenteditable='true'], .reader-autohide, .reader-sheet, aside")) return;
+      if (!t || t.closest("a, button, input, textarea, select, label, mark, [role], [contenteditable='true'], .reader-autohide, .reader-chrome-top, .reader-chrome-bottom, .reader-sheet, aside")) return;
       if (window.getSelection()?.isCollapsed === false) return;
       setChrome(!chromeHiddenRef.current);
     }
@@ -435,7 +450,8 @@ function ReaderShell({ doc, downloadUrl }: {
 
   return (
     <ReaderProgressContext.Provider value={progressCtx}>
-      <div ref={containerRef} data-chrome={chromeHidden ? "hidden" : "shown"} className="flex h-full flex-col overflow-hidden bg-background transition-colors">
+      <div ref={containerRef} data-chrome={chromeHidden ? "hidden" : "shown"} className="relative flex h-full flex-col overflow-hidden bg-background transition-colors">
+        <div aria-hidden className="reader-safe-cover pointer-events-none absolute inset-x-0 top-0 z-20 bg-background" style={{ height: "var(--safe-top)" }} />
         {/* Reading Mode exit button */}
         {readingMode && (
           <button
@@ -451,7 +467,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
         {!readingMode && (
           <header
-            className="reader-autohide box-content flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-card px-3 sm:px-4"
+            className="reader-chrome-top box-content flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-card px-3 sm:px-4"
             style={{ paddingTop: 'var(--safe-top)' }}
           >
             {/* Left: Sidebar toggle / Logo */}
@@ -537,7 +553,7 @@ function ReaderShell({ doc, downloadUrl }: {
         )}
 
         {!readingMode && (
-          <div className="reader-autohide flex flex-col shrink-0">
+          <div className="reader-chrome-top flex flex-col shrink-0 bg-card">
             {showDropdown
               ? <TabDropdown
                   currentDocId={doc._id}
@@ -566,7 +582,7 @@ function ReaderShell({ doc, downloadUrl }: {
           </div>
         )}
 
-        <div className="flex flex-1 flex-col overflow-hidden" style={{ minHeight: 0 }}>
+        <div className="reader-body flex flex-1 flex-col overflow-hidden" style={{ minHeight: 0 }}>
           <ViewerDispatcher
             doc={doc}
             downloadUrl={downloadUrl}
