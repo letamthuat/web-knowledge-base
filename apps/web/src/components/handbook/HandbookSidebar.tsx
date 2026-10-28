@@ -277,6 +277,13 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
   // Không gian học THẬT từ DB (không dùng mock nữa) — lọc bỏ space đã lưu trữ, sắp theo tên
   const allSpaces = useStudySpaces();
   const dueCounts = useDueCountsBySpace();
+  // Badge trên icon app (PWA đã cài): số thẻ đến hạn. Idempotent nên nhiều instance sidebar không sao.
+  const dueTotal = Object.values(dueCounts).reduce((a, b) => a + b, 0);
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    if (!nav.setAppBadge) return;
+    (dueTotal > 0 ? nav.setAppBadge(dueTotal) : nav.clearAppBadge?.())?.catch(() => {});
+  }, [dueTotal]);
   const spaces = (allSpaces ?? [])
     .filter((s) => !s.archivedAt)
     .sort((a, b) => a.name.localeCompare(b.name, "vi", { numeric: true }));
