@@ -25,7 +25,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DocumentGrid } from "@/components/library/DocumentGrid";
-import { RecentHistory } from "@/components/library/RecentHistory";
+import { LibraryHome } from "@/components/library/LibraryHome";
+import { format as formatDate } from "date-fns";
+import { vi as viLocale } from "date-fns/locale";
 import { TabBar } from "@/components/tabs/TabBar";
 import { useNoteTabs } from "@/hooks/useNoteTabs";
 import { FilterBar, parseFilters, hasActiveFilters } from "@/components/library/FilterBar";
@@ -129,6 +131,16 @@ export function LibraryPageInner() {
     }
     return map;
   }, [allDocFolders, allFolders]);
+
+  // Tiêu đề kiểu tạp chí: dòng ngày + lời chào theo buổi
+  const { todayLabel, greeting } = useMemo(() => {
+    const now = new Date();
+    const h = now.getHours();
+    return {
+      todayLabel: formatDate(now, "EEEE · d 'tháng' M", { locale: viLocale }),
+      greeting: h >= 5 && h < 12 ? "Chào buổi sáng" : h >= 12 && h < 18 ? "Chào buổi chiều" : "Chào buổi tối",
+    };
+  }, []);
 
   const pctByDoc = useMemo(() => {
     const map = new Map<string, number | null>();
@@ -449,12 +461,17 @@ export function LibraryPageInner() {
                   ))}
                 </div>
               ) : (
-                <h1 className="font-display text-2xl font-semibold truncate">
-                  {scope === "all" ? L.title : currentFolder?.name ?? "Folder"}
-                </h1>
+                <>
+                  {scope === "all" && (
+                    <p className="text-2xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{todayLabel}</p>
+                  )}
+                  <h1 className="mt-1 font-display text-3xl font-semibold leading-tight truncate sm:text-4xl">
+                    {scope === "all" ? greeting : currentFolder?.name ?? "Folder"}
+                  </h1>
+                </>
               )}
               {scope === "all" && allDocs && (
-                <p className="text-xs text-muted-foreground mt-0.5">{allDocs.length} tài liệu</p>
+                <p className="text-sm text-muted-foreground mt-1">{allDocs.length} tài liệu trong thư viện</p>
               )}
             </div>
 
@@ -477,7 +494,7 @@ export function LibraryPageInner() {
           </div>
 
           {/* Filter bar — scroll ngang trên mobile */}
-          {scope === "all" && !isFiltered && <RecentHistory />}
+          {scope === "all" && !isFiltered && allDocs && <LibraryHome docs={allDocs} pctByDoc={pctByDoc} />}
           {scope === "all" && (
             <div className="mb-4">
               <FilterBar filters={filters} />

@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TagPopover } from "./TagPopover";
+import { BookCover } from "./BookCover";
 import { labels } from "@/lib/i18n/labels";
 import { formatBytes } from "@/lib/storage";
 import { toast } from "sonner";
@@ -244,96 +245,93 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
     );
   }
 
+  // Lưới: thẻ "bìa sách" (cover-first) — chạm bìa để mở, card morph thành trang đọc
+  const pct = progressPct != null && progressPct > 0 ? Math.round(progressPct * 100) : null;
   return (
     <>
-      <div ref={cardRef} className={`group relative flex flex-col rounded-[22px] border border-border/80 bg-card/95 p-4 hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-[transform,box-shadow] duration-200 ease-out motion-reduce:hover:translate-y-0 border-l-[4px] ${spine.border} select-none ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
-        {/* Checkbox — top-left */}
-        {onToggleSelect && (
+      <div ref={cardRef} className="group relative flex flex-col select-none">
+        <div className="relative">
           <button
-            onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
-            className={`absolute top-2.5 left-2.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all
-              ${isSelected
-                ? "bg-primary border-primary"
-                : "bg-background border-muted-foreground/30 opacity-100 can-hover:opacity-0 group-hover:opacity-100"
-              }`}
-            aria-label={isSelected ? "Bỏ chọn" : "Chọn tài liệu"}
-            aria-pressed={isSelected}
+            onClick={openDoc}
+            onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
+            className="press block w-full rounded-[4px_10px_10px_4px] text-left"
+            aria-label={`Mở ${doc.title}`}
           >
-            {isSelected && (
-              <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 12 12">
-                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
+            <BookCover
+              title={doc.title}
+              format={doc.format}
+              size="md"
+              className={`w-full transition-[transform,box-shadow] duration-300 ease-spring can-hover:group-hover:-translate-y-1 ${isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+            />
           </button>
-        )}
 
-        {/* Header: icon + 3-dot */}
-        <div className="mb-2.5 flex items-center justify-between gap-1">
-          <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${spine.bg} ${spine.text} shrink-0 transition-transform duration-200 group-hover:scale-105 ${onToggleSelect ? "ml-5" : ""}`}>
-            <Icon className="h-4 w-4" aria-hidden />
-          </div>
+          {/* Checkbox — góc trái trên bìa */}
+          {onToggleSelect && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+              className={`absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-opacity
+                ${isSelected
+                  ? "bg-primary border-primary"
+                  : "border-white/70 bg-black/20 opacity-100 can-hover:opacity-0 group-hover:opacity-100"
+                }`}
+              aria-label={isSelected ? "Bỏ chọn" : "Chọn tài liệu"}
+              aria-pressed={isSelected}
+            >
+              {isSelected && (
+                <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 12 12">
+                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </button>
+          )}
+
+          {/* Menu ⋯ — góc phải trên bìa */}
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="inline-flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-all opacity-100 can-hover:opacity-0 group-hover:opacity-100"
+              className="absolute right-1.5 top-1.5 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25 text-white transition-opacity hover:bg-black/40 opacity-100 can-hover:opacity-0 group-hover:opacity-100"
               aria-label="Tuỳ chọn"
             >
-              <MoreVertical className="h-3.5 w-3.5" aria-hidden />
+              <MoreVertical className="h-4 w-4" aria-hidden />
             </DropdownMenuTrigger>
             {menu}
           </DropdownMenu>
         </div>
 
-        {/* Document Title */}
+        {/* Tiến độ ngay dưới bìa */}
+        <div className="mt-2.5 h-[3px] overflow-hidden rounded-full bg-muted">
+          {pct !== null && <div className="h-full rounded-full bg-primary/85 transition-[width] duration-300" style={{ width: `${pct}%` }} />}
+        </div>
+
         <button
           onClick={openDoc}
-          onDoubleClick={() => { setNewTitle(doc.title); setShowRenameDialog(true); }}
-          className="mb-2.5 line-clamp-2 text-xs font-semibold leading-snug text-left text-foreground/90 group-hover:text-primary transition-colors"
+          className="mt-2 line-clamp-2 text-left text-[13px] font-semibold leading-snug text-foreground/90 transition-colors group-hover:text-primary"
         >
           {doc.title}
         </button>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span className="font-medium uppercase tracking-wider text-[10px]">{Lf[doc.format as keyof typeof Lf] ?? doc.format}</span>
+          {doc.fileSizeBytes ? <span>· {formatBytes(doc.fileSizeBytes)}</span> : null}
+          {pct !== null && <span className="font-semibold text-primary">· {pct}%</span>}
+        </div>
 
-        {/* Metadata + Progress + Tags */}
-        <div className="mt-auto space-y-2">
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
-            <span className="font-medium uppercase tracking-wider text-[10px]">{Lf[doc.format as keyof typeof Lf] ?? doc.format}</span>
-            {doc.fileSizeBytes && <span>· {formatBytes(doc.fileSizeBytes)}</span>}
+        {(currentFolder || (docTags && docTags.length > 0)) && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {currentFolder && (
+              <Badge variant="outline" className="text-[10px] gap-1 px-1.5 h-4 rounded-md">
+                <Folder className="h-2.5 w-2.5" />{currentFolder.name}
+              </Badge>
+            )}
+            {docTags?.slice(0, 2).map((tag) => (
+              <Badge key={tag._id} variant="secondary" className="h-4 px-1.5 text-[10px] rounded-md" style={{ borderColor: tag.color ?? undefined }}>
+                {tag.name}
+              </Badge>
+            ))}
+            {docTags && docTags.length > 2 && <Badge variant="secondary" className="h-4 px-1.5 text-[10px] rounded-md">+{docTags.length - 2}</Badge>}
           </div>
+        )}
 
-          {currentFolder && (
-            <Badge variant="outline" className="text-[10px] gap-1 px-1.5 h-4 rounded-md">
-              <Folder className="h-2.5 w-2.5" />{currentFolder.name}
-            </Badge>
-          )}
-
-          {docTags && docTags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {docTags.slice(0, 2).map((tag) => (
-                <Badge key={tag._id} variant="secondary" className="h-4 px-1.5 text-[10px] rounded-md" style={{ borderColor: tag.color ?? undefined }}>
-                  {tag.name}
-                </Badge>
-              ))}
-              {docTags.length > 2 && <Badge variant="secondary" className="h-4 px-1.5 text-[10px] rounded-md">+{docTags.length - 2}</Badge>}
-            </div>
-          )}
-
-          {progressPct != null && progressPct > 0 && (
-            <div className="space-y-1 pt-0.5">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-muted-foreground text-[10px]">Tiến độ</span>
-                <span className="text-primary font-semibold text-[10px]">{Math.round(progressPct * 100)}%</span>
-              </div>
-              <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary/85 transition-[width] duration-300"
-                  style={{ width: `${Math.round(progressPct * 100)}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-1 -ml-1 opacity-100 can-hover:opacity-0 group-hover:opacity-100 transition-opacity pt-0.5">
-            <TagPopover docId={doc._id} docTags={docTags} />
-          </div>
+        <div className="mt-1 -ml-1 flex items-center gap-1 opacity-100 can-hover:opacity-0 group-hover:opacity-100 transition-opacity">
+          <TagPopover docId={doc._id} docTags={docTags} />
         </div>
       </div>
       {dialogs}
