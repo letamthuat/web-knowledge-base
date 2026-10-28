@@ -68,9 +68,14 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(10px) scale(0.985)" },
           to: { opacity: "1", transform: "none" },
         },
+        "drop-in": {
+          from: { opacity: "0", transform: "translateY(-4px)" },
+          to: { opacity: "1", transform: "none" },
+        },
       },
       animation: {
         "rise-in": "rise-in 520ms var(--ease-spring) both",
+        "drop-in": "drop-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both",
       },
       // ── Tương thích class Tailwind v4 do shadcn "base-nova" sinh ra (project chạy Tailwind 3) ──
       ringWidth: { 3: "3px" },

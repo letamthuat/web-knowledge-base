@@ -1,6 +1,7 @@
 "use client";
 // touch to force HMR rebuild
 
+import { pushUrl } from "@/lib/history";
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -35,7 +36,7 @@ import { UploadDropzone } from "@/components/library/UploadDropzone";
 import { openSearch } from "@/components/search/SearchModal";
 import { labels } from "@/lib/i18n/labels";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
-import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
+import { openNavDrawer, closeNavDrawer } from "@/lib/navDrawer";
 import { openReadingSettings } from "@/components/AppSettingsPanel";
 
 const L = labels.library;
@@ -59,7 +60,6 @@ export function LibraryPageInner() {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   // Sidebar — mobile drawer
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [scope, setScope] = useState<ViewScope>("all");
   const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([]);
@@ -223,7 +223,7 @@ export function LibraryPageInner() {
 
   function navigateToFolder(folder: { _id: Id<"folders">; name: string }, parentId?: Id<"folders">) {
     setScope(folder._id);
-    setMobileSidebarOpen(false);
+    closeNavDrawer();
     if (parentId) {
       const parentIndex = breadcrumbs.findIndex(c => c.id === parentId);
       if (parentIndex >= 0) {
@@ -320,7 +320,7 @@ export function LibraryPageInner() {
             {docsInFolder.map((doc: any) => (
               <button
                 key={doc._id}
-                onClick={() => { navigate(`/reader/${doc._id}`); setMobileSidebarOpen(false); }}
+                onClick={() => { navigate(`/reader/${doc._id}`); closeNavDrawer(); }}
                 className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
                 style={{ paddingLeft: (depth + 1) * 16 + 16 }}
                 title={doc.title}
@@ -341,13 +341,13 @@ export function LibraryPageInner() {
     <div className="min-h-dvh bg-background pb-[var(--safe-bottom)]">
       {/* Navbar — full width */}
       {/* Header chỉ còn cho mobile — desktop mọi điều hướng đã nằm trong sidebar (user chốt 16/07) */}
-      <header className="border-b bg-card sticky top-0 z-20 xl:hidden" style={{ paddingTop: 'var(--safe-top)' }}>
+      <header className="border-b bg-card sticky top-0 z-20 lg:hidden" style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="flex h-12 items-center justify-between px-3 sm:px-6">
           <div className="flex items-center gap-2">
             {/* Mobile: hamburger để mở drawer */}
             <button
-              onClick={() => setMobileSidebarOpen(v => !v)}
-              className="h-8 w-8 rounded-xl flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors xl:hidden"
+              onClick={() => openNavDrawer()}
+              className="h-8 w-8 rounded-xl flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors lg:hidden"
               aria-label="Mở menu"
             >
               <Menu className="h-4 w-4" />
@@ -357,7 +357,7 @@ export function LibraryPageInner() {
             {!sidebarOpen && (
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="hidden xl:flex h-8 w-8 items-center justify-center rounded-xl hover:bg-muted text-muted-foreground transition-colors mr-1"
+                className="hidden lg:flex h-8 w-8 items-center justify-center rounded-xl hover:bg-muted text-muted-foreground transition-colors mr-1"
                 aria-label="Hiện sidebar"
                 title="Hiện sidebar"
               >
@@ -366,7 +366,7 @@ export function LibraryPageInner() {
             )}
 
             {/* Brand đã chuyển vào sidebar trên desktop — chỉ còn hiện ở mobile */}
-            <div className="flex items-center gap-2 xl:hidden">
+            <div className="flex items-center gap-2 lg:hidden">
               <AppLogo size={28} />
               <span className="font-semibold text-sm">Thư viện</span>
             </div>
@@ -407,7 +407,7 @@ export function LibraryPageInner() {
             </button>
 
             {/* Tài khoản + đăng xuất đã chuyển vào sidebar trên desktop — mobile giữ nút icon */}
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="xl:hidden h-8 w-8 p-0 rounded-xl" aria-label={N.logout}>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="lg:hidden h-8 w-8 p-0 rounded-xl" aria-label={N.logout}>
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -423,13 +423,11 @@ export function LibraryPageInner() {
         onSelectNoteTab={(id) => {
           setActiveNoteId(id as Id<"notes">);
           setActivePanel("notes");
-          window.history.pushState(null, "", "/notes");
+          pushUrl("/notes");
         }}
         onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
       />
 
-      {/* Mobile sidebar drawer — đồng bộ với sidebar desktop */}
-      <MobileSidebarDrawer open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
       {/* Main layout — full width */}
       <div className="flex px-4 md:px-6 py-6">

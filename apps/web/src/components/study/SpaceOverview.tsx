@@ -1,6 +1,7 @@
 "use client";
 
 // Tab Tổng quan — thực đơn hôm nay, lộ trình cây trạng thái, chỗ yếu, heatmap.
+import { pushUrl } from "@/lib/history";
 import { createContext, useCallback, useContext, useState } from "react";
 import {
   AlertTriangle, BookOpen, CheckCircle2, ChevronDown, ChevronRight,
@@ -46,7 +47,7 @@ export function useOpenDoc() {
     (docId: string, _anchor?: string | null) => {
       openTab(docId as Id<"documents">).catch(() => {});
       setActivePanel(`reader:${docId}`);
-      window.history.pushState(null, "", `/reader/${docId}`);
+      pushUrl(`/reader/${docId}`);
     },
     [openTab, setActivePanel]
   );

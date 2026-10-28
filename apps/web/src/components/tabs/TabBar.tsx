@@ -1,5 +1,6 @@
 "use client";
 
+import { pushUrl } from "@/lib/history";
 import { X, Plus, FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, PanelLeftClose, StickyNote } from "lucide-react";
 import { getDownloadUrl } from "@/lib/api/documents";
 import { getCachedUrl, setCachedUrl } from "@/app/reader/[docId]/ReaderPageInner";
@@ -308,7 +309,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
             <div
               onClick={() => {
                 setActivePanel("notes");
-                window.history.pushState(null, "", "/notes");
+                pushUrl("/notes");
               }}
               className={[
                 "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-xl px-2.5 transition-all duration-150 border",
@@ -367,7 +368,7 @@ export function TabBar({ currentDocId, showAddButton = false, notesActive = fals
                     // Instant visibility switch — no navigation, no unmount/remount
                     setActivePanel(`reader:${tab.docId}`);
                     setActive(tab._id).catch(() => {});
-                    window.history.pushState(null, "", `/reader/${tab.docId}`);
+                    pushUrl(`/reader/${tab.docId}`);
                   }
                 }}
                 onClose={(e) => handleClose(e, tab)}

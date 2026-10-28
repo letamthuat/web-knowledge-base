@@ -1,5 +1,6 @@
 "use client";
 
+import { isStandalone } from "@/lib/history";
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { X, ChevronDown } from "lucide-react";
@@ -46,6 +47,8 @@ interface FilterBarProps {
 
 export function FilterBar({ filters }: FilterBarProps) {
   const router = useRouter();
+  // PWA: không tích lịch sử (vuốt mép không lùi về bộ lọc trước)
+  const go = (url: string) => (isStandalone() ? router.replace(url, { scroll: false }) : router.push(url, { scroll: false }));
   const allTags = useTagsList();
   const allFolders = useFoldersList();
 
@@ -58,7 +61,7 @@ export function FilterBar({ filters }: FilterBarProps) {
       merged.formats.forEach((f) => params.append("format", f));
       if (merged.from) params.set("from", merged.from);
       if (merged.to) params.set("to", merged.to);
-      router.push(`/library?${params.toString()}`, { scroll: false });
+      go(`/library?${params.toString()}`);
     },
     [filters, router],
   );
@@ -77,7 +80,7 @@ export function FilterBar({ filters }: FilterBarProps) {
     updateUrl({ formats });
   };
 
-  const clearAll = () => router.push("/library", { scroll: false });
+  const clearAll = () => go("/library");
   const active = hasActiveFilters(filters);
 
   return (

@@ -1,5 +1,6 @@
 "use client";
 
+import { pushUrl } from "@/lib/history";
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
 import { Id } from "@/_generated/dataModel";
 import { useHandbookFiles, getAssetUrls } from "@/lib/api/handbooks";
@@ -56,7 +57,7 @@ export function HandbookResolverProvider({
     openTab(docId).catch(() => {});
     setActivePanel(`reader:${docId}`);
     const url = `/reader/${docId}${anchor ? `#${anchor}` : ""}`;
-    window.history.pushState(null, "", url);
+    pushUrl(url);
   }, [openTab, setActivePanel]);
 
   const value = useMemo<ResolverValue>(

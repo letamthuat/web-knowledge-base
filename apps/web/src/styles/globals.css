@@ -147,6 +147,11 @@ html body {
 .min-h-dvh { min-height: 100vh; min-height: 100dvh; }
 
 /* PWA Standalone optimizations */
+/* Chặn cử chỉ vuốt ngang → Back/Forward của trình duyệt (Chrome "overscroll history navigation") */
+html, body {
+  overscroll-behavior-x: none;
+}
+
 @media (display-mode: standalone) {
   html, body {
     overscroll-behavior-y: none;
@@ -377,6 +382,15 @@ html.rm-dark .hljs { color: hsl(var(--code-fg)); }
 }
 @keyframes sheet-up {
   from { transform: translateY(100%); }
+}
+
+/* Sidebar: hàng vừa được "Định vị" nháy sáng */
+.sb-flash {
+  animation: sb-flash 1.4s ease-out;
+}
+@keyframes sb-flash {
+  0%, 30% { box-shadow: 0 0 0 2px hsl(var(--primary) / 0.55); background-color: hsl(var(--primary) / 0.16); }
+  100% { box-shadow: 0 0 0 2px transparent; }
 }
 
 /* Tiêu đề biên tập: Newsreader với optical size */

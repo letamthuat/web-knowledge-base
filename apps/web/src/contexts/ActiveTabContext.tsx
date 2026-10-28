@@ -8,6 +8,7 @@
  * secondaryDocId (13.1) — khi set, AppShell hiển thị split-screen 2 pane:
  * pane trái = panel hiện tại, pane phải = secondaryDocId.
  */
+import { pushUrl } from "@/lib/history";
 import { createContext, useContext, useState, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { runViewTransition } from "@/lib/viewTransition";
 import { pathnameToPanel } from "@/lib/panels";
@@ -74,7 +75,7 @@ export function ActiveTabProvider({ children }: { children: ReactNode }) {
       const next = target.pathname + target.search + target.hash;
       if (window.location.pathname + window.location.search + window.location.hash === next) return;
       if (opts?.replace) window.history.replaceState(null, "", next);
-      else window.history.pushState(null, "", next);
+      else pushUrl(next);
     };
     switchPanel(panel, writeUrl, opts?.from);
   }, [switchPanel]);

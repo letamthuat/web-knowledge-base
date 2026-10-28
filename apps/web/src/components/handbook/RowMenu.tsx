@@ -44,7 +44,7 @@ interface RenderArgs {
 }
 
 const TRIGGER_CLASS =
-  "mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-40 transition-all hover:bg-muted hover:opacity-100 group-hover:opacity-70";
+  "mr-1 " + "flex h-8 w-8 can-hover:h-6 can-hover:w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-70 can-hover:opacity-40 transition-all hover:bg-muted hover:opacity-100 group-hover:opacity-80";
 
 const ITEM_H = 32; // approx px per item, for cursor clamp
 

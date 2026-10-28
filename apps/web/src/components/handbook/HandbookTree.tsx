@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusMark } from "./StatusMark";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Id } from "@/_generated/dataModel";
 import {
@@ -45,10 +46,7 @@ function formatIcon(format: string) {
 
 // 13.2 — icon trạng thái đọc từ progressPct
 function statusIcon(format: string, pct: number | null) {
-  if (format === "image" || format === "audio" || format === "video") return null;
-  if (pct == null || pct <= 0) return <Circle className="h-3 w-3 shrink-0 text-muted-foreground/40" aria-label="Chưa đọc" />;
-  if (pct >= 0.95) return <CheckCircle2 className="h-3 w-3 shrink-0 text-green-500" aria-label="Đã đọc xong" />;
-  return <CircleDot className="h-3 w-3 shrink-0 text-amber-500" aria-label="Đang đọc dở" />;
+  return <StatusMark format={format} pct={pct} />;
 }
 
 /** Keep files whose name matches, folders whose name matches (with all children)
@@ -119,7 +117,7 @@ export function HandbookTree({
   }, [persist]);
 
   const renderNodes = (nodes: TreeNode[], depth: number) => (
-    <ul>
+    <ul className={depth > 0 ? "animate-drop-in" : undefined}>
       {nodes.map((node) => {
         const pad = 10 + depth * 14;
         if (node.type === "folder") {
@@ -140,9 +138,9 @@ export function HandbookTree({
                       onClick={() => toggle(node.path)}
                       style={{ paddingLeft: pad }}
                       title={node.name}
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pr-1.5 text-left text-[13px] text-foreground/90 transition-colors hover:bg-muted"
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-2 can-hover:py-1.5 pr-1.5 text-left text-[13px] text-foreground/90 transition-colors hover:bg-muted"
                     >
-                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-300 ease-spring ${open ? "rotate-90" : ""}`} />
                       {open ? <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" /> : <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
                       <span className="truncate">{node.name}</span>
                     </button>
@@ -168,10 +166,11 @@ export function HandbookTree({
                 <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
                   <button
                     onClick={() => onOpenFile(node.docId)}
+                    data-doc-row={node.docId}
                     style={{ paddingLeft: pad + 16 }}
                     title={node.name}
                     className={[
-                      "flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pr-1.5 text-left text-[13px] transition-colors",
+                      "flex min-w-0 flex-1 items-center gap-2 rounded-lg py-2 can-hover:py-1.5 pr-1.5 text-left text-[13px] transition-colors",
                       isActive ? "bg-primary/10 font-medium text-primary" : "text-foreground/80 hover:bg-muted",
                     ].join(" ")}
                   >

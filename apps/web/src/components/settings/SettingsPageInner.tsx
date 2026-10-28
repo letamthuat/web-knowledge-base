@@ -13,7 +13,7 @@ import { Trash2, AlertTriangle, Database, HardDrive, FileText, StickyNote, Loade
 import { useBackupDownload } from "@/hooks/useBackupDownload";
 import { openSearch } from "@/components/search/SearchModal";
 import { AppLogo } from "@/components/AppLogo";
-import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
+import { openNavDrawer } from "@/lib/navDrawer";
 import { PwaSettingsSection } from "@/components/settings/PwaSettingsSection";
 
 function formatBytes(bytes: number): string {
@@ -309,7 +309,6 @@ export function SettingsPageInner() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [reindexing, setReindexing] = useState(false);
-  const [navOpen, setNavOpen] = useState(false); // drawer điều hướng mobile
 
 
   const CONFIRM_WORD = "XÓA TÀI KHOẢN";
@@ -331,10 +330,10 @@ export function SettingsPageInner() {
   return (
     <div className="min-h-dvh bg-background pb-[var(--safe-bottom)]">
       {/* Thanh trên cùng chỉ cho mobile — nút ☰ mở sidebar (đồng bộ desktop) */}
-      <header className="sticky top-0 z-10 flex items-center gap-2 border-b bg-card px-4 xl:hidden" style={{ paddingTop: "var(--safe-top)" }}>
+      <header className="sticky top-0 z-10 flex items-center gap-2 border-b bg-card px-4 lg:hidden" style={{ paddingTop: "var(--safe-top)" }}>
         <div className="flex h-14 items-center gap-2">
           <button
-            onClick={() => setNavOpen(true)}
+            onClick={() => openNavDrawer()}
             aria-label="Mở menu"
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
@@ -344,7 +343,6 @@ export function SettingsPageInner() {
           <span className="font-semibold">Cài đặt</span>
         </div>
       </header>
-      <MobileSidebarDrawer open={navOpen} onClose={() => setNavOpen(false)} />
 
       <div className="mx-auto max-w-2xl px-4 py-12">
         <Button variant="ghost" size="sm" className="mb-8" onClick={() => navigate("/library")}>

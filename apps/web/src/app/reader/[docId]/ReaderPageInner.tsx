@@ -1,5 +1,6 @@
 "use client";
 
+import { pushUrl } from "@/lib/history";
 import { useEffect, useRef, useCallback, useState, useMemo, memo, useSyncExternalStore } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Id } from "@/_generated/dataModel";
@@ -14,7 +15,7 @@ import { useReadingProgress } from "@/hooks/useReadingProgress";
 import type { ReadingPosition } from "@/lib/position";
 import { toProgressPct } from "@/lib/position";
 import { ArrowLeft, StickyNote, Settings, X, LogOut, Menu, Download, MoreHorizontal, Search, PanelLeftClose, PanelLeftOpen, Maximize2, Palette } from "lucide-react";
-import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
+import { navDrawer, openNavDrawer, closeNavDrawer } from "@/lib/navDrawer";
 import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -178,7 +179,7 @@ function ReaderShell({ doc, downloadUrl }: {
         const noteId = id as Id<"notes">;
         await openNoteTab(noteId, "");
         setActivePanel("notes");
-        window.history.pushState(null, "", "/notes");
+        pushUrl("/notes");
       }
     } catch {
       toast("Không thể tạo ghi chú");
@@ -335,9 +336,6 @@ function ReaderShell({ doc, downloadUrl }: {
   const showChrome = useCallback(() => setChrome(false), [setChrome]);
 
   // Mobile swipe drawer
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const drawerOpenRef = useRef(drawerOpen);
-  drawerOpenRef.current = drawerOpen;
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const isEdgeSwipe = useRef(false);
@@ -364,10 +362,10 @@ function ReaderShell({ doc, downloadUrl }: {
     }
 
     function onTouchStart(e: TouchEvent) {
-      if (!isActiveReaderRef.current) { isEdgeSwipe.current = false; return; }
+      if (!isActiveReaderRef.current || window.innerWidth >= 1024) { isEdgeSwipe.current = false; return; }
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
-      isEdgeSwipe.current = touchStartX.current < 40 || drawerOpenRef.current;
+      isEdgeSwipe.current = touchStartX.current < 40 || navDrawer.get();
       if (isEdgeSwipe.current) {
         document.addEventListener("touchmove", onTouchMove, { passive: false });
       }
@@ -379,8 +377,8 @@ function ReaderShell({ doc, downloadUrl }: {
       const dx = e.changedTouches[0].clientX - touchStartX.current;
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
       if (dy > 80) return;
-      if (!drawerOpenRef.current && dx > 50) setDrawerOpen(true);
-      if (drawerOpenRef.current && dx < -50) setDrawerOpen(false);
+      if (!navDrawer.get() && dx > 50) openNavDrawer();
+      if (navDrawer.get() && dx < -50) closeNavDrawer();
     }
 
     document.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -451,8 +449,6 @@ function ReaderShell({ doc, downloadUrl }: {
         )}
 
 
-        {/* Mobile swipe drawer — đồng bộ với sidebar desktop */}
-        <MobileSidebarDrawer open={isMobile && drawerOpen} onClose={() => setDrawerOpen(false)} />
         {!readingMode && (
           <header
             className="reader-autohide box-content flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-card px-3 sm:px-4"
@@ -460,20 +456,10 @@ function ReaderShell({ doc, downloadUrl }: {
           >
             {/* Left: Sidebar toggle / Logo */}
             <div className="flex items-center gap-1.5 shrink-0">
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-xl xl:hidden" onClick={() => setDrawerOpen(true)}>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-xl lg:hidden" onClick={() => openNavDrawer()} aria-label="Mở menu">
                 <Menu className="h-4 w-4" />
               </Button>
-              {!sidebarOpen && (
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="hidden xl:flex h-8 w-8 items-center justify-center rounded-xl hover:bg-muted text-muted-foreground transition-colors"
-                  aria-label="Hiện sidebar"
-                  title="Hiện sidebar"
-                >
-                  <PanelLeftOpen className="h-4 w-4" />
-                </button>
-              )}
-              <span className="xl:hidden"><AppLogo size={28} /></span>
+              <span className="lg:hidden"><AppLogo size={28} /></span>
             </div>
 
             {/* Center: Prominent Document Title + Format pill (Apple Books centered style) */}
@@ -560,7 +546,7 @@ function ReaderShell({ doc, downloadUrl }: {
                   onSelectNoteTab={(id) => {
                     setActiveNoteId(id as Id<"notes">);
                     setActivePanel("notes");
-                    window.history.pushState(null, "", "/notes");
+                    pushUrl("/notes");
                   }}
                   onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
                 />
@@ -572,7 +558,7 @@ function ReaderShell({ doc, downloadUrl }: {
                   onSelectNoteTab={(id) => {
                     setActiveNoteId(id as Id<"notes">);
                     setActivePanel("notes");
-                    window.history.pushState(null, "", "/notes");
+                    pushUrl("/notes");
                   }}
                   onCloseNoteTab={(id) => closeNoteTab(id as Id<"notes">)}
                   onAddNote={handleNewNote}

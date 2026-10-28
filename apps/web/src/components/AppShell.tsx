@@ -21,6 +21,8 @@ import { ReaderDocLoader } from "@/app/reader/[docId]/ReaderPageInner";
 import { HandbookSidebar } from "@/components/handbook/HandbookSidebar";
 import { GlobalSearch } from "@/components/search/SearchModal";
 import { pathnameToPanel } from "@/lib/panels";
+import { NavDrawer } from "@/components/nav/MobileSidebarDrawer";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 const LibraryPageInner = dynamic(
   () => import("@/components/library/LibraryPageInner").then((m) => m.LibraryPageInner),
@@ -74,6 +76,8 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const { activePanel, setActivePanel, secondaryDocId, closeSecondary } = useActiveTab();
   const { tabs } = useTabSync();
   const split = useResizable(60, 25, 80);
+  // Sidebar desktop chỉ mount từ lg — trước đây chỉ ẩn bằng CSS nên vẫn chạy query trên mobile
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   // Ordered list of docIds that have been mounted (append-only, never shrinks)
   // Using ref so mutations during render don't cause extra re-renders
@@ -121,7 +125,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, overflow: "hidden", display: "flex" }}>
       {/* Sidebar chung — Domain/Handbook + Tài liệu lẻ (ẩn trên mobile) */}
-      <HandbookSidebar />
+      {isDesktop ? <HandbookSidebar /> : <NavDrawer />}
 
       {/* Ô tìm kiếm duy nhất (Cmd/Ctrl+K + openSearch()), portal ra body */}
       <GlobalSearch />

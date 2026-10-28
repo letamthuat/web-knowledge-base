@@ -4,12 +4,13 @@
  * Module Học tập — UI PROTOTYPE chạy trên seed data (mock.ts).
  * Sau khi chốt giao diện sẽ viết spec chi tiết rồi mới nối Supabase.
  */
+import { pushUrl } from "@/lib/history";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Clock, Flame, GraduationCap, Layers3, Loader2, Menu, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLogo } from "@/components/AppLogo";
-import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
+import { openNavDrawer } from "@/lib/navDrawer";
 import type { StudySpace } from "./mock";
 import { useStudyData, buildAllSpaceModels } from "@/lib/study/spaceModel";
 import { removeStudySpace } from "@/lib/api/study";
@@ -57,7 +58,6 @@ export function StudyPageInner() {
   const [tab, setTab] = useState<TabKey>(initial.tab);
   // Điều phối có ngữ cảnh: sang tab nào thì biết highlight nội dung của tiểu mục nào
   const [focusCtx, setFocusCtx] = useState<{ sectionId?: string; unitKey?: string } | null>(null);
-  const [navOpen, setNavOpen] = useState(false); // drawer điều hướng mobile
   const [wizardOpen, setWizardOpen] = useState(false);
 
   // Điều hướng nội bộ = đổi state + đẩy URL tương ứng (share/bookmark/back được)
@@ -66,7 +66,7 @@ export function StudyPageInner() {
     setTab(t);
     setFocusCtx(ctx ?? null);
     const url = studyPath(sid, t);
-    if (window.location.pathname !== url) window.history.pushState(null, "", url);
+    if (window.location.pathname !== url) pushUrl(url);
   };
 
   // URL đổi từ bên ngoài (back/forward, sidebar bấm "Học tập", deep-link) → state theo URL.
@@ -89,9 +89,9 @@ export function StudyPageInner() {
     // 1 cột (mobile PWA + laptop); từ 2xl nới container — cả danh sách lẫn màn trong cùng độ rộng
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col px-4 pb-[calc(1.5rem+var(--safe-bottom))] pt-4 2xl:max-w-[1400px]">
       {/* Thanh trên cùng chỉ cho mobile — nút ☰ mở sidebar (đồng bộ desktop) */}
-      <header className="mb-2 flex shrink-0 items-center gap-2 xl:hidden" style={{ paddingTop: "var(--safe-top)" }}>
+      <header className="mb-2 flex shrink-0 items-center gap-2 lg:hidden" style={{ paddingTop: "var(--safe-top)" }}>
         <button
-          onClick={() => setNavOpen(true)}
+          onClick={() => openNavDrawer()}
           aria-label="Mở menu"
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
@@ -100,7 +100,6 @@ export function StudyPageInner() {
         <AppLogo size={28} />
         <span className="font-semibold">Học tập</span>
       </header>
-      <MobileSidebarDrawer open={navOpen} onClose={() => setNavOpen(false)} />
       {wizardOpen && (
         <CreateSpaceModal
           onClose={() => setWizardOpen(false)}

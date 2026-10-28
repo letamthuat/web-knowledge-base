@@ -1,9 +1,10 @@
 "use client";
 
+import { pushUrl } from "@/lib/history";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LogOut, Settings, StickyNote, List, Upload, Download, Menu, Search, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { MobileSidebarDrawer } from "@/components/nav/MobileSidebarDrawer";
+import { openNavDrawer } from "@/lib/navDrawer";
 import { AppLogo } from "@/components/AppLogo";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
@@ -42,7 +43,6 @@ export function NotesPageInner() {
   }, [convexActiveNoteId, pendingNoteId]);
   const { setActivePanel, sidebarOpen: globalSidebarOpen, setSidebarOpen: setGlobalSidebarOpen } = useActiveTab();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   const typography = useAppTypography();
@@ -119,21 +119,19 @@ export function NotesPageInner() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-background">
-      {/* Mobile nav drawer — đồng bộ với sidebar desktop */}
-      <MobileSidebarDrawer open={navDrawerOpen} onClose={() => setNavDrawerOpen(false)} />
 
       {/* Navbar */}
       {/* Header chỉ còn cho mobile — desktop mọi điều hướng đã nằm trong sidebar (user chốt 16/07) */}
-      <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2 xl:hidden" style={{ paddingTop: 'var(--safe-top)' }}>
+      <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-2 lg:hidden" style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="xl:hidden p-1.5" onClick={() => setNavDrawerOpen(true)}>
+          <Button variant="ghost" size="sm" className="lg:hidden p-1.5" onClick={() => openNavDrawer()}>
             <Menu className="h-4 w-4" />
           </Button>
           {/* Desktop: nút MỞ sidebar — chỉ hiện khi đang ẩn (nút đóng nằm trong sidebar) */}
           {!globalSidebarOpen && (
             <button
               onClick={() => setGlobalSidebarOpen(true)}
-              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors xl:flex"
+              className="mr-1 hidden rounded p-1.5 hover:bg-muted text-muted-foreground transition-colors lg:flex"
               aria-label="Hiện sidebar"
             >
               <PanelLeftOpen className="h-4 w-4" />
@@ -141,19 +139,19 @@ export function NotesPageInner() {
           )}
 
           {/* Brand đã chuyển vào sidebar trên desktop — chỉ còn hiện ở mobile */}
-          <div className="flex items-center gap-2 xl:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
             <AppLogo size={32} />
             <span className="font-semibold hidden md:inline">Web Knowledge Base</span>
           </div>
         </div>
 
-        <nav className="hidden items-center gap-1 xl:flex">
-          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/library")} onClick={() => { setActivePanel("library"); window.history.pushState(null, "", "/library"); }}>{N.library}</Button>
+        <nav className="hidden items-center gap-1 lg:flex">
+          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/library")} onClick={() => { setActivePanel("library"); pushUrl("/library"); }}>{N.library}</Button>
           <Button variant="secondary" size="sm" aria-current={true}>
             <StickyNote className="mr-1.5 h-3.5 w-3.5" />
             {N.notes}
           </Button>
-          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => { setActivePanel("settings"); window.history.pushState(null, "", "/settings"); }}>
+          <Button variant="ghost" size="sm" onMouseEnter={() => router.prefetch("/settings")} onClick={() => { setActivePanel("settings"); pushUrl("/settings"); }}>
             <Settings className="mr-1 h-4 w-4" />{N.settings}
           </Button>
           <button
@@ -170,13 +168,13 @@ export function NotesPageInner() {
           <span className="hidden text-sm text-muted-foreground xl:inline">{session?.user?.email}</span>
           <button
             onClick={() => openSearch()}
-            className="flex xl:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+            className="flex lg:hidden items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-muted transition-colors"
             aria-label="Tìm kiếm"
           >
             <Search className="h-4 w-4" />
           </button>
           {/* Đăng xuất đã chuyển vào sidebar trên desktop — mobile giữ nút icon */}
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="xl:hidden" aria-label={N.logout}>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="lg:hidden" aria-label={N.logout}>
             <LogOut className="h-4 w-4" />
           </Button>
         </div>

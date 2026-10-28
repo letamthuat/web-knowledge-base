@@ -34,12 +34,16 @@ import {
 import { openReadingSettings } from "@/components/AppSettingsPanel";
 import { usePwa } from "@/contexts/PwaContext";
 import { HandbookTree } from "./HandbookTree";
+import { StatusMark } from "./StatusMark";
+import { usePersistedOpen, setSidebarOpenKeys } from "@/lib/sidebarState";
+import { useRecentHistory } from "@/lib/api/reading-progress";
+import { supabase } from "@/lib/supabase/client";
 import { useStudySpaces, useDueCountsBySpace } from "@/lib/api/study";
 import { useAllNotesWithDocTitle } from "@/lib/api/notes";
 import { AppLogo } from "@/components/AppLogo";
 import { useSession, signOut } from "@/lib/auth-client";
 import { labels } from "@/lib/i18n/labels";
-import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LogOut, PanelLeftClose, PanelLeftOpen, LocateFixed } from "lucide-react";
 import { openSearch } from "@/components/search/SearchModal";
 import { RowMenu } from "./RowMenu";
 import { ImportZipDialog } from "./ImportZipDialog";
@@ -269,10 +273,11 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({ open: false });
   const [filter, setFilter] = useState("");
   // Mặc định khi mới vào: THU HẾT (user chốt) — bung mục nào là chủ động của user
-  const [libOpen, setLibOpen] = useState(false); // cây thư viện nằm TRONG module Thư viện
-  const [hbOpen, setHbOpen] = useState(false); // nhóm Handbook trong Thư viện
-  const [studyOpen, setStudyOpen] = useState(false); // bung/thu các không gian học
-  const [notesOpen, setNotesOpen] = useState(false); // bung/thu danh sách ghi chú
+  // Nhớ trạng thái bung/thu qua các lần mở (mặc định vẫn thu hết)
+  const [libOpen, setLibOpen] = usePersistedOpen("lib"); // cây thư viện nằm TRONG module Thư viện
+  const [hbOpen, setHbOpen] = usePersistedOpen("hb-root"); // nhóm Handbook trong Thư viện
+  const [studyOpen, setStudyOpen] = usePersistedOpen("study"); // bung/thu các không gian học
+  const [notesOpen, setNotesOpen] = usePersistedOpen("notes"); // bung/thu danh sách ghi chú
 
   // Không gian học THẬT từ DB (không dùng mock nữa) — lọc bỏ space đã lưu trữ, sắp theo tên
   const allSpaces = useStudySpaces();
@@ -289,6 +294,42 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
     .sort((a, b) => a.name.localeCompare(b.name, "vi", { numeric: true }));
 
   const activeDocId = activePanel?.startsWith("reader:") ? activePanel.slice("reader:".length) : null;
+
+  // ── Định vị: bung đúng Domain → Handbook (folder do HandbookTree tự bung) rồi cuộn tới file đang đọc ──
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [locating, setLocating] = useState(false);
+  const revealActive = useCallback(async () => {
+    if (!activeDocId) return;
+    setLocating(true);
+    try {
+      const { data: doc } = await supabase.from("documents").select("handbookId").eq("_id", activeDocId).maybeSingle();
+      const hbId = (doc as { handbookId: string | null } | null)?.handbookId ?? null;
+      if (hbId) {
+        const { data: hb } = await supabase.from("handbooks").select("domainId").eq("_id", hbId).maybeSingle();
+        const domId = (hb as { domainId: string } | null)?.domainId;
+        setSidebarOpenKeys({ lib: true, "hb-root": true, [`hb:${hbId}`]: true, ...(domId ? { [`dom:${domId}`]: true } : {}) });
+      } else {
+        setSidebarOpenKeys({ lib: true, loose: true });
+      }
+    } catch { /* vẫn thử tìm hàng nếu cây đã bung sẵn */ }
+    // Cây tải file lười → chờ hàng xuất hiện (tối đa 3s) rồi cuộn + nháy sáng
+    const started = performance.now();
+    const find = () => {
+      const row = scrollRef.current?.querySelector<HTMLElement>(`[data-doc-row="${CSS.escape(activeDocId)}"]`);
+      if (row) {
+        row.scrollIntoView({ block: "center", behavior: "smooth" });
+        row.classList.add("sb-flash");
+        setTimeout(() => row.classList.remove("sb-flash"), 1400);
+        setLocating(false);
+      } else if (performance.now() - started < 3000) {
+        requestAnimationFrame(find);
+      } else {
+        setLocating(false);
+        toast("Không tìm thấy tài liệu trong cây");
+      }
+    };
+    requestAnimationFrame(find);
+  }, [activeDocId]);
 
   // Tài khoản + đăng xuất nằm trong sidebar (user chốt 16/07)
   const { data: session } = useSession();
@@ -341,20 +382,30 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
 
 
       {/* Brand — Apple Books & Craft refined header */}
-      <div className="flex shrink-0 items-center gap-3 border-b border-border/50 px-3.5 py-3.5 bg-card/40">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-secondary/80 p-1 border border-border/40 shadow-xs">
-          <AppLogo size={28} />
+      <div className="flex shrink-0 items-center gap-3 px-3.5 pb-3 pt-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/50 bg-secondary/70 p-1 shadow-xs">
+          <AppLogo size={30} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13.5px] font-semibold tracking-tight text-foreground">Web Knowledge Base</p>
-          <p className="truncate text-[11px] text-muted-foreground font-serif italic">Thư viện tri thức cá nhân</p>
+          <p className="truncate font-display text-[17px] font-semibold leading-tight text-foreground">Knowledge Base</p>
+          <p className="truncate text-[11px] text-muted-foreground">Thư viện tri thức cá nhân</p>
         </div>
+        {activeDocId && (
+          <button
+            onClick={revealActive}
+            title="Định vị tài liệu đang đọc"
+            aria-label="Định vị tài liệu đang đọc"
+            className="flex h-9 w-9 can-hover:h-7 can-hover:w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+          >
+            <LocateFixed className={`h-4 w-4 ${locating ? "animate-pulse text-primary" : ""}`} />
+          </button>
+        )}
         {onCollapse && (
           <button
             onClick={onCollapse}
             title="Ẩn sidebar"
             aria-label="Ẩn sidebar"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="flex h-9 w-9 can-hover:h-7 can-hover:w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <PanelLeftClose className="h-4 w-4" />
           </button>
@@ -362,9 +413,13 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
       </div>
 
       {/* Khối MODULE — 6 mục cùng một cấp; cây thư viện nằm TRONG mục Thư viện */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2 pt-2.5">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-2 pb-2 pt-1">
         <div className="space-y-0.5">
           <NavRow icon={Search} label="Tìm kiếm" onClick={() => openSearch()} />
+
+          <RecentReads activeDocId={activeDocId} onOpen={openDoc} />
+
+          <p className="px-2.5 pb-1 pt-3 text-2xs font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">Không gian</p>
 
           {/* Học tập — bung/thu hiện các không gian học */}
           <ExpandableNavRow
@@ -376,7 +431,7 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
             onNavigate={() => { goPanel("study", "/study"); setStudyOpen(true); }}
           />
           {studyOpen && (
-            <div className="ml-3 border-l border-border/40 pb-1 pl-1.5">
+            <div className="animate-drop-in ml-3 border-l border-border/40 pb-1 pl-1.5">
               {allSpaces === undefined ? (
                 <p className="px-2 py-1.5 text-[12px] text-muted-foreground/70">Đang tải…</p>
               ) : spaces.length === 0 ? (
@@ -389,7 +444,7 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
                       key={s._id}
                       onClick={() => goPanel("study", `/study/${s._id}`)}
                       title={s.name}
-                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-foreground/80 transition-colors hover:bg-muted"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 can-hover:py-1.5 text-left text-[13px] text-foreground/80 transition-colors hover:bg-muted"
                     >
                       <span className="text-[14px] leading-none">{s.emoji ?? "📘"}</span>
                       <span className="min-w-0 flex-1 truncate">{s.name}</span>
@@ -415,7 +470,7 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
             onNavigate={() => { goPanel("library", "/library"); setLibOpen(true); }}
           />
           {libOpen && (
-            <div className="ml-3 border-l border-border/40 pb-1 pl-1.5">
+            <div className="animate-drop-in ml-3 border-l border-border/40 pb-1 pl-1.5">
               <div className="py-1 pr-1">
                 <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-2.5 focus-within:border-ring focus-within:bg-background transition-colors">
                   <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -438,7 +493,8 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
                     <button
                       onClick={() => setFilter("")}
                       title="Xóa bộ lọc"
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label="Xóa bộ lọc"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -450,22 +506,22 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
               <div className="group flex min-w-0 items-center pr-1">
                 <button
                   onClick={() => setHbOpen((v) => !v)}
-                  className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-muted"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 can-hover:py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-muted"
                 >
-                  <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${(filter.trim() || hbOpen) ? "rotate-90" : ""}`} />
+                  <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-300 ease-spring ${(filter.trim() || hbOpen) ? "rotate-90" : ""}`} />
                   <BookText className="h-3.5 w-3.5 shrink-0 text-primary" />
                   <span className="truncate">Handbook</span>
                 </button>
                 <button
                   onClick={handleCreateDomain}
                   title="Thêm Domain"
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-40 transition-all hover:bg-muted hover:opacity-100 group-hover:opacity-70"
+                  className="flex h-8 w-8 can-hover:h-6 can-hover:w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-70 can-hover:opacity-40 transition-all hover:bg-muted hover:opacity-100 group-hover:opacity-80"
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
               </div>
               {(filter.trim() !== "" || hbOpen) && (
-                <div className="ml-2">
+                <div className="animate-drop-in ml-2">
                   {domains === undefined && <p className="px-3 py-2 text-xs text-muted-foreground">Đang tải…</p>}
                   {domains && domains.length === 0 && (
                     <p className="px-3 py-2 text-xs text-muted-foreground">Chưa có Domain. Bấm + để tạo.</p>
@@ -553,6 +609,50 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
   );
 }
 
+// Vạch chỉ báo mục đang mở
+function ActiveBar() {
+  return <span aria-hidden className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-primary animate-drop-in" />;
+}
+
+// ─── Đọc gần đây — 5 tài liệu mở gần nhất, 1 chạm là đọc tiếp ─────────────────
+function RecentReads({ activeDocId, onOpen }: { activeDocId: string | null; onOpen: (id: Id<"documents">) => void }) {
+  const history = useRecentHistory(5);
+  const [open, setOpen] = usePersistedOpen("recent", true);
+  if (!history?.length) return null;
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-2.5 pb-1 pt-3 text-2xs font-semibold uppercase tracking-[0.14em] text-muted-foreground/80 transition-colors hover:text-foreground"
+      >
+        <span className="flex-1 text-left">Đọc gần đây</span>
+        <ChevronRight className={`h-3 w-3 transition-transform duration-300 ease-spring ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+        <div className="animate-drop-in space-y-px">
+          {history.map(({ doc, progress }) => {
+            const active = doc._id === activeDocId;
+            const media = doc.format === "image" || doc.format === "audio" || doc.format === "video";
+            return (
+              <button
+                key={doc._id}
+                onClick={() => onOpen(doc._id as Id<"documents">)}
+                title={doc.title}
+                className={`relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 can-hover:py-1.5 text-left text-[13px] transition-colors ${
+                  active ? "bg-primary/10 font-medium text-primary" : "text-foreground/80 hover:bg-secondary/70"
+                }`}
+              >
+                {media ? formatIcon(doc.format) : <StatusMark format={doc.format} pct={progress.progressPct} />}
+                <span className="min-w-0 flex-1 truncate">{doc.title}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── NavRow — mục điều hướng module trên sidebar ─────────────────────────────
 
 function NavRow({ icon: Icon, label, active = false, iconCls = "", onClick }: {
@@ -561,10 +661,11 @@ function NavRow({ icon: Icon, label, active = false, iconCls = "", onClick }: {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 min-h-[38px] sm:min-h-[34px] text-[13px] transition-colors hover:bg-secondary/70 hover:text-foreground active:scale-[0.99] ${
+      className={`relative flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 min-h-[42px] can-hover:min-h-[34px] text-[13px] transition-colors hover:bg-secondary/70 hover:text-foreground active:scale-[0.99] ${
         active ? "bg-secondary font-medium text-foreground shadow-2xs" : "text-muted-foreground"
       }`}
     >
+      {active && <ActiveBar />}
       <Icon className={`h-4 w-4 shrink-0 ${iconCls}`} />
       <span className="truncate">{label}</span>
     </button>
@@ -577,10 +678,11 @@ function ExpandableNavRow({ icon: Icon, label, active, open, onToggle, onNavigat
   onToggle: () => void; onNavigate: () => void; iconCls?: string;
 }) {
   return (
-    <div className={`flex items-center rounded-xl transition-colors hover:bg-secondary/70 ${active ? "bg-secondary shadow-2xs" : ""}`}>
+    <div className={`relative flex items-center rounded-xl transition-colors hover:bg-secondary/70 ${active ? "bg-secondary shadow-2xs" : ""}`}>
+      {active && <ActiveBar />}
       <button
         onClick={onNavigate}
-        className={`flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 min-h-[38px] sm:min-h-[34px] text-left text-[13px] transition-colors hover:text-foreground ${
+        className={`flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 min-h-[42px] can-hover:min-h-[34px] text-left text-[13px] transition-colors hover:text-foreground ${
           active ? "font-medium text-foreground" : "text-muted-foreground"
         }`}
       >
@@ -590,9 +692,9 @@ function ExpandableNavRow({ icon: Icon, label, active, open, onToggle, onNavigat
       <button
         onClick={onToggle}
         aria-label={`Bung/thu ${label}`}
-        className="mr-1 flex h-8 w-8 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground active:scale-95"
+        className="mr-1 flex h-9 w-9 can-hover:h-7 can-hover:w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground active:scale-95"
       >
-        <ChevronRight className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
+        <ChevronRight className={`h-3.5 w-3.5 transition-transform duration-300 ease-spring ${open ? "rotate-90" : ""}`} />
       </button>
     </div>
   );
@@ -603,7 +705,7 @@ function NotesChildren({ onOpenNote }: { onOpenNote: (id: string | null) => void
   const notes = useAllNotesWithDocTitle();
   const MAX = 10;
   return (
-    <div className="ml-3 border-l border-border/40 pb-1 pl-1.5">
+    <div className="animate-drop-in ml-3 border-l border-border/40 pb-1 pl-1.5">
       {notes === undefined && <p className="px-3 py-1.5 text-xs text-muted-foreground">Đang tải…</p>}
       {notes && notes.length === 0 && <p className="px-3 py-1.5 text-xs text-muted-foreground">Chưa có ghi chú.</p>}
       {notes?.slice(0, MAX).map((n) => {
@@ -613,7 +715,7 @@ function NotesChildren({ onOpenNote }: { onOpenNote: (id: string | null) => void
             key={n._id}
             onClick={() => onOpenNote(n._id)}
             title={n.docTitle ? `${title} — ${n.docTitle}` : title}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-foreground/80 transition-colors hover:bg-muted"
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 can-hover:py-1.5 text-left text-[13px] text-foreground/80 transition-colors hover:bg-muted"
           >
             <NotebookPen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate">{title}</span>
@@ -656,40 +758,76 @@ export function HandbookSidebar() {
     window.addEventListener("mouseup", onUp);
   }, []);
 
+  // Chỉ mount trên desktop (AppShell lo). Thu gọn = dải icon 64px thay vì ẩn hẳn;
+  // nội dung đầy đủ vẫn giữ mounted (display:none) để mở lại tức thì, không tải lại cây.
   return (
-    <>
-      {/* Header desktop đã bỏ — khi sidebar ẩn, nút nổi này là lối mở lại duy nhất */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          title="Hiện sidebar"
-          aria-label="Hiện sidebar"
-          className="fixed left-2 top-2 z-40 hidden h-8 w-8 items-center justify-center rounded-md border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground xl:flex"
-        >
-          <PanelLeftOpen className="h-4 w-4" />
-        </button>
-      )}
-      <div
-        className={`relative hidden h-full shrink-0 flex-col bg-card xl:flex transition-[width,border-color] duration-200 ease-out overflow-hidden will-change-[width] ${
-          sidebarOpen ? "border-r border-border" : "border-r border-transparent"
-        }`}
-        style={{
-          width: sidebarOpen ? width : 0,
-          contain: "paint layout",
-          viewTransitionName: "app-sidebar",
-        }}
-      >
-        <div style={{ width: `${width}px`, minWidth: `${width}px`, height: "100%" }}>
-          <HandbookSidebarContent onCollapse={() => setSidebarOpen(false)} />
-        </div>
-        {sidebarOpen && (
-          <div
-            onMouseDown={onMouseDown}
-            className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/30"
-          />
-        )}
+    <div
+      className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-card transition-[width] duration-300 ease-out-expo"
+      style={{
+        width: sidebarOpen ? width : RAIL_WIDTH,
+        contain: "paint layout",
+        viewTransitionName: "app-sidebar",
+      }}
+    >
+      <div style={{ width: `${width}px`, minWidth: `${width}px`, height: "100%", display: sidebarOpen ? undefined : "none" }}>
+        <HandbookSidebarContent onCollapse={() => setSidebarOpen(false)} />
       </div>
-    </>
+      {!sidebarOpen && <SidebarRail onExpand={() => setSidebarOpen(true)} />}
+      {sidebarOpen && (
+        <div
+          onMouseDown={onMouseDown}
+          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/30"
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── SidebarRail — sidebar thu gọn: dải icon, vẫn điều hướng được ─────────────
+
+const RAIL_WIDTH = 64;
+
+function RailButton({ icon: Icon, label, active = false, iconCls = "", onClick }: {
+  icon: typeof Search; label: string; active?: boolean; iconCls?: string; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
+        active ? "bg-secondary text-foreground shadow-2xs" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+      }`}
+    >
+      {active && <span aria-hidden className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary animate-drop-in" />}
+      <Icon className={`h-[18px] w-[18px] ${iconCls}`} />
+    </button>
+  );
+}
+
+function SidebarRail({ onExpand }: { onExpand: () => void }) {
+  const { activePanel, navigate } = useActiveTab();
+  return (
+    <div className="flex h-full flex-col items-center gap-1 py-4 animate-drop-in" style={{ width: RAIL_WIDTH }}>
+      <button
+        onClick={onExpand}
+        title="Mở rộng sidebar"
+        aria-label="Mở rộng sidebar"
+        className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-border/50 bg-secondary/70 p-1 shadow-xs transition-transform duration-300 ease-spring hover:scale-105"
+      >
+        <AppLogo size={30} />
+      </button>
+      <RailButton icon={Search} label="Tìm kiếm" onClick={() => openSearch()} />
+      <RailButton icon={GraduationCap} label="Học tập" active={activePanel === "study"} onClick={() => navigate("/study")} />
+      <RailButton icon={Layers} label="Thư viện" active={activePanel === "library"} onClick={() => navigate("/library")} />
+      <RailButton icon={NotebookPen} label="Ghi chú" active={activePanel === "notes"} onClick={() => navigate("/notes")} />
+      <div className="mt-auto flex flex-col items-center gap-1">
+        <RailButton icon={Palette} label="Màu giấy & Cỡ chữ" onClick={openReadingSettings} />
+        <RailButton icon={Settings} label="Cài đặt" active={activePanel === "settings"} onClick={() => navigate("/settings")} />
+        <RailButton icon={Trash2} label="Thùng rác" iconCls="text-destructive" active={activePanel === "trash"} onClick={() => navigate("/library/trash")} />
+        <RailButton icon={PanelLeftOpen} label="Mở rộng sidebar" onClick={onExpand} />
+      </div>
+    </div>
   );
 }
 
@@ -700,7 +838,7 @@ function DomainNode({ domainId, name, activeDocId, filter = "", onOpenFile, onOp
   domainId: Id<"domains">; name: string; activeDocId: string | null; filter?: string;
   onOpenFile: (id: Id<"documents">) => void; onOpenSecondary: (id: string) => void;
 }) {
-  const [open, setOpen] = useState(false); // mặc định thu — đồng bộ nguyên tắc "mới vào thu hết"
+  const [open, setOpen] = usePersistedOpen(`dom:${domainId}`); // mặc định thu, nhớ lựa chọn của user
   const filtering = filter.trim().length > 0;
   const effectiveOpen = filtering || open;
   const handbooks = useHandbooks(domainId, effectiveOpen);
@@ -779,8 +917,8 @@ function DomainNode({ domainId, name, activeDocId, filter = "", onOpenFile, onOp
         ]}>
         {(m) => (
           <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
-            <button onClick={() => setOpen((v) => !v)} title={name} className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-muted">
-              <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${effectiveOpen ? "rotate-90" : ""}`} />
+            <button onClick={() => setOpen((v) => !v)} title={name} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 can-hover:py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-muted">
+              <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-300 ease-spring ${effectiveOpen ? "rotate-90" : ""}`} />
               <BookText className="h-3.5 w-3.5 shrink-0 text-primary" />
               <span className="truncate">{name}</span>
             </button>
@@ -799,7 +937,7 @@ function DomainNode({ domainId, name, activeDocId, filter = "", onOpenFile, onOp
                 });
               }}
               title="Thêm Handbook"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-40 transition-all hover:bg-muted hover:opacity-100 group-hover:opacity-70"
+              className="flex h-8 w-8 can-hover:h-6 can-hover:w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-70 can-hover:opacity-40 transition-all hover:bg-muted hover:opacity-100 group-hover:opacity-80"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -808,7 +946,7 @@ function DomainNode({ domainId, name, activeDocId, filter = "", onOpenFile, onOp
         )}
       </RowMenu>
       {effectiveOpen && (
-        <div className="ml-3 border-l border-border/40 pl-0.5">
+        <div className="animate-drop-in ml-3 border-l border-border/40 pl-0.5">
           {handbooks?.map((h: any) => (
             <HandbookNode
               key={h._id}
@@ -833,7 +971,7 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, filter = ""
   handbookId: Id<"handbooks">; name: string; emptyFolders: string[]; activeDocId: string | null; filter?: string;
   onOpenFile: (id: Id<"documents">) => void; onOpenSecondary: (id: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = usePersistedOpen(`hb:${handbookId}`);
   const [importOpen, setImportOpen] = useState(false);
   const q = filter.trim().toLowerCase();
   const filtering = q.length > 0;
@@ -966,8 +1104,8 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, filter = ""
         ]}>
         {(m) => (
           <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
-            <button onClick={() => setOpen((v) => !v)} title={name} className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-muted">
-              <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${effectiveOpen ? "rotate-90" : ""}`} />
+            <button onClick={() => setOpen((v) => !v)} title={name} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 can-hover:py-1.5 text-left text-[13px] transition-colors hover:bg-muted">
+              <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-300 ease-spring ${effectiveOpen ? "rotate-90" : ""}`} />
               <FolderArchive className="h-3.5 w-3.5 shrink-0 text-amber-600" />
               <span className="truncate">{name}</span>
             </button>
@@ -976,7 +1114,7 @@ function HandbookNode({ handbookId, name, emptyFolders, activeDocId, filter = ""
         )}
       </RowMenu>
       {effectiveOpen && (
-        <div className="ml-3 border-l border-border/40 pl-0.5">
+        <div className="animate-drop-in ml-3 border-l border-border/40 pl-0.5">
           {files === undefined ? (
             <p className="px-4 py-1 text-xs text-muted-foreground">Đang tải…</p>
           ) : (
@@ -1264,10 +1402,7 @@ function formatIcon(format: string) {
 }
 
 function statusIcon(format: string, pct: number | null) {
-  if (format === "image" || format === "audio" || format === "video") return null;
-  if (pct == null || pct <= 0) return <Circle className="h-3 w-3 shrink-0 text-muted-foreground/40" aria-label="Chưa đọc" />;
-  if (pct >= 0.95) return <CheckCircle2 className="h-3 w-3 shrink-0 text-green-500" aria-label="Đã đọc xong" />;
-  return <CircleDot className="h-3 w-3 shrink-0 text-amber-500" aria-label="Đang đọc dở" />;
+  return <StatusMark format={format} pct={pct} />;
 }
 
 // ─── LooseDocsSection ─────────────────────────────────────────────────────────
@@ -1295,7 +1430,7 @@ function LooseDocsSection({ activeDocId, filter = "", onOpenFile, onOpenSecondar
   onOpenFile: (id: Id<"documents">) => void;
   onOpenSecondary?: (id: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = usePersistedOpen("loose");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const q = filter.trim().toLowerCase();
   const filtering = q.length > 0;
@@ -1459,9 +1594,9 @@ function LooseDocsSection({ activeDocId, filter = "", onOpenFile, onOpenSecondar
                       onClick={() => toggleFolder(node.id)}
                       style={{ paddingLeft: pad }}
                       title={node.name}
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pr-1.5 text-left text-[13px] text-foreground/90 transition-colors hover:bg-muted"
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-2 can-hover:py-1.5 pr-1.5 text-left text-[13px] text-foreground/90 transition-colors hover:bg-muted"
                     >
-                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-300 ease-spring ${isExpanded ? "rotate-90" : ""}`} />
                       {isExpanded
                         ? <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                         : <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
@@ -1517,10 +1652,11 @@ function LooseDocsSection({ activeDocId, filter = "", onOpenFile, onOpenSecondar
                 <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
                   <button
                     onClick={() => onOpenFile(d._id)}
+                    data-doc-row={d._id}
                     style={{ paddingLeft: pad + 16 }}
                     title={d.title}
                     className={[
-                      "flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pr-1.5 text-left text-[13px] transition-colors",
+                      "flex min-w-0 flex-1 items-center gap-2 rounded-lg py-2 can-hover:py-1.5 pr-1.5 text-left text-[13px] transition-colors",
                       isActive ? "bg-primary/10 font-medium text-primary" : "text-foreground/80 hover:bg-muted",
                     ].join(" ")}
                   >
@@ -1588,8 +1724,8 @@ function LooseDocsSection({ activeDocId, filter = "", onOpenFile, onOpenSecondar
         ]}>
         {(m) => (
           <div className="group flex min-w-0 items-center pr-1" onContextMenu={m.onContextMenu}>
-            <button onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-muted">
-              <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${effectiveOpen ? "rotate-90" : ""}`} />
+            <button onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 can-hover:py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-muted">
+              <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-300 ease-spring ${effectiveOpen ? "rotate-90" : ""}`} />
               <Files className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="truncate">Tài liệu lẻ</span>
             </button>
@@ -1598,7 +1734,7 @@ function LooseDocsSection({ activeDocId, filter = "", onOpenFile, onOpenSecondar
         )}
       </RowMenu>
       {effectiveOpen && (
-        <div className="ml-2">
+        <div className="animate-drop-in ml-2">
           {folders === undefined || docs === undefined ? (
             <p className="px-3 py-1 text-xs text-muted-foreground">Đang tải…</p>
           ) : visibleTree.length === 0 ? (
