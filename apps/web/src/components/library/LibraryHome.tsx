@@ -113,7 +113,7 @@ function RecentShelf({ items }: { items: RecentHistoryItem[] }) {
   return (
     <section className="mt-8">
       <SectionLabel>Gần đây</SectionLabel>
-      <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 scrollbar-none md:-mx-6 md:px-6">
+      <div className="-mx-4 flex items-start snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 scrollbar-none md:-mx-6 md:px-6">
         {items.map((item, i) => {
           const pct = pctOf(item);
           return (
@@ -171,7 +171,7 @@ function HandbookShelf({ docs, pctByDoc }: { docs: DocumentRow[]; pctByDoc: Map<
       <SectionLabel aside={<span className="text-2xs text-muted-foreground">{stats.length} bộ</span>}>
         <span className="inline-flex items-center gap-1.5"><Library className="h-3.5 w-3.5" /> Kệ Handbook</span>
       </SectionLabel>
-      <div className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 scrollbar-none md:-mx-6 md:px-6">
+      <div className="-mx-4 flex items-start snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 scrollbar-none md:-mx-6 md:px-6">
         {stats.map((hb, i) => (
           <button
             key={hb.id}
