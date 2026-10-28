@@ -15,6 +15,7 @@ import { useDueCountsBySpace } from "@/lib/api/study";
 import type { DocumentRow } from "@/lib/api/documents";
 import { FORMAT_LABELS } from "@/lib/formats";
 import { BookCover } from "./BookCover";
+import { DocCover } from "./DocCover";
 
 function lastReadLabel(ts: number | string | null | undefined): string {
   const n = typeof ts === "string" ? Number(ts) : ts;
@@ -53,7 +54,7 @@ function ContinueHero({ item }: { item: RecentHistoryItem }) {
       onClick={() => navigate(`/reader/${item.doc._id}`, { from: ref.current })}
       className="press group relative flex w-full gap-4 overflow-hidden rounded-[26px] border border-border/70 bg-card p-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04),0_18px_40px_-24px_rgba(0,0,0,0.25)] sm:gap-6 sm:p-5"
     >
-      <BookCover title={item.doc.title} format={item.doc.format} size="lg" className="w-[96px] shrink-0 sm:w-[128px]" />
+      <DocCover title={item.doc.title} format={item.doc.format} size="lg" className="w-[96px] shrink-0 sm:w-[128px]" />
       <div className="flex min-w-0 flex-1 flex-col">
         <p className="text-2xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
           {FORMAT_LABELS[item.doc.format] ?? item.doc.format}{when ? ` · đọc ${when}` : ""}
@@ -122,7 +123,7 @@ function RecentShelf({ items }: { items: RecentHistoryItem[] }) {
               className="press group w-[96px] shrink-0 snap-start text-left animate-rise-in sm:w-[112px]"
               style={{ animationDelay: `${60 + i * 45}ms` }}
             >
-              <BookCover title={item.doc.title} format={item.doc.format} size="sm" className="transition-transform duration-300 ease-spring can-hover:group-hover:-translate-y-1" />
+              <DocCover title={item.doc.title} format={item.doc.format} size="sm" className="transition-transform duration-300 ease-spring can-hover:group-hover:-translate-y-1" />
               <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-muted">
                 <div className="h-full rounded-full bg-primary/80" style={{ width: `${pct}%` }} />
               </div>

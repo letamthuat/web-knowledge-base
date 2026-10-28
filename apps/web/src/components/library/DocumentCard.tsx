@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TagPopover } from "./TagPopover";
-import { BookCover } from "./BookCover";
+import { DocCover } from "./DocCover";
 import { labels } from "@/lib/i18n/labels";
 import { formatBytes } from "@/lib/storage";
 import { toast } from "sonner";
@@ -55,6 +55,7 @@ interface Doc {
   title: string;
   format: string;
   fileSizeBytes?: number;
+  durationMs?: number | null;
   createdAt: number;
   status: string;
 }
@@ -257,9 +258,10 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
             className="press block w-full rounded-[4px_10px_10px_4px] text-left"
             aria-label={`Mở ${doc.title}`}
           >
-            <BookCover
+            <DocCover
               title={doc.title}
               format={doc.format}
+              durationMs={doc.durationMs}
               size="md"
               className={`w-full transition-[transform,box-shadow] duration-300 ease-spring can-hover:group-hover:-translate-y-1 ${isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
             />
