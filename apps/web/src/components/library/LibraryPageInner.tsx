@@ -449,7 +449,7 @@ export function LibraryPageInner() {
                   ))}
                 </div>
               ) : (
-                <h1 className="text-xl font-bold truncate">
+                <h1 className="font-display text-2xl font-semibold truncate">
                   {scope === "all" ? L.title : currentFolder?.name ?? "Folder"}
                 </h1>
               )}

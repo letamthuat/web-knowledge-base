@@ -402,7 +402,7 @@ function ReaderShell({ doc, downloadUrl }: {
               <span className="hidden sm:inline-flex rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary uppercase shrink-0">
                 {doc.format}
               </span>
-              <h1 className="truncate text-xs sm:text-sm font-semibold text-foreground/90 text-center" title={doc.title}>
+              <h1 className="truncate font-display text-sm sm:text-base font-semibold text-foreground/90 text-center" title={doc.title}>
                 {doc.title}
               </h1>
             </div>

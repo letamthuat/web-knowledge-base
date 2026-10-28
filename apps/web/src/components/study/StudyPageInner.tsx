@@ -132,7 +132,7 @@ export function StudyPageInner() {
             </button>
             <span className="text-xl">{space.emoji}</span>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-base font-semibold leading-tight">{space.name}</h1>
+              <h1 className="truncate font-display text-lg font-semibold leading-tight">{space.name}</h1>
               <p className="truncate text-[11px] text-muted-foreground">{space.sourceLabel}</p>
             </div>
             <div className="flex items-center gap-1 rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-500">
@@ -212,7 +212,7 @@ function SpaceList({ models, loading, onOpen, onCreate }: {
       {/* Hero */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold">
+          <h1 className="flex items-center gap-2 font-display text-2xl font-semibold">
             <GraduationCap className="h-6 w-6 text-primary" /> Học tập
           </h1>
           <p className="mt-1 max-w-xl text-[13px] text-muted-foreground">
@@ -306,7 +306,7 @@ function SpaceCard({ space, onOpen }: { space: StudySpace; onOpen: () => void })
           {space.emoji}
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[15px] font-semibold group-hover:text-primary">{space.name}</h2>
+          <h2 className="truncate font-display text-[17px] font-semibold group-hover:text-primary">{space.name}</h2>
           <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
             <Layers3 className="h-3 w-3 shrink-0" /> {space.sourceLabel}
           </p>

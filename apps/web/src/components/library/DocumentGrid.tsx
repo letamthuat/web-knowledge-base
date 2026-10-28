@@ -55,7 +55,7 @@ export function DocumentGrid({
           ) : (
             <>
               <Upload className="mb-4 h-12 w-12 text-muted-foreground" aria-hidden />
-              <h2 className="mb-1 text-lg font-semibold">{L.empty}</h2>
+              <h2 className="mb-1 font-display text-xl font-semibold">{L.empty}</h2>
               <p className="mb-4 max-w-xs text-sm text-muted-foreground">{L.emptyDescription}</p>
               <Button onClick={onUploadClick}>
                 <Upload className="mr-2 h-4 w-4" aria-hidden /> {L.uploadButton}

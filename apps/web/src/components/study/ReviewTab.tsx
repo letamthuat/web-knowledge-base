@@ -382,7 +382,7 @@ function ReviewSession({
     return (
       <div className="flex flex-col items-center rounded-xl border bg-card px-6 py-10 text-center">
         <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-        <h2 className="mt-3 text-base font-semibold">Xong phiên ôn!</h2>
+        <h2 className="mt-3 font-display text-xl font-semibold">Xong phiên ôn!</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
           Nhớ {remembered}/{total} card · card Quên quay lại <b>ngày mai</b>, card Nhớ giãn ra gấp đôi khoảng cách.
         </p>

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Be_Vietnam_Pro, Newsreader } from "next/font/google";
 import { ThemedToaster } from "@/components/ThemedToaster";
 import { SupabaseProvider } from "@/providers/SupabaseProvider";
 import { RecordingProvider } from "@/contexts/RecordingContext";
@@ -14,7 +14,19 @@ import { OnlineOfflineStatus } from "@/components/pwa/OnlineOfflineStatus";
 import { PwaUpdateToast } from "@/components/pwa/PwaUpdateToast";
 import "@/styles/globals.css";
 
-const inter = Inter({ subsets: ["latin", "vietnamese"] });
+// UI: Be Vietnam Pro (vẽ riêng cho dấu tiếng Việt). Tiêu đề + trang đọc: Newsreader (serif biên tập).
+const fontSans = Be_Vietnam_Pro({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const fontSerif = Newsreader({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-serif",
+  display: "swap",
+  style: ["normal", "italic"],
+});
 
 export const metadata: Metadata = {
   title: {
@@ -81,7 +93,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           }
         ` }} />
       </head>
-      <body className={inter.className}>
+      <body className={`${fontSans.variable} ${fontSerif.variable} font-sans`}>
         {/* SupabaseProvider — session do middleware lo, supabase client là singleton */}
         <SupabaseProvider>
           <PwaProvider>

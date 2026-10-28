@@ -205,6 +205,10 @@ mark.hl-has-note {
 }
 
 /* ─── BlockNote editor (third-party) ──────────────────────────────────────── */
+/* Editor ghi chú dùng cùng font giao diện */
+.bn-container {
+  --bn-font-family: var(--font-sans), system-ui, sans-serif;
+}
 /* Links styled with the primary token + underline */
 .bn-editor a,
 .bn-block-content a {
@@ -258,6 +262,33 @@ html.rm-dark .hljs { color: hsl(var(--code-fg)); }
 .dark .hljs-built_in,    html.rm-dark .hljs-built_in,
 .dark .hljs-symbol,      html.rm-dark .hljs-symbol,
 .dark .hljs-addition,    html.rm-dark .hljs-addition     { color: #ffa657; }
+
+/* ─── Motion ──────────────────────────────────────────────────────────────── */
+:root {
+  /* Lò xo nhẹ (overshoot ~3%) — dùng cho mọi chuyển động "vào" của app */
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.4%,
+      1.051 22%, 1.06 24.3%, 1.048 28.5%, 1.012 35.8%, 0.998 43%, 1);
+  }
+}
+
+/* Tiêu đề biên tập: Newsreader với optical size */
+.font-display {
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
+}
+
+/* Phản hồi chạm: card/nút lún nhẹ khi nhấn */
+.press {
+  transition: transform 380ms var(--ease-spring);
+}
+.press:active {
+  transform: scale(0.975);
+  transition-duration: 90ms;
+}
 
 /* ─── Accessibility ───────────────────────────────────────────────────────── */
 /* Vòng focus mặc định cho phím Tab (độ ưu tiên 0 — component tự định nghĩa ring vẫn thắng) */

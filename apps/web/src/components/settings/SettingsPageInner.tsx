@@ -349,7 +349,7 @@ export function SettingsPageInner() {
           ← Quay lại thư viện
         </Button>
 
-        <h1 className="mb-8 text-2xl font-bold">Cài đặt tài khoản</h1>
+        <h1 className="mb-8 font-display text-3xl font-semibold">Cài đặt tài khoản</h1>
 
         {/* Storage stats */}
         <div className="mb-6 rounded-xl border bg-card p-6 space-y-6">

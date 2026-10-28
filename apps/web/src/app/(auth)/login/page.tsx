@@ -76,7 +76,7 @@ export default function LoginPage() {
         {/* Logo + tiêu đề */}
         <div className="flex flex-col items-center space-y-2 text-center">
           <AppLogo size={48} />
-          <h1 className="text-2xl font-bold tracking-tight">{L.title}</h1>
+          <h1 className="font-display text-3xl font-semibold">{L.title}</h1>
           <p className="text-sm text-muted-foreground">{L.subtitle}</p>
         </div>
 

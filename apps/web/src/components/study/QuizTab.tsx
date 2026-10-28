@@ -370,7 +370,7 @@ function QuizRunner({
     return (
       <div className="flex flex-col items-center rounded-xl border bg-card px-6 py-10 text-center">
         <div className={`text-4xl font-bold ${result.score >= 80 ? "text-emerald-500" : "text-amber-500"}`}>{result.score}%</div>
-        <h2 className="mt-2 text-base font-semibold">{leaf.title}</h2>
+        <h2 className="mt-2 font-display text-lg font-semibold">{leaf.title}</h2>
         <p className="mt-1 max-w-sm text-[12.5px] text-muted-foreground">
           Trắc nghiệm {result.mcqCorrect}/{mcqTotal} · Tự luận {result.essayScore.toFixed(1)}/{openTotal} (AI chấm). Bài làm + nhận xét đã lưu vào lịch sử.
         </p>

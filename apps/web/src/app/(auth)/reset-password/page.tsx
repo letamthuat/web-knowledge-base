@@ -45,7 +45,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
           <AppLogo size={48} />
-          <h1 className="text-2xl font-bold tracking-tight">Đặt mật khẩu mới</h1>
+          <h1 className="font-display text-3xl font-semibold">Đặt mật khẩu mới</h1>
           <p className="text-sm text-muted-foreground">Nhập mật khẩu mới cho tài khoản của bạn.</p>
         </div>
 

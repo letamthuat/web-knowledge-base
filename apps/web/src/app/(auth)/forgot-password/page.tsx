@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
           <AppLogo size={48} />
-          <h1 className="text-2xl font-bold tracking-tight">Quên mật khẩu</h1>
+          <h1 className="font-display text-3xl font-semibold">Quên mật khẩu</h1>
           <p className="text-sm text-muted-foreground">
             Nhập email, chúng tôi sẽ gửi link đặt lại mật khẩu.
           </p>

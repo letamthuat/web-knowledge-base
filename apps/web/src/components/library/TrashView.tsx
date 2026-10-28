@@ -110,7 +110,7 @@ export function TrashView({ docs }: TrashViewProps) {
     return (
       <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 text-center p-8">
         <Trash2 className="mb-4 h-12 w-12 text-muted-foreground" aria-hidden />
-        <h2 className="mb-1 text-lg font-semibold">{L.empty}</h2>
+        <h2 className="mb-1 font-display text-xl font-semibold">{L.empty}</h2>
         <p className="text-sm text-muted-foreground">{L.emptyDesc}</p>
       </div>
     );

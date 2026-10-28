@@ -18,7 +18,7 @@ function notify() { listeners.forEach((l) => l()); }
 
 export function getAppTypography() {
   return {
-    fontFamily: _font === "serif" ? "ui-serif, Georgia, serif" : _font === "mono" ? "ui-monospace, monospace" : "ui-sans-serif, system-ui, sans-serif",
+    fontFamily: _font === "serif" ? "var(--font-serif), Georgia, serif" : _font === "mono" ? "ui-monospace, monospace" : "var(--font-sans), system-ui, sans-serif",
     fontSize: _fontSize,
     lineHeight: _lineHeight,
     colWidthClass: _colWidth === "narrow" ? "max-w-xl" : _colWidth === "wide" ? "max-w-full" : "max-w-3xl",

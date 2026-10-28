@@ -50,6 +50,28 @@ const config: Config = {
           foreground: "hsl(var(--popover-foreground))",
         },
       },
+      fontFamily: {
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["var(--font-serif)", "Georgia", "ui-serif", "serif"],
+        // Tiêu đề biên tập: serif + optical size
+        display: ["var(--font-serif)", "Georgia", "ui-serif", "serif"],
+      },
+      fontSize: {
+        "2xs": ["0.6875rem", { lineHeight: "1rem" }],
+      },
+      transitionTimingFunction: {
+        spring: "var(--ease-spring)",
+        "out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      keyframes: {
+        "rise-in": {
+          from: { opacity: "0", transform: "translateY(10px) scale(0.985)" },
+          to: { opacity: "1", transform: "none" },
+        },
+      },
+      animation: {
+        "rise-in": "rise-in 520ms var(--ease-spring) both",
+      },
       // ── Tương thích class Tailwind v4 do shadcn "base-nova" sinh ra (project chạy Tailwind 3) ──
       ringWidth: { 3: "3px" },
       boxShadow: {
@@ -94,6 +116,12 @@ const config: Config = {
             "code::after": { content: "none" },
             "blockquote p:first-of-type::before": { content: "none" },
             "blockquote p:last-of-type::after": { content: "none" },
+            // Tiêu đề trong trang đọc luôn serif biên tập (dù thân bài là sans)
+            "h1, h2, h3, h4": {
+              fontFamily: "var(--font-serif), Georgia, serif",
+              fontWeight: "600",
+              letterSpacing: "-0.01em",
+            },
             // Academic heading rules.
             h1: {
               borderBottom: "1px solid hsl(var(--border))",
