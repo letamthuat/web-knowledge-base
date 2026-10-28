@@ -27,6 +27,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DocumentGrid } from "@/components/library/DocumentGrid";
 import { LibraryHome } from "@/components/library/LibraryHome";
+import { HandbookShelves, useHandbookStats, isHandbookAsset } from "@/components/library/HandbookShelves";
+import { HandbookDetail } from "@/components/library/HandbookDetail";
 import { format as formatDate } from "date-fns";
 import { vi as viLocale } from "date-fns/locale";
 import { TabBar } from "@/components/tabs/TabBar";
@@ -245,6 +247,34 @@ export function LibraryPageInner() {
     });
   }
 
+  // ── Thư viện 3 tầng: Tất cả · Handbook · Tài liệu lẻ ──
+  type LibView = "all" | "handbook" | "loose";
+  const [libView, setLibViewState] = useState<LibView>(() => {
+    try {
+      const v = localStorage.getItem("lib-view");
+      return v === "handbook" || v === "loose" ? v : "all";
+    } catch { return "all"; }
+  });
+  const [openHbId, setOpenHbId] = useState<string | null>(null);
+  const scrollLibraryTop = () =>
+    document.querySelector<HTMLElement>('[data-panel="library"]')?.scrollTo({ top: 0, behavior: "smooth" });
+  const setLibView = (v: LibView) => {
+    setLibViewState(v);
+    setOpenHbId(null);
+    try { localStorage.setItem("lib-view", v); } catch {}
+  };
+  const openHandbook = (id: string) => { setOpenHbId(id); scrollLibraryTop(); };
+
+  const hbStats = useHandbookStats((allDocs ?? []) as never, pctByDoc);
+  const openHb = openHbId ? hbStats?.find((h) => h.id === openHbId) ?? null : null;
+  // Lưới chỉ chứa tài liệu lẻ; ảnh đính kèm của Handbook không bao giờ hiện ở Thư viện
+  const looseDocs = useMemo(
+    () => docsToShow?.filter((d: any) => (scope === "all" ? !d.handbookId : !isHandbookAsset(d))),
+    [docsToShow, scope]
+  );
+  const looseTotal = useMemo(() => allDocs?.filter((d: any) => !d.handbookId).length ?? 0, [allDocs]);
+  const hbTotal = hbStats?.length ?? 0;
+
   if (isPending) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
@@ -256,6 +286,7 @@ export function LibraryPageInner() {
 
   const currentFolder = allFolders?.find((f: any) => f._id === scope);
   const isFiltered = scope === "all" && hasActiveFilters(filters);
+
   const rootFolders = allFolders?.filter((f: any) => !f.parentFolderId) ?? [];
 
   // Sidebar tree node
@@ -434,6 +465,10 @@ export function LibraryPageInner() {
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
+          {openHb ? (
+            <HandbookDetail hb={openHb} pctByDoc={pctByDoc} onBack={() => { setOpenHbId(null); scrollLibraryTop(); }} />
+          ) : (
+          <>
           {/* Page header */}
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -469,7 +504,7 @@ export function LibraryPageInner() {
                 </>
               )}
               {scope === "all" && allDocs && (
-                <p className="text-sm text-muted-foreground mt-1">{allDocs.length} tài liệu trong thư viện</p>
+                <p className="text-sm text-muted-foreground mt-1">{hbTotal} handbook · {looseTotal} tài liệu lẻ</p>
               )}
             </div>
 
@@ -491,13 +526,61 @@ export function LibraryPageInner() {
             </div>
           </div>
 
-          {/* Filter bar — scroll ngang trên mobile */}
-          {scope === "all" && !isFiltered && allDocs && <LibraryHome docs={allDocs} pctByDoc={pctByDoc} />}
-          {scope === "all" && (
-            <div className="mb-4">
-              <FilterBar filters={filters} />
+          {/* Thanh chuyển: Tất cả · Handbook · Tài liệu lẻ */}
+          {scope === "all" && breadcrumbs.length === 0 && (
+            <div className="mb-7 flex gap-1 overflow-x-auto rounded-2xl bg-secondary/70 p-1 scrollbar-none sm:inline-flex">
+              {([
+                ["all", "Tất cả", hbTotal + looseTotal],
+                ["handbook", "Handbook", hbTotal],
+                ["loose", "Tài liệu lẻ", looseTotal],
+              ] as const).map(([v, label, count]) => (
+                <button
+                  key={v}
+                  onClick={() => setLibView(v)}
+                  aria-pressed={libView === v}
+                  className={`flex flex-1 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-medium transition-[background-color,color,box-shadow] duration-200 sm:flex-none ${
+                    libView === v ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                  <span className="text-[11px] tabular-nums text-muted-foreground">{count}</span>
+                </button>
+              ))}
             </div>
           )}
+
+          {/* Tất cả: Đọc tiếp / Ôn tập / Gần đây + kệ Handbook theo Domain */}
+          {scope === "all" && libView === "all" && !isFiltered && <LibraryHome />}
+          {scope === "all" && libView === "all" && !isFiltered && hbStats && hbStats.length > 0 && (
+            <section className="mb-10">
+              <div className="mb-3 flex items-baseline justify-between gap-3">
+                <h2 className="text-2xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Handbook</h2>
+                <button onClick={() => setLibView("handbook")} className="text-xs font-medium text-primary hover:underline">
+                  Xem tất cả →
+                </button>
+              </div>
+              <HandbookShelves stats={hbStats} onOpen={openHandbook} layout="row" />
+            </section>
+          )}
+
+          {/* Tab Handbook: lưới bộ sách đầy đủ */}
+          {scope === "all" && libView === "handbook" && (
+            hbStats === undefined
+              ? <p className="py-10 text-center text-sm text-muted-foreground">Đang tải…</p>
+              : <HandbookShelves stats={hbStats} onOpen={openHandbook} layout="grid" />
+          )}
+
+          {/* Tài liệu lẻ (tab Tất cả + tab Tài liệu lẻ) */}
+          {(scope !== "all" || libView !== "handbook") && (
+            <>
+              {scope === "all" && libView === "all" && !isFiltered && (
+                <h2 className="mb-3 text-2xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Tài liệu lẻ</h2>
+              )}
+              {scope === "all" && (
+                <div className="mb-4">
+                  <FilterBar filters={filters} />
+                </div>
+              )}
 
           {/* Subfolders row */}
           {scope !== "all" && subFolders.length > 0 && (
@@ -519,7 +602,7 @@ export function LibraryPageInner() {
           )}
 
           <DocumentGrid
-            docs={docsToShow as never}
+            docs={looseDocs as never}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onUploadClick={() => setUploadOpen(true)}
@@ -530,6 +613,10 @@ export function LibraryPageInner() {
             folderByDoc={folderByDoc}
             pctByDoc={pctByDoc}
           />
+            </>
+          )}
+          </>
+          )}
         </main>
       </div>
 

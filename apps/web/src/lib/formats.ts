@@ -1,15 +1,17 @@
 import {
-  FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe,
+  FileText, BookOpen, FileType2, Presentation, Image, Music, Video, FileCode, Globe, Library,
 } from "lucide-react";
 
 export const FORMAT_ICONS: Record<string, React.ElementType> = {
   pdf: FileText, epub: BookOpen, docx: FileType2, pptx: Presentation,
   image: Image, audio: Music, video: Video, markdown: FileCode, web_clip: Globe,
+  handbook: Library, // bìa "bộ sách" Handbook
 };
 
 export const FORMAT_LABELS: Record<string, string> = {
   pdf: "PDF", epub: "EPUB", docx: "DOCX", pptx: "Slide", image: "Ảnh",
   audio: "Âm thanh", video: "Video", markdown: "Ghi chép", web_clip: "Web clip",
+  handbook: "Handbook",
 };
 
 /**

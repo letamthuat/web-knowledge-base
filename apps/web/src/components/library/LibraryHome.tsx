@@ -2,19 +2,16 @@
 
 /**
  * LibraryHome — phần "trang chủ" phía trên lưới tài liệu:
- *   Đọc tiếp (hero) · Thẻ cần ôn hôm nay · Kệ gần đây · Kệ Handbook
+ *   Đọc tiếp (hero) · Thẻ cần ôn hôm nay · Kệ gần đây
  */
-import { memo, useMemo, useRef } from "react";
+import { memo, useRef } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ArrowRight, Layers, Library } from "lucide-react";
+import { ArrowRight, Layers } from "lucide-react";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useRecentHistory, type RecentHistoryItem } from "@/lib/api/reading-progress";
-import { useHandbooks } from "@/lib/api/handbooks";
 import { useDueCountsBySpace } from "@/lib/api/study";
-import type { DocumentRow } from "@/lib/api/documents";
 import { FORMAT_LABELS } from "@/lib/formats";
-import { BookCover } from "./BookCover";
 import { DocCover } from "./DocCover";
 
 function lastReadLabel(ts: number | string | null | undefined): string {
@@ -136,69 +133,7 @@ function RecentShelf({ items }: { items: RecentHistoryItem[] }) {
   );
 }
 
-// ─── Kệ Handbook ────────────────────────────────────────────────────────────
-type HandbookStat = { id: string; name: string; count: number; avgPct: number; targetDocId: string | null };
-
-function HandbookShelf({ docs, pctByDoc }: { docs: DocumentRow[]; pctByDoc: Map<string, number | null> }) {
-  const { navigate } = useActiveTab();
-  const handbooks = useHandbooks(undefined);
-
-  const stats = useMemo<HandbookStat[]>(() => {
-    if (!handbooks?.length) return [];
-    const byHb = new Map<string, DocumentRow[]>();
-    for (const d of docs) {
-      if (!d.handbookId) continue;
-      const arr = byHb.get(d.handbookId);
-      if (arr) arr.push(d); else byHb.set(d.handbookId, [d]);
-    }
-    return handbooks
-      .map((hb) => {
-        const files = byHb.get(hb._id) ?? [];
-        const pcts = files.map((f) => pctByDoc.get(f._id) ?? 0);
-        const avgPct = files.length ? Math.round((pcts.reduce((a, b) => a + (b ?? 0), 0) / files.length) * 100) : 0;
-        // Mở đúng chỗ đang đọc dở: file mở gần nhất, chưa có thì file đầu theo đường dẫn
-        const lastOpened = [...files].filter((f) => f.lastOpenedAt).sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0))[0];
-        const first = [...files].sort((a, b) => (a.relPath ?? a.title).localeCompare(b.relPath ?? b.title, "vi", { numeric: true }))[0];
-        return { id: hb._id, name: hb.name, count: files.length, avgPct, targetDocId: (lastOpened ?? first)?._id ?? null };
-      })
-      .filter((s) => s.count > 0);
-  }, [handbooks, docs, pctByDoc]);
-
-  if (stats.length === 0) return null;
-
-  return (
-    <section className="mt-8">
-      <SectionLabel aside={<span className="text-2xs text-muted-foreground">{stats.length} bộ</span>}>
-        <span className="inline-flex items-center gap-1.5"><Library className="h-3.5 w-3.5" /> Kệ Handbook</span>
-      </SectionLabel>
-      <div className="-mx-4 flex items-start snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 scrollbar-none md:-mx-6 md:px-6">
-        {stats.map((hb, i) => (
-          <button
-            key={hb.id}
-            disabled={!hb.targetDocId}
-            onClick={(e) => hb.targetDocId && navigate(`/reader/${hb.targetDocId}`, { from: e.currentTarget })}
-            className="press group w-[112px] shrink-0 snap-start text-left animate-rise-in sm:w-[128px]"
-            style={{ animationDelay: `${80 + i * 50}ms` }}
-          >
-            {/* Bộ sách nhiều tập: 2 bìa lót phía sau */}
-            <div className="relative pr-2 pt-2">
-              <div className="absolute right-0 top-0 h-[calc(100%-8px)] w-[calc(100%-8px)] rounded-[4px_10px_10px_4px] bg-foreground/10" />
-              <div className="absolute right-1 top-1 h-[calc(100%-8px)] w-[calc(100%-8px)] rounded-[4px_10px_10px_4px] bg-foreground/15" />
-              <BookCover title={hb.name} format="markdown" size="sm" className="relative transition-transform duration-300 ease-spring can-hover:group-hover:-translate-y-1" />
-            </div>
-            <p className="mt-2 line-clamp-2 font-display text-[14px] font-semibold leading-snug text-foreground">{hb.name}</p>
-            <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">{hb.count} bài · {hb.avgPct}%</p>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export const LibraryHome = memo(function LibraryHome({ docs, pctByDoc }: {
-  docs: DocumentRow[];
-  pctByDoc: Map<string, number | null>;
-}) {
+export const LibraryHome = memo(function LibraryHome() {
   const history = useRecentHistory(10);
   const [hero, ...rest] = history ?? [];
 
@@ -215,7 +150,6 @@ export const LibraryHome = memo(function LibraryHome({ docs, pctByDoc }: {
       )}
       {!hero && <StudyDueCard />}
       {rest.length > 0 && <RecentShelf items={rest} />}
-      <HandbookShelf docs={docs} pctByDoc={pctByDoc} />
     </div>
   );
 });
