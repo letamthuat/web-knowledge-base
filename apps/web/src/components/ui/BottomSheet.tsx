@@ -8,6 +8,8 @@ interface BottomSheetProps {
   children: React.ReactNode;
   title?: string;
   minHeight?: string;
+  /** Chiều cao tối đa; nội dung dư sẽ cuộn bên trong sheet. Mặc định 90dvh. */
+  maxHeight?: string;
 }
 
 const SNAP_BACK = "transform 300ms cubic-bezier(0.16, 1, 0.3, 1)";
@@ -17,7 +19,7 @@ const EXIT_MS = 240;
  * Bottom sheet trượt lên bằng lò xo, trượt xuống khi đóng.
  * Chỉ kéo được ở tay nắm + tiêu đề — kéo slider/cuộn nội dung không làm sheet trượt theo.
  */
-export function BottomSheet({ open, onClose, children, title, minHeight }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, children, title, minHeight, maxHeight = "90dvh" }: BottomSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef(0);
   const dragCurrentY = useRef(0);
@@ -96,7 +98,7 @@ export function BottomSheet({ open, onClose, children, title, minHeight }: Botto
         className="relative flex w-full flex-col rounded-t-[26px] border border-b-0 bg-card shadow-[0_-16px_48px_rgba(0,0,0,0.18)] md:max-w-lg md:rounded-[26px] md:border-b"
         style={{
           paddingBottom: "var(--safe-bottom)",
-          maxHeight: "90dvh",
+          maxHeight,
           minHeight,
           transition: SNAP_BACK,
           // backwards: sau khi vào xong trả quyền transform cho thao tác kéo

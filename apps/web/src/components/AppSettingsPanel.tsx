@@ -278,7 +278,7 @@ export function AppSettingsPanel() {
   return (
     <>
       {isMobile ? (
-        <BottomSheet open={open} onClose={() => setOpen(false)} title="Màu giấy & Cỡ chữ">
+        <BottomSheet open={open} onClose={() => setOpen(false)} title="Màu giấy & Cỡ chữ" maxHeight="70dvh">
           {panelContent}
         </BottomSheet>
       ) : (
