@@ -383,6 +383,11 @@ html.rm-dark .hljs { color: hsl(var(--code-fg)); }
 @keyframes sheet-up {
   from { transform: translateY(100%); }
 }
+@keyframes sheet-down {
+  to { transform: translateY(105%); }
+}
+@keyframes sheet-fade-in { from { opacity: 0; } }
+@keyframes sheet-fade-out { to { opacity: 0; } }
 
 /* Sidebar: hàng vừa được "Định vị" nháy sáng */
 .sb-flash {

@@ -224,7 +224,7 @@ export function NotesPageInner() {
       <div className="relative flex flex-1 min-h-0 pb-[var(--safe-bottom)]">
         {/* Sidebar — BottomSheet on mobile, inline on desktop */}
         {isMobile ? (
-          <BottomSheet open={sidebarOpen} onClose={() => setSidebarOpen(false)} title="Danh sách ghi chú">
+          <BottomSheet open={sidebarOpen} onClose={() => setSidebarOpen(false)} title="Danh sách ghi chú" minHeight="60dvh">
             <NoteList
               notes={notes}
               selectedId={activeNoteId as Id<"notes"> | null}

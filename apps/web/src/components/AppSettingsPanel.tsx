@@ -50,7 +50,7 @@ export function AppSettingsPanel() {
   const [, rerender] = useState(0);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
+    const mq = window.matchMedia("(max-width: 767px)");
     setIsMobile(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", handler);
@@ -148,161 +148,156 @@ export function AppSettingsPanel() {
     updatePrefs({ columnWidth: w }).catch(() => {});
   }
 
+  const typo = getAppTypography();
   const panelContent = (
-    <div className={isMobile ? "px-1 py-2" : "w-full max-h-[80vh] overflow-y-auto space-y-4"}>
-      {/* Theme selection with Apple Books paper preview */}
-      <div>
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
-          Màu nền giấy
+    <div className="space-y-6 px-5 pb-6 pt-1">
+      {/* Xem trước — đổi ngay theo lựa chọn */}
+      <div className="rounded-2xl border border-border/60 bg-background px-4 py-3.5 shadow-2xs">
+        <p className="mb-1.5 text-2xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Xem trước</p>
+        <p
+          className="text-foreground transition-[font-size,line-height] duration-200"
+          style={{ fontFamily: typo.fontFamily, fontSize: _fontSize, lineHeight: _lineHeight }}
+        >
+          Đọc chậm lại một chút — tri thức chỉ thấm sâu khi ta cho nó thời gian.
         </p>
-        <div className="grid grid-cols-3 gap-2.5">
-          {([
-            { value: "light" as const, bg: "#FAF9F6", border: "#E6E3DC", label: "Giấy ngà", textColor: "#221F1D" },
-            { value: "sepia" as const, bg: "#F4EEDF", border: "#DFD5C2", label: "Cổ điển", textColor: "#3E2718" },
-            { value: "dark"  as const, bg: "#161619", border: "#303038", label: "Đêm nhung", textColor: "#ECEAE4" },
-          ]).map(({ value, bg, border, label, textColor }) => (
-            <button
-              key={value}
-              onClick={() => applyTheme(value)}
-              className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl border transition-all ${
-                _theme === value
-                  ? "border-primary bg-primary/5 shadow-xs ring-2 ring-primary/20 scale-[1.02]"
-                  : "border-border/60 hover:border-border hover:bg-secondary/40"
-              }`}
-            >
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-full border shadow-2xs transition-transform"
-                style={{ background: bg, borderColor: border }}
-              >
-                {_theme === value && (
-                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none">
-                    <path
-                      d="M3.5 8.5L6.5 11.5L12.5 5"
-                      stroke={textColor}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </span>
-              <span className={`text-[11px] font-medium ${_theme === value ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                {label}
-              </span>
-            </button>
-          ))}
-        </div>
       </div>
 
-      {/* Typography settings */}
-      <div className="border-t border-border/50 pt-3 space-y-3.5">
-        <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Kiểu chữ
-          </p>
-          <div className="flex gap-2">
-            {(["sans", "serif", "mono"] as const).map((f) => (
+      {/* Màu giấy */}
+      <section>
+        <SectionTitle>Màu giấy</SectionTitle>
+        <div className="grid grid-cols-3 gap-3">
+          {PAPERS.map(({ value, bg, border, ink, label }) => {
+            const active = _theme === value;
+            return (
+              <button key={value} onClick={() => applyTheme(value)} className="group flex flex-col items-center gap-1.5" aria-pressed={active}>
+                <span
+                  className={`flex aspect-[4/3] w-full items-center justify-center rounded-xl border transition-[transform,box-shadow] duration-300 ease-spring group-active:scale-95 ${
+                    active ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : ""
+                  }`}
+                  style={{ background: bg, borderColor: border, color: ink }}
+                >
+                  <span className="font-display text-xl font-semibold">Aa</span>
+                </span>
+                <span className={`text-[12px] ${active ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Kiểu chữ — mỗi nút hiển thị bằng chính font đó */}
+      <section>
+        <SectionTitle>Kiểu chữ</SectionTitle>
+        <div className="grid grid-cols-3 gap-2">
+          {FONTS.map(({ value, label, css }) => {
+            const active = _font === value;
+            return (
               <button
-                key={f}
-                onClick={() => applyFont(f)}
-                className={`flex-1 rounded-xl border py-2 text-xs font-medium transition-all ${
-                  _font === f
-                    ? "border-primary bg-primary/10 text-primary font-semibold shadow-2xs"
-                    : "border-border/60 text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                key={value}
+                onClick={() => applyFont(value)}
+                aria-pressed={active}
+                className={`flex flex-col items-center gap-0.5 rounded-xl border py-2.5 transition-colors ${
+                  active ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                 }`}
               >
-                {f === "sans" ? "Không chân" : f === "serif" ? "Có chân" : "Đơn dòng"}
+                <span className="text-xl leading-tight" style={{ fontFamily: css }}>Aa</span>
+                <span className="text-[11px] font-medium">{label}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
+      </section>
 
-        <div>
-          <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
-            <span>Cỡ chữ đọc</span>
-            <span className="font-semibold text-foreground">{_fontSize}px</span>
-          </div>
+      {/* Cỡ chữ: A− [thanh trượt] A+ */}
+      <section>
+        <SectionTitle aside={`${_fontSize}px`}>Cỡ chữ</SectionTitle>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => applyFontSize(Math.max(12, _fontSize - 1))}
+            aria-label="Giảm cỡ chữ"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/60 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground active:scale-95"
+          >
+            A−
+          </button>
           <input
-            type="range"
-            min="12"
-            max="28"
-            step="1"
-            value={_fontSize}
+            type="range" min="12" max="28" step="1" value={_fontSize}
             onChange={(e) => applyFontSize(Number(e.target.value))}
-            className="w-full accent-primary h-1.5 rounded-full cursor-pointer bg-secondary"
+            aria-label="Cỡ chữ"
+            className="h-1.5 flex-1 cursor-pointer accent-primary"
           />
+          <button
+            onClick={() => applyFontSize(Math.min(28, _fontSize + 1))}
+            aria-label="Tăng cỡ chữ"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/60 text-[17px] font-semibold text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground active:scale-95"
+          >
+            A+
+          </button>
         </div>
+      </section>
 
-        <div>
-          <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
-            <span>Khoảng cách dòng</span>
-            <span className="font-semibold text-foreground">{_lineHeight.toFixed(1)}</span>
-          </div>
-          <input
-            type="range"
-            min="1.4"
-            max="2.0"
-            step="0.1"
-            value={_lineHeight}
-            onChange={(e) => applyLineHeight(Number(e.target.value))}
-            className="w-full accent-primary h-1.5 rounded-full cursor-pointer bg-secondary"
-          />
-        </div>
+      {/* Giãn dòng */}
+      <section>
+        <SectionTitle>Giãn dòng</SectionTitle>
+        <Segmented
+          value={String(_lineHeight.toFixed(1))}
+          onChange={(v) => applyLineHeight(Number(v))}
+          options={LINE_HEIGHTS.map(({ value, label, gap }) => ({
+            value: value.toFixed(1),
+            label,
+            art: (
+              <span className="flex w-5 flex-col" style={{ gap }}>
+                <span className="h-[2px] rounded-full bg-current" />
+                <span className="h-[2px] rounded-full bg-current" />
+                <span className="h-[2px] w-3/4 rounded-full bg-current" />
+              </span>
+            ),
+          }))}
+        />
+      </section>
 
-        <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Độ rộng khung đọc
-          </p>
-          <div className="flex gap-2">
-            {([["narrow", "Gọn gàng"], ["medium", "Vừa phải"], ["wide", "Toàn màn hình"]] as const).map(([v, label]) => (
-              <button
-                key={v}
-                onClick={() => applyColWidth(v)}
-                className={`flex-1 rounded-xl border py-2 text-[11px] font-medium transition-all ${
-                  _colWidth === v
-                    ? "border-primary bg-primary/10 text-primary font-semibold shadow-2xs"
-                    : "border-border/60 text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Khung đọc */}
+      <section>
+        <SectionTitle>Khung đọc</SectionTitle>
+        <Segmented
+          value={_colWidth}
+          onChange={(v) => applyColWidth(v as ColumnWidth)}
+          options={COL_WIDTHS.map(({ value, label, w }) => ({
+            value,
+            label,
+            art: (
+              <span className="flex h-4 w-6 items-center justify-center rounded-[3px] border border-current opacity-80">
+                <span className="h-2 rounded-[1px] bg-current" style={{ width: w }} />
+              </span>
+            ),
+          }))}
+        />
+      </section>
     </div>
   );
 
   return (
     <>
-      {/* Mobile: BottomSheet */}
       {isMobile ? (
         <BottomSheet open={open} onClose={() => setOpen(false)} title="Màu giấy & Cỡ chữ">
           {panelContent}
         </BottomSheet>
       ) : (
-        /* Desktop: Apple Books styled dialog modal */
         open && (
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Cài đặt hiển thị"
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+            aria-label="Màu giấy & Cỡ chữ"
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4"
           >
-            <div
-              className="relative w-84 max-w-sm rounded-[28px] border border-border/80 bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-150"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between pb-3.5 border-b border-border/40 mb-4">
-                <div className="flex items-center gap-2">
-                  <Palette className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold text-sm text-foreground">
-                    Màu giấy & Cỡ chữ
-                  </h3>
-                </div>
+            <div className="absolute inset-0 bg-black/40 animate-in fade-in duration-200" onClick={() => setOpen(false)} />
+            <div className="relative max-h-[88vh] w-[400px] max-w-full overflow-y-auto rounded-[28px] border border-border/80 bg-card shadow-2xl animate-rise-in">
+              <div className="flex items-center justify-between px-5 pb-2 pt-5">
+                <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-foreground">
+                  <Palette className="h-4 w-4 text-primary" /> Màu giấy & Cỡ chữ
+                </h3>
                 <button
                   onClick={() => setOpen(false)}
-                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   aria-label="Đóng"
                 >
                   <X className="h-4 w-4" />
@@ -310,11 +305,73 @@ export function AppSettingsPanel() {
               </div>
               {panelContent}
             </div>
-            {/* Backdrop click to close */}
-            <div className="absolute inset-0 -z-10" onClick={() => setOpen(false)} />
           </div>
         )
       )}
     </>
+  );
+}
+
+// ─── Hằng số + khối dùng chung ───────────────────────────────────────────────
+
+const PAPERS = [
+  { value: "light" as const, bg: "#FBFAF8", border: "#E6E3DC", ink: "#221F1D", label: "Giấy ngà" },
+  { value: "sepia" as const, bg: "#F4ECD8", border: "#DFD5C2", ink: "#3E2718", label: "Cổ điển" },
+  { value: "dark" as const, bg: "#161619", border: "#303038", ink: "#ECEAE4", label: "Đêm" },
+];
+
+const FONTS = [
+  { value: "sans" as const, label: "Không chân", css: "var(--font-sans), system-ui, sans-serif" },
+  { value: "serif" as const, label: "Có chân", css: "var(--font-serif), Georgia, serif" },
+  { value: "mono" as const, label: "Đơn cách", css: "ui-monospace, monospace" },
+];
+
+const LINE_HEIGHTS = [
+  { value: 1.4, label: "Sát", gap: 2 },
+  { value: 1.6, label: "Vừa", gap: 3 },
+  { value: 1.8, label: "Thoáng", gap: 4 },
+  { value: 2.0, label: "Rộng", gap: 5 },
+];
+
+const COL_WIDTHS = [
+  { value: "narrow" as const, label: "Gọn", w: "40%" },
+  { value: "medium" as const, label: "Vừa", w: "65%" },
+  { value: "wide" as const, label: "Rộng", w: "90%" },
+];
+
+function SectionTitle({ children, aside }: { children: React.ReactNode; aside?: string }) {
+  return (
+    <div className="mb-2.5 flex items-baseline justify-between">
+      <p className="text-2xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{children}</p>
+      {aside && <span className="text-[12px] font-semibold tabular-nums text-foreground">{aside}</span>}
+    </div>
+  );
+}
+
+function Segmented({ value, onChange, options }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string; art: React.ReactNode }[];
+}) {
+  return (
+    <div className="flex gap-1 rounded-2xl bg-secondary/70 p-1">
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            aria-pressed={active}
+            className={`flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-medium transition-[background-color,color,box-shadow] duration-200 ${
+              active ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {/* Cố định cao vùng hình để nhãn thẳng hàng */}
+            <span className="flex h-5 items-center">{o.art}</span>
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
