@@ -171,7 +171,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
       {/* Inline preview */}
       <div className="group relative my-4 overflow-hidden rounded-lg border bg-white dark:bg-neutral-900">
         {/* Toolbar */}
-        <div className="absolute right-2 top-2 z-10 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute right-2 top-2 z-10 flex items-center gap-1 can-hover:opacity-0 transition-opacity group-hover:opacity-100">
           <button
             onClick={() => changeZoom(-0.2)}
             title="Thu nhỏ"

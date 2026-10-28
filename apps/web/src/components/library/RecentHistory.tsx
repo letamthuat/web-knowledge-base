@@ -127,7 +127,7 @@ export function RecentHistory() {
                   )}
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span className="truncate">{formatProgressTime(progress.updatedAt)}</span>
-                    <span className="opacity-0 group-hover:opacity-100 flex items-center text-primary font-medium text-[11px] transition-opacity shrink-0">
+                    <span className="can-hover:opacity-0 group-hover:opacity-100 flex items-center text-primary font-medium text-[11px] transition-opacity shrink-0">
                       Đọc <ArrowRight className="ml-0.5 h-3 w-3" />
                     </span>
                   </div>

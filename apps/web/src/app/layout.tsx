@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Toaster } from "sonner";
+import { ThemedToaster } from "@/components/ThemedToaster";
 import { SupabaseProvider } from "@/providers/SupabaseProvider";
 import { RecordingProvider } from "@/contexts/RecordingContext";
 import { AudioRecordingPillFloating } from "@/components/recording/AudioRecordingPill";
@@ -43,7 +43,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#1A365D",
+  // Khớp --background (giấy ấm / đêm) để status bar không lóe màu navy
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FBFAF8" },
+    { media: "(prefers-color-scheme: dark)", color: "#161619" },
+  ],
 };
 
 interface RootLayoutProps {
@@ -93,13 +97,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             </RecordingProvider>
           </PwaProvider>
           {/* Toast notifications dùng tiếng Việt (NFR37) */}
-          <Toaster
-            richColors
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-            }}
-          />
+          <ThemedToaster />
         </SupabaseProvider>
       </body>
     </html>

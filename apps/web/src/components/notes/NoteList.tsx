@@ -212,7 +212,7 @@ function NoteRow({ note, selected, onSelect, onDelete }: {
             e.stopPropagation();
             if (window.confirm("Xoá ghi chú này?")) onDelete();
           }}
-          className="mt-0.5 shrink-0 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 text-red-400"
+          className="mt-0.5 shrink-0 rounded p-0.5 can-hover:opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 text-red-400"
         >
           <X className="h-3.5 w-3.5" />
         </button>

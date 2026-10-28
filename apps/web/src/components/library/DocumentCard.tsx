@@ -177,7 +177,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
   if (viewMode === "list") {
     return (
       <>
-        <div className={`group flex items-center gap-3 rounded-2xl border border-border/80 bg-card/95 px-4 py-3 hover:bg-card hover:shadow-md transition-all duration-150 border-l-[4px] ${spine.border} ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
+        <div className={`group flex items-center gap-3 rounded-2xl border border-border/80 bg-card/95 px-4 py-3 hover:bg-card hover:shadow-md transition-[background-color,box-shadow] duration-150 border-l-[4px] ${spine.border} ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
           {/* Checkbox */}
           {onToggleSelect && (
             <button
@@ -185,7 +185,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
               className={`shrink-0 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all
                 ${isSelected
                   ? "bg-primary border-primary"
-                  : "bg-background border-muted-foreground/30 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                  : "bg-background border-muted-foreground/30 opacity-100 can-hover:opacity-0 group-hover:opacity-100"
                 }`}
               aria-label={isSelected ? "Bỏ chọn" : "Chọn tài liệu"}
               aria-pressed={isSelected}
@@ -245,7 +245,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
 
   return (
     <>
-      <div className={`group relative flex flex-col rounded-[22px] border border-border/80 bg-card/95 p-4 hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-200 ease-out border-l-[4px] ${spine.border} select-none ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
+      <div className={`group relative flex flex-col rounded-[22px] border border-border/80 bg-card/95 p-4 hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-[transform,box-shadow] duration-200 ease-out motion-reduce:hover:translate-y-0 border-l-[4px] ${spine.border} select-none ${isSelected ? "ring-2 ring-primary border-primary bg-primary/[0.04]" : ""}`}>
         {/* Checkbox — top-left */}
         {onToggleSelect && (
           <button
@@ -253,7 +253,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
             className={`absolute top-2.5 left-2.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all
               ${isSelected
                 ? "bg-primary border-primary"
-                : "bg-background border-muted-foreground/30 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                : "bg-background border-muted-foreground/30 opacity-100 can-hover:opacity-0 group-hover:opacity-100"
               }`}
             aria-label={isSelected ? "Bỏ chọn" : "Chọn tài liệu"}
             aria-pressed={isSelected}
@@ -273,7 +273,7 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="inline-flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-all opacity-100 can-hover:opacity-0 group-hover:opacity-100"
               aria-label="Tuỳ chọn"
             >
               <MoreVertical className="h-3.5 w-3.5" aria-hidden />
@@ -324,14 +324,14 @@ export function DocumentCard({ doc, viewMode, isSelected = false, onToggleSelect
               </div>
               <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-primary/85 transition-all duration-300"
+                  className="h-full rounded-full bg-primary/85 transition-[width] duration-300"
                   style={{ width: `${Math.round(progressPct * 100)}%` }}
                 />
               </div>
             </div>
           )}
 
-          <div className="flex items-center gap-1 -ml-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-0.5">
+          <div className="flex items-center gap-1 -ml-1 opacity-100 can-hover:opacity-0 group-hover:opacity-100 transition-opacity pt-0.5">
             <TagPopover docId={doc._id} docTags={docTags} />
           </div>
         </div>

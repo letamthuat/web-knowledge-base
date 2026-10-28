@@ -55,7 +55,8 @@
     --popover: 240 6% 13%;
     --popover-foreground: 40 15% 92%;
     --primary: 213 90% 64%;
-    --primary-foreground: 0 0% 100%;
+    /* Chữ gần đen trên primary xanh sáng: trắng chỉ ~2.8:1 (trượt WCAG AA), đen ~7:1 */
+    --primary-foreground: 240 10% 8%;
     --secondary: 240 5% 17%;
     --secondary-foreground: 40 15% 92%;
     --muted: 240 5% 17%;
@@ -189,6 +190,14 @@ mark.hl-pink   { background: #fbcfe8 !important; color: inherit !important; bord
 mark.hl-purple { background: #e9d5ff !important; color: inherit !important; border-radius: 2px; }
 /* hl-custom: background set inline via style attribute */
 mark.hl-custom { color: inherit !important; border-radius: 2px; }
+/* Dark: pastel đặc + chữ sáng kế thừa = gần như không đọc được → dùng màu trong suốt */
+html.rm-dark mark.hl-yellow, .dark mark.hl-yellow { background: rgba(250, 204, 21, 0.32) !important; }
+html.rm-dark mark.hl-green,  .dark mark.hl-green  { background: rgba(74, 222, 128, 0.28) !important; }
+html.rm-dark mark.hl-blue,   .dark mark.hl-blue   { background: rgba(96, 165, 250, 0.32) !important; }
+html.rm-dark mark.hl-pink,   .dark mark.hl-pink   { background: rgba(244, 114, 182, 0.32) !important; }
+html.rm-dark mark.hl-purple, .dark mark.hl-purple { background: rgba(192, 132, 252, 0.32) !important; }
+/* Màu tự chọn vẫn là pastel đặc (inline style) → ép chữ tối cho đọc được */
+html.rm-dark mark.hl-custom, .dark mark.hl-custom { color: hsl(24 10% 12%) !important; }
 /* Note indicator — dashed violet underline on any highlight that has a note */
 mark.hl-has-note {
   border-bottom: 2px dashed #7c3aed;
@@ -249,3 +258,22 @@ html.rm-dark .hljs { color: hsl(var(--code-fg)); }
 .dark .hljs-built_in,    html.rm-dark .hljs-built_in,
 .dark .hljs-symbol,      html.rm-dark .hljs-symbol,
 .dark .hljs-addition,    html.rm-dark .hljs-addition     { color: #ffa657; }
+
+/* ─── Accessibility ───────────────────────────────────────────────────────── */
+/* Vòng focus mặc định cho phím Tab (độ ưu tiên 0 — component tự định nghĩa ring vẫn thắng) */
+:where(a, button, [role="button"], [tabindex]:not([tabindex="-1"]), input, select, textarea, summary):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Người dùng bật "Giảm chuyển động" trong hệ điều hành */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

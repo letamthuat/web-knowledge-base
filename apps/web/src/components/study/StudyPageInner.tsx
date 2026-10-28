@@ -87,7 +87,7 @@ export function StudyPageInner() {
 
   return (
     // 1 cột (mobile PWA + laptop); từ 2xl nới container — cả danh sách lẫn màn trong cùng độ rộng
-    <div className="mx-auto flex h-full w-full max-w-4xl flex-col px-4 pb-20 pt-4 xl:pb-6 2xl:max-w-[1400px]">
+    <div className="mx-auto flex h-full w-full max-w-4xl flex-col px-4 pb-[calc(1.5rem+var(--safe-bottom))] pt-4 2xl:max-w-[1400px]">
       {/* Thanh trên cùng chỉ cho mobile — nút ☰ mở sidebar (đồng bộ desktop) */}
       <header className="mb-2 flex shrink-0 items-center gap-2 xl:hidden" style={{ paddingTop: "var(--safe-top)" }}>
         <button
@@ -293,7 +293,7 @@ function SpaceCard({ space, onOpen }: { space: StudySpace; onOpen: () => void })
       <button
         onClick={handleDelete}
         aria-label="Xoá không gian học"
-        className="absolute right-2 top-2 z-10 hidden h-7 w-7 items-center justify-center rounded-md bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex"
+        className="absolute right-2 top-2 z-10 flex can-hover:hidden h-7 w-7 items-center justify-center rounded-md bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>
@@ -339,7 +339,7 @@ function SpaceCard({ space, onOpen }: { space: StudySpace; onOpen: () => void })
             Hôm nay {space.minutesToday} phút
           </span>
         )}
-        <span className="ml-auto font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="ml-auto font-medium text-primary can-hover:opacity-0 transition-opacity group-hover:opacity-100">
           Vào học →
         </span>
       </div>

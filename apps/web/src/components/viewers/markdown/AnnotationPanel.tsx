@@ -232,7 +232,7 @@ function HighlightRow({ item, onScrollTo, onEditNote, onDelete }: {
           <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-1">✏️ {item.note}</p>
         </div>
       )}
-      <div className="flex items-center justify-end gap-1 border-t border-transparent px-2 py-1 opacity-0 transition-opacity group-hover:border-border/50 group-hover:opacity-100">
+      <div className="flex items-center justify-end gap-1 border-t border-transparent px-2 py-1 can-hover:opacity-0 transition-opacity group-hover:border-border/50 group-hover:opacity-100">
         <button
           onClick={(e) => { e.stopPropagation(); onEditNote(); }}
           className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-violet-600 hover:bg-violet-50"
@@ -271,13 +271,13 @@ function DocNoteRow({ note, onEdit, onDelete }: {
     >
       <div className="px-3 pt-2.5 pb-1.5">
         {note.title && (
-          <p className="mb-0.5 text-[12px] font-medium text-gray-800 line-clamp-1">{note.title}</p>
+          <p className="mb-0.5 text-[12px] font-medium text-foreground line-clamp-1">{note.title}</p>
         )}
-        <p className="text-[12px] text-gray-600 leading-relaxed line-clamp-4 whitespace-pre-wrap">
+        <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-4 whitespace-pre-wrap">
           {note.body}
         </p>
       </div>
-      <div className="flex items-center justify-end gap-1 border-t border-violet-100 px-2 py-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="flex items-center justify-end gap-1 border-t border-violet-100 px-2 py-1 can-hover:opacity-0 transition-opacity group-hover:opacity-100">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
           className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-violet-600 hover:bg-violet-100"
@@ -308,12 +308,12 @@ function BookmarkRow({ item, onScrollTo, onDelete }: {
     >
       <div className="flex items-center gap-2 px-2.5 py-2">
         <Bookmark className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-        <p className="flex-1 truncate text-[12px] text-gray-700">
+        <p className="flex-1 truncate text-[12px] text-foreground">
           {item.note || "Bookmark"}
         </p>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="shrink-0 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 text-red-400"
+          className="shrink-0 rounded p-0.5 can-hover:opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 text-red-400"
         >
           <X className="h-3 w-3" />
         </button>
@@ -343,10 +343,10 @@ function HighlightNoteRow({ item, onScrollTo, onEdit, onDeleteNote, onDeleteReco
               "{item.selectedText.slice(0, 60)}{item.selectedText.length > 60 ? "…" : ""}"
             </p>
           )}
-          <p className="text-[12px] text-gray-700 leading-relaxed line-clamp-4 whitespace-pre-wrap">{item.note}</p>
+          <p className="text-[12px] text-foreground leading-relaxed line-clamp-4 whitespace-pre-wrap">{item.note}</p>
         </div>
       </div>
-      <div className="flex items-center justify-end gap-1 border-t border-transparent px-2 py-1 opacity-0 transition-opacity group-hover:border-border/50 group-hover:opacity-100">
+      <div className="flex items-center justify-end gap-1 border-t border-transparent px-2 py-1 can-hover:opacity-0 transition-opacity group-hover:border-border/50 group-hover:opacity-100">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
           className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-violet-600 hover:bg-violet-50"

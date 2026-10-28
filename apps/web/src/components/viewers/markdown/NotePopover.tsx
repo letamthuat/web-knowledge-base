@@ -70,11 +70,11 @@ export function NotePopover({ x, y, initialNote, onSave, onClose }: NotePopoverP
     <div
       ref={containerRef}
       style={{ position: "fixed", left, top, width: popW, zIndex: 9999 }}
-      className="flex flex-col gap-1.5 rounded-xl border bg-white p-2.5 shadow-xl"
+      className="flex flex-col gap-1.5 rounded-xl border bg-popover text-popover-foreground p-2.5 shadow-xl"
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-500">Ghi chú</span>
-        <span className="text-xs text-gray-400">{text.length}/500</span>
+        <span className="text-xs font-medium text-muted-foreground">Ghi chú</span>
+        <span className="text-xs text-muted-foreground">{text.length}/500</span>
       </div>
       <textarea
         ref={textareaRef}
@@ -85,7 +85,7 @@ export function NotePopover({ x, y, initialNote, onSave, onClose }: NotePopoverP
         placeholder="Gõ ghi chú..."
         className="w-full resize-none rounded-lg border bg-gray-50 px-2.5 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
       />
-      <p className="text-[10px] text-gray-400">Tự động lưu · Esc để đóng</p>
+      <p className="text-[10px] text-muted-foreground">Tự động lưu · Esc để đóng</p>
     </div>
   );
 }

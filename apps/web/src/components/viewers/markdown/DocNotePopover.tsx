@@ -75,15 +75,15 @@ export function DocNotePopover({ noteId, initialBody, initialTitle, onSave, onDe
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20"
       onPointerDown={(e) => { if (e.target === e.currentTarget) { flush(); onClose(); } }}
     >
-      <div className="flex w-[360px] flex-col gap-2 rounded-xl border bg-white p-4 shadow-2xl">
+      <div className="flex w-[360px] flex-col gap-2 rounded-xl border bg-popover text-popover-foreground p-4 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-700">
+          <span className="text-sm font-semibold text-foreground">
             {noteId ? "Sửa ghi chú" : "Ghi chú mới"}
           </span>
           <button
             onClick={() => { flush(); onClose(); }}
-            className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100"
+            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -109,7 +109,7 @@ export function DocNotePopover({ noteId, initialBody, initialTitle, onSave, onDe
         />
 
         <div className="flex items-center justify-between">
-          <p className="text-[10px] text-gray-400">Tự động lưu · Esc để đóng</p>
+          <p className="text-[10px] text-muted-foreground">Tự động lưu · Esc để đóng</p>
           <div className="flex items-center gap-2">
             {noteId && onDelete && (
               <button

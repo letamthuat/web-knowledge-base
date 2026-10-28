@@ -56,7 +56,7 @@ export function HighlightMenu({
     <div
       ref={menuRef}
       style={{ position: "fixed", left, top, zIndex: 9999 }}
-      className="flex items-center gap-1 rounded-lg border bg-white px-2 py-1.5 shadow-lg"
+      className="flex items-center gap-1 rounded-lg border bg-popover px-2 py-1.5 shadow-lg"
     >
       {/* Preset color swatches */}
       {PRESET_COLORS.map((c) => (
@@ -73,7 +73,7 @@ export function HighlightMenu({
       <div className="relative" title="Màu tùy chọn">
         <button
           onClick={() => colorInputRef.current?.click()}
-          className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-400 hover:border-gray-500 hover:text-gray-600"
+          className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -110,7 +110,7 @@ export function HighlightMenu({
             <button
               title="Thêm / sửa ghi chú"
               onClick={() => { onOpenNote(); onClose(); }}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-violet-50 hover:text-violet-600"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600"
             >
               <PenLine className="h-3.5 w-3.5" />
             </button>
@@ -119,7 +119,7 @@ export function HighlightMenu({
             <button
               title="Xoá highlight"
               onClick={() => { onDelete(); onClose(); }}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             >
               <X className="h-3.5 w-3.5" />
             </button>

@@ -42,7 +42,7 @@ export function CrossLinkHoverCard({ docId, x, y }: CrossLinkHoverCardProps) {
     <div
       ref={ref}
       style={{ position: "fixed", left: pos.left, top: pos.top, width: 300, zIndex: 9998 }}
-      className="pointer-events-none rounded-xl border bg-white shadow-xl"
+      className="pointer-events-none rounded-xl border bg-popover text-popover-foreground shadow-xl"
     >
       <div className="flex items-center gap-1.5 rounded-t-xl border-b bg-muted/40 px-3 py-2">
         <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -52,7 +52,7 @@ export function CrossLinkHoverCard({ docId, x, y }: CrossLinkHoverCardProps) {
       </div>
       {snippet && (
         <div className="px-3 py-2.5">
-          <p className="line-clamp-5 text-xs leading-relaxed text-gray-600">{snippet}</p>
+          <p className="line-clamp-5 text-xs leading-relaxed text-muted-foreground">{snippet}</p>
         </div>
       )}
     </div>

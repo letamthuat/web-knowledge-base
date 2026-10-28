@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 import typography from "@tailwindcss/typography";
+import animate from "tailwindcss-animate";
+import plugin from "tailwindcss/plugin";
 
 const config: Config = {
   // Dark tokens are driven by BOTH `.dark` (convention) and `.rm-dark` (the
@@ -48,6 +50,16 @@ const config: Config = {
           foreground: "hsl(var(--popover-foreground))",
         },
       },
+      // ── Tương thích class Tailwind v4 do shadcn "base-nova" sinh ra (project chạy Tailwind 3) ──
+      ringWidth: { 3: "3px" },
+      boxShadow: {
+        "2xs": "0 1px rgb(0 0 0 / 0.05)",
+        xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+      },
+      backdropBlur: { xs: "2px" },
+      spacing: { 18: "4.5rem", 84: "21rem" },
+      opacity: { 8: "0.08" },
+      aria: { invalid: 'invalid="true"' },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -124,7 +136,24 @@ const config: Config = {
       },
     },
   },
-  plugins: [typography],
+  plugins: [
+    typography,
+    // animate-in/out, fade-*, zoom-*, slide-in-from-* (entrance animation của dialog/menu/popover)
+    animate,
+    plugin(({ addVariant, addUtilities }) => {
+      // Base UI gắn attribute data-open / data-closed / data-disabled… (v4 viết `data-open:`)
+      for (const name of ["open", "closed", "disabled", "inset", "popup-open", "placeholder", "highlighted", "checked", "unchecked", "selected", "pressed"]) {
+        addVariant(`data-${name}`, `&[data-${name}]`);
+      }
+      // Chỉ thiết bị có chuột: nút "hover mới hiện" vẫn hiện sẵn trên màn cảm ứng
+      addVariant("can-hover", "@media (hover: hover) and (pointer: fine)");
+      addUtilities({
+        ".outline-hidden": { outline: "2px solid transparent", "outline-offset": "2px" },
+        ".scrollbar-none": { "scrollbar-width": "none" },
+        ".scrollbar-none::-webkit-scrollbar": { display: "none" },
+      });
+    }),
+  ],
 };
 
 export default config;

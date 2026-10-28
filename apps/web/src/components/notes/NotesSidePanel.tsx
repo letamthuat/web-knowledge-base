@@ -195,7 +195,7 @@ export function NotesSidePanel({ onClose }: NotesSidePanelProps) {
                       e.stopPropagation();
                       if (window.confirm("Xoá ghi chú này?")) handleDelete(note._id);
                     }}
-                    className="mt-0.5 shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 hover:bg-red-50 text-red-400 transition-opacity"
+                    className="mt-0.5 shrink-0 rounded p-0.5 can-hover:opacity-0 group-hover:opacity-100 hover:bg-red-50 text-red-400 transition-opacity"
                   >
                     <X className="h-3 w-3" />
                   </button>

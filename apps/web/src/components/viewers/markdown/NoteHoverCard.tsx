@@ -50,7 +50,7 @@ export function NoteHoverCard({ x, y, selectedText, note, color, onEdit, onClose
     <div
       ref={ref}
       style={{ position: "fixed", left: pos.left, top: pos.top, width: 240, zIndex: 9998 }}
-      className="rounded-xl border bg-white shadow-xl"
+      className="rounded-xl border bg-popover text-popover-foreground shadow-xl"
     >
       {/* Highlighted text snippet */}
       <div
@@ -61,7 +61,7 @@ export function NoteHoverCard({ x, y, selectedText, note, color, onEdit, onClose
       </div>
       {/* Note content */}
       <div className="px-3 py-2.5">
-        <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{note}</p>
+        <p className="text-sm text-popover-foreground whitespace-pre-wrap break-words leading-relaxed">{note}</p>
       </div>
       {/* Edit button */}
       <div className="flex justify-end border-t px-2 py-1.5">

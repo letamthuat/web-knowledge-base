@@ -82,12 +82,12 @@ export function NotePanel({ notes, onClose, onScrollTo, onEdit }: NotePanelProps
               )}
               {/* Note text */}
               <div className="px-3 py-2">
-                <p className="text-xs text-gray-700 whitespace-pre-wrap break-words line-clamp-4 leading-relaxed">
+                <p className="text-xs text-foreground whitespace-pre-wrap break-words line-clamp-4 leading-relaxed">
                   {item.note}
                 </p>
               </div>
               {/* Edit button — show on hover */}
-              <div className="flex justify-end border-t px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex justify-end border-t px-2 py-1 can-hover:opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={(e) => { e.stopPropagation(); onEdit(item._id); }}
                   className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-violet-600 hover:bg-violet-50"
