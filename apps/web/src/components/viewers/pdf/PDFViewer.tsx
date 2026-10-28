@@ -212,7 +212,7 @@ export function PDFViewer({ doc, downloadUrl }: PDFViewerProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-muted/40" style={{ minHeight: 0 }}>
       {/* Toolbar */}
-      <div className="reader-autohide shrink-0 border-b bg-card">
+      <div className="shrink-0 border-b bg-card">
         <div className="flex items-center gap-1 px-2 py-1 overflow-x-auto scrollbar-none">
           <div className="flex items-center gap-0.5">
             <Button variant="ghost" size="icon" className="h-8 w-8"

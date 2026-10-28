@@ -321,54 +321,6 @@ html.rm-dark .hljs { color: hsl(var(--code-fg)); }
   from { opacity: 0; transform: translateY(10px) scale(0.992); }
 }
 
-/* ─── Reader nhập vai (mobile/tablet) ─────────────────────────────────────── */
-/* Header/tab/footer trượt bằng transform (GPU). Khung nội dung dùng FLIP: bố cục nhảy
-   NGAY về vị trí cuối bằng margin (layout đúng 1 lần), animation transform ngắn tạo cảm giác
-   trượt rồi tự gỡ → lúc ẩn hẳn không còn transform, menu highlight/popover fixed vẫn đúng chỗ.
-   ReaderShell đo --chrome-head/-shift/-foot ngay trước khi ẩn. */
-.reader-safe-cover { opacity: 0; }
-@media (max-width: 1279px) {
-  .reader-chrome-top,
-  .reader-chrome-bottom {
-    transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .reader-body {
-    animation: reader-body-show 320ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .reader-safe-cover {
-    transition: opacity 160ms ease-out;
-  }
-  [data-chrome="hidden"] .reader-chrome-top {
-    transform: translate3d(0, calc(-1 * var(--chrome-head, 0px)), 0);
-  }
-  [data-chrome="hidden"] .reader-chrome-bottom {
-    transform: translate3d(0, calc(var(--chrome-foot, 0px) + var(--safe-bottom)), 0);
-  }
-  [data-chrome="hidden"] .reader-body {
-    margin-top: calc(-1 * var(--chrome-shift, 0px));
-    margin-bottom: calc(-1 * var(--chrome-foot, 0px));
-    animation: reader-body-hide 320ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  [data-chrome="hidden"] .reader-safe-cover {
-    opacity: 1;
-  }
-}
-@keyframes reader-body-hide {
-  from { transform: translate3d(0, var(--chrome-shift, 0px), 0); }
-}
-@keyframes reader-body-show {
-  from { transform: translate3d(0, calc(-1 * var(--chrome-shift, 0px)), 0); }
-}
-
-/* Viên tiến độ nổi khi chrome ẩn */
-.reader-pill {
-  animation: pill-in 420ms var(--ease-spring) both;
-}
-@keyframes pill-in {
-  from { opacity: 0; transform: translate(-50%, 16px) scale(0.92); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
 /* Panel highlight / ghi chú → bottom sheet trên màn nhỏ (thay vì bóp chữ còn ~120px) */
 @media (max-width: 767px) {
   .reader-sheet {

@@ -238,7 +238,7 @@ export function EPUBViewer({ doc, downloadUrl }: EPUBViewerProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden" style={{ background: bgColor }}>
       {/* Toolbar */}
-      <div className="reader-autohide flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
+      <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-1.5">
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={prev}>
           <ChevronLeft className="h-4 w-4" />
         </Button>

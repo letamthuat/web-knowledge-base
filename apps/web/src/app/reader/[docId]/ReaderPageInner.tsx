@@ -51,13 +51,10 @@ function createPctStore(): PctStore {
   };
 }
 
-const ReaderProgressBar = memo(function ReaderProgressBar({ store, savedPct, extractedText, pillVisible, onPillClick }: {
+const ReaderProgressBar = memo(function ReaderProgressBar({ store, savedPct, extractedText }: {
   store: PctStore;
   savedPct: number | null;
   extractedText: string;
-  /** Chrome đang ẩn (mobile) → hiện viên tiến độ nổi thay cho footer */
-  pillVisible: boolean;
-  onPillClick: () => void;
 }) {
   const localPct = useSyncExternalStore(store.subscribe, store.get, store.get);
   // Đếm từ 1 lần cho mỗi tài liệu — không split cả văn bản mỗi lần cuộn
@@ -69,27 +66,8 @@ const ReaderProgressBar = memo(function ReaderProgressBar({ store, savedPct, ext
   const wordsLeft = wordCount > 0 ? Math.round(wordCount * (1 - pct / 100)) : 0;
   const minsLeft = wordCount > 0 ? Math.round(wordsLeft / WPM) : 0;
   const pctDisplay = Math.round(pct);
-  const R = 7;
-  const C = 2 * Math.PI * R;
   return (
-    <>
-    {pillVisible && (
-      <button
-        onClick={onPillClick}
-        aria-label="Hiện thanh công cụ"
-        className="reader-pill fixed left-1/2 z-40 flex items-center gap-2 rounded-full border border-border/80 bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground tabular-nums shadow-[0_8px_28px_-6px_rgba(0,0,0,0.22)]"
-        style={{ bottom: "calc(var(--safe-bottom) + 14px)" }}
-      >
-        <svg width="18" height="18" viewBox="0 0 18 18" className="-rotate-90" aria-hidden>
-          <circle cx="9" cy="9" r={R} fill="none" stroke="hsl(var(--muted))" strokeWidth="2.5" />
-          <circle cx="9" cy="9" r={R} fill="none" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinecap="round"
-            strokeDasharray={C} strokeDashoffset={C * (1 - pctDisplay / 100)} className="transition-[stroke-dashoffset] duration-300" />
-        </svg>
-        <span className="text-foreground">{pctDisplay}%</span>
-        {minsLeft > 0 && <span>· còn ~{minsLeft} phút</span>}
-      </button>
-    )}
-    <div className="reader-chrome-bottom relative z-10 shrink-0 border-t border-border/70 bg-card px-4 py-2 flex items-center justify-center">
+    <div className="shrink-0 border-t border-border/70 bg-card px-4 py-2 flex items-center justify-center">
       <div className="flex items-center gap-3 w-full max-w-lg">
         <div className="flex-1 h-1.5 rounded-full bg-muted/80 overflow-hidden">
           <div className="h-full rounded-full bg-primary/85 transition-[width] duration-300" style={{ width: `${Math.max(3, pctDisplay)}%` }} />
@@ -99,7 +77,6 @@ const ReaderProgressBar = memo(function ReaderProgressBar({ store, savedPct, ext
         </span>
       </div>
     </div>
-    </>
   );
 });
 
@@ -280,75 +257,6 @@ function ReaderShell({ doc, downloadUrl }: {
   }, []);
   const showDropdown = isMobile;
 
-  // ── Reader nhập vai (mobile/tablet): cuộn xuống → ẩn chrome, cuộn lên / chạm trang → hiện ──
-  const [chromeHidden, setChromeHidden] = useState(false);
-  const chromeHiddenRef = useRef(false);
-  const chromeLockRef = useRef(0);
-  const setChrome = useCallback((hidden: boolean) => {
-    if (chromeHiddenRef.current === hidden) return;
-    chromeHiddenRef.current = hidden;
-    const root = containerRef.current;
-    if (hidden && root) {
-      // Đo lúc chrome còn hiện: header + tab (trượt lên), toolbar viewer (trượt theo nội dung), footer (trượt xuống)
-      let head = 0;
-      let safeTop = 0;
-      root.querySelectorAll<HTMLElement>(".reader-chrome-top").forEach((el, i) => {
-        head += el.offsetHeight;
-        if (i === 0) safeTop = parseFloat(getComputedStyle(el).paddingTop) || 0;
-      });
-      const toolbar = root.querySelector<HTMLElement>(".reader-body .reader-autohide")?.offsetHeight ?? 0;
-      const foot = root.querySelector<HTMLElement>(".reader-chrome-bottom")?.offsetHeight ?? 0;
-      root.style.setProperty("--chrome-head", `${head}px`);
-      root.style.setProperty("--chrome-shift", `${Math.max(0, head + toolbar - safeTop)}px`);
-      root.style.setProperty("--chrome-foot", `${foot}px`);
-    }
-    // Khung cuộn đổi cao 1 lần lúc bắt đầu ẩn / sau khi hiện xong → bỏ qua scroll trong lúc chuyển
-    chromeLockRef.current = performance.now() + 360;
-    setChromeHidden(hidden);
-  }, []);
-
-  useEffect(() => {
-    const root = containerRef.current;
-    if (!isMobile || !root) { setChrome(false); return; }
-    const lastTop = new WeakMap<EventTarget, number>();
-
-    function onScroll(e: Event) {
-      const el = e.target;
-      if (!(el instanceof HTMLElement) || el.closest(".reader-sheet, aside")) return;
-      const top = el.scrollTop;
-      const prev = lastTop.get(el) ?? top;
-      lastTop.set(el, top);
-      if (performance.now() < chromeLockRef.current) return;
-      const dy = top - prev;
-      if (top < 48) setChrome(false);
-      else if (dy > 6) setChrome(true);
-      else if (dy < -12) setChrome(false);
-    }
-
-    let down: { x: number; y: number; t: number } | null = null;
-    function onPointerDown(e: PointerEvent) {
-      down = e.pointerType === "mouse" ? null : { x: e.clientX, y: e.clientY, t: e.timeStamp };
-    }
-    function onPointerUp(e: PointerEvent) {
-      const d = down;
-      down = null;
-      if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10 || e.timeStamp - d.t > 300) return;
-      const t = e.target as HTMLElement | null;
-      if (!t || t.closest("a, button, input, textarea, select, label, mark, [role], [contenteditable='true'], .reader-autohide, .reader-chrome-top, .reader-chrome-bottom, .reader-sheet, aside")) return;
-      if (window.getSelection()?.isCollapsed === false) return;
-      setChrome(!chromeHiddenRef.current);
-    }
-
-    root.addEventListener("scroll", onScroll, { capture: true, passive: true });
-    root.addEventListener("pointerdown", onPointerDown, { passive: true });
-    root.addEventListener("pointerup", onPointerUp, { passive: true });
-    return () => {
-      root.removeEventListener("scroll", onScroll, { capture: true });
-      root.removeEventListener("pointerdown", onPointerDown);
-      root.removeEventListener("pointerup", onPointerUp);
-    };
-  }, [isMobile, setChrome]);
-  const showChrome = useCallback(() => setChrome(false), [setChrome]);
 
   // Mobile swipe drawer
   const touchStartX = useRef(0);
@@ -450,8 +358,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
   return (
     <ReaderProgressContext.Provider value={progressCtx}>
-      <div ref={containerRef} data-chrome={chromeHidden ? "hidden" : "shown"} className="relative flex h-full flex-col overflow-hidden bg-background transition-colors">
-        <div aria-hidden className="reader-safe-cover pointer-events-none absolute inset-x-0 top-0 z-20 bg-background" style={{ height: "var(--safe-top)" }} />
+      <div ref={containerRef} className="flex h-full flex-col overflow-hidden bg-background transition-colors">
         {/* Reading Mode exit button */}
         {readingMode && (
           <button
@@ -467,7 +374,7 @@ function ReaderShell({ doc, downloadUrl }: {
 
         {!readingMode && (
           <header
-            className="reader-chrome-top box-content flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-card px-3 sm:px-4"
+            className="box-content flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-card px-3 sm:px-4"
             style={{ paddingTop: 'var(--safe-top)' }}
           >
             {/* Left: Sidebar toggle / Logo */}
@@ -553,7 +460,7 @@ function ReaderShell({ doc, downloadUrl }: {
         )}
 
         {!readingMode && (
-          <div className="reader-chrome-top flex flex-col shrink-0 bg-card">
+          <div className="flex flex-col shrink-0 bg-card">
             {showDropdown
               ? <TabDropdown
                   currentDocId={doc._id}
@@ -582,7 +489,7 @@ function ReaderShell({ doc, downloadUrl }: {
           </div>
         )}
 
-        <div className="reader-body flex flex-1 flex-col overflow-hidden" style={{ minHeight: 0 }}>
+        <div className="flex flex-1 flex-col overflow-hidden" style={{ minHeight: 0 }}>
           <ViewerDispatcher
             doc={doc}
             downloadUrl={downloadUrl}
@@ -593,7 +500,7 @@ function ReaderShell({ doc, downloadUrl }: {
         </div>
 
         {/* Progress bar + time estimate */}
-        <ReaderProgressBar store={pctStore} savedPct={savedPct} extractedText={extractedText} pillVisible={chromeHidden && !readingMode} onPillClick={showChrome} />
+        <ReaderProgressBar store={pctStore} savedPct={savedPct} extractedText={extractedText} />
       </div>
       <BottomSheet open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} title="Thêm">
         <div className="flex flex-col gap-2 py-2">
