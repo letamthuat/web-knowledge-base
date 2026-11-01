@@ -96,6 +96,9 @@ function silentWavUrl(): string {
 function getAudio(): HTMLAudioElement {
   if (audio) return audio;
   const a = new Audio();
+  // App bật COEP require-corp (ffmpeg.wasm) → media khác origin (R2) chỉ tải được ở chế độ CORS.
+  // Bucket R2 đã cho GET mọi origin; thiếu dòng này Chrome/Safari báo "no supported source".
+  a.crossOrigin = "anonymous";
   a.preload = "auto";
   a.setAttribute("playsinline", "");
   a.addEventListener("play", () => { if (a.src !== silentUrl) setState({ playing: true }); syncMediaSession(); });

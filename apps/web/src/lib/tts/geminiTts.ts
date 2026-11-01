@@ -54,11 +54,12 @@ async function encodeMp3(samples: Int16Array, rate: number): Promise<Buffer> {
   const out: Uint8Array[] = [];
   for (let i = 0; i < samples.length; i += 1152) {
     const chunk = enc.encodeBuffer(samples.subarray(i, i + 1152));
-    if (chunk.length) out.push(chunk);
+    // Copy từng khối cho chắc — không phụ thuộc cách lamejs quản lý bộ đệm nội bộ
+    if (chunk.length) out.push(Buffer.from(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)));
   }
   const tail = enc.flush();
-  if (tail.length) out.push(tail);
-  return Buffer.concat(out.map((u) => Buffer.from(u.buffer, u.byteOffset, u.length)));
+  if (tail.length) out.push(Buffer.from(new Uint8Array(tail.buffer, tail.byteOffset, tail.byteLength)));
+  return Buffer.concat(out);
 }
 
 export function requestBody(input: { text?: string; voice: string; dialogue?: DialogueTurn[] }) {
