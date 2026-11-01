@@ -4,6 +4,7 @@ export function pathnameToPanel(pathname: string): string | null {
   if (pathname === "/library" || pathname.startsWith("/library/")) return "library";
   if (pathname === "/notes"   || pathname.startsWith("/notes/"))   return "notes";
   if (pathname === "/study"   || pathname.startsWith("/study/"))   return "study";
+  if (pathname === "/podcast" || pathname.startsWith("/podcast/")) return "podcast";
   if (pathname === "/settings"|| pathname.startsWith("/settings/"))return "settings";
   const m = pathname.match(/^\/reader\/([^/]+)/);
   if (m) return `reader:${m[1]}`;

@@ -31,6 +31,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useAppTypography, openReadingSettings } from "@/components/AppSettingsPanel";
 import { useActiveTab } from "@/contexts/ActiveTabContext";
 import { useDocExport } from "@/hooks/useDocExport";
+import { ListenButton, LISTENABLE_FORMATS } from "@/components/listen/ListenButton";
 
 /** Store nhỏ cho % đọc: cập nhật mỗi 1% khi cuộn mà KHÔNG re-render cả ReaderShell/viewer. */
 type PctStore = { get: () => number | null; set: (v: number) => void; subscribe: (l: () => void) => () => void };
@@ -398,6 +399,10 @@ function ReaderShell({ doc, downloadUrl }: {
             {/* Right: Zen reading tools & More dropdown */}
             <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               <ProgressSaveIndicator status={saveStatus} onSaveNow={saveNow} />
+
+              {LISTENABLE_FORMATS.has(doc.format) && (
+                <ListenButton doc={doc} downloadUrl={downloadUrl} containerRef={containerRef} />
+              )}
               
               {/* Nút Màu giấy & Cỡ chữ (Craft / Apple Books Theme) */}
               <button

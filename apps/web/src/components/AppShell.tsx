@@ -20,6 +20,7 @@ import { X } from "lucide-react";
 import { ReaderDocLoader } from "@/app/reader/[docId]/ReaderPageInner";
 import { HandbookSidebar } from "@/components/handbook/HandbookSidebar";
 import { GlobalSearch } from "@/components/search/SearchModal";
+import { ListenBar } from "@/components/listen/ListenBar";
 import { pathnameToPanel } from "@/lib/panels";
 import { NavDrawer } from "@/components/nav/MobileSidebarDrawer";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -42,6 +43,10 @@ const TrashPageInner = dynamic(
 );
 const StudyPageInner = dynamic(
   () => import("@/components/study/StudyPageInner").then((m) => m.StudyPageInner),
+  { ssr: false }
+);
+const PodcastPageInner = dynamic(
+  () => import("@/components/podcast/PodcastPageInner").then((m) => m.PodcastPageInner),
   { ssr: false }
 );
 
@@ -130,6 +135,9 @@ function AppShellContent({ children }: { children: ReactNode }) {
       {/* Ô tìm kiếm duy nhất (Cmd/Ctrl+K + openSearch()), portal ra body */}
       <GlobalSearch />
 
+      {/* Thanh Nghe bài — sống ở shell để nghe tiếp khi rời reader */}
+      <ListenBar />
+
       {/* Vùng nội dung (có thể split 2 pane) */}
       <div ref={split.containerRef} style={{ position: "relative", flex: 1, minWidth: 0, display: "flex" }}>
         {/* Pane trái = các panel chính */}
@@ -148,6 +156,9 @@ function AppShellContent({ children }: { children: ReactNode }) {
           </TabPanel>
           <TabPanel id="study" active={current === "study"}>
             <StudyPageInner />
+          </TabPanel>
+          <TabPanel id="podcast" active={current === "podcast"}>
+            <PodcastPageInner />
           </TabPanel>
           {mountedDocIds.current.map((docId) => (
             <TabPanel

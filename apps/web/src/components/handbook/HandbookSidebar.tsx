@@ -29,7 +29,7 @@ import {
   Trash2, Pencil, FilePlus2, FolderPlus, FileText, Files,
   Image as ImageIcon, FileAudio, FileVideo, Presentation, BookOpen,
   Circle, CheckCircle2, CircleDot, Folder, FolderOpen, SplitSquareHorizontal,
-  AlertTriangle, X, Check, Search, GraduationCap, NotebookPen, Settings, Download, Palette,
+  AlertTriangle, X, Check, Search, GraduationCap, Podcast, NotebookPen, Settings, Download, Palette,
 } from "lucide-react";
 import { openReadingSettings } from "@/components/AppSettingsPanel";
 import { usePwa } from "@/contexts/PwaContext";
@@ -460,6 +460,9 @@ export function HandbookSidebarContent({ onLinkClick, onCollapse }: { onLinkClic
             </div>
           )}
 
+          {/* Podcast — series nghe 2 giọng từ handbook/tài liệu */}
+          <NavRow icon={Podcast} label="Podcast" active={activePanel === "podcast"} onClick={() => goPanel("podcast", "/podcast")} />
+
           {/* Thư viện — bung/thu cây Handbook + Tài liệu lẻ */}
           <ExpandableNavRow
             icon={Layers}
@@ -819,6 +822,7 @@ function SidebarRail({ onExpand }: { onExpand: () => void }) {
       </button>
       <RailButton icon={Search} label="Tìm kiếm" onClick={() => openSearch()} />
       <RailButton icon={GraduationCap} label="Học tập" active={activePanel === "study"} onClick={() => navigate("/study")} />
+      <RailButton icon={Podcast} label="Podcast" active={activePanel === "podcast"} onClick={() => navigate("/podcast")} />
       <RailButton icon={Layers} label="Thư viện" active={activePanel === "library"} onClick={() => navigate("/library")} />
       <RailButton icon={NotebookPen} label="Ghi chú" active={activePanel === "notes"} onClick={() => navigate("/notes")} />
       <div className="mt-auto flex flex-col items-center gap-1">

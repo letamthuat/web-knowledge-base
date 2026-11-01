@@ -17,7 +17,7 @@ type SourceType = "handbook" | "docs";
 // ─── Cây thư mục từ relPath ────────────────────────────────────────────────────
 type TreeNode = { name: string; path: string; docId?: string; children: TreeNode[] };
 
-function buildFileTree(files: { docId: string; relPath: string }[]): TreeNode[] {
+export function buildFileTree(files: { docId: string; relPath: string }[]): TreeNode[] {
   const root: TreeNode = { name: "", path: "", children: [] };
   for (const f of files) {
     const parts = f.relPath.split("/").filter(Boolean);
@@ -60,7 +60,7 @@ function TriCheckbox({ state, onChange }: { state: "on" | "off" | "partial"; onC
   return <input ref={ref} type="checkbox" checked={state === "on"} onChange={onChange} className="accent-primary" />;
 }
 
-function FileTreeNodes({
+export function FileTreeNodes({
   nodes, depth, checked, onToggleLeaf, onToggleFolder,
 }: {
   nodes: TreeNode[]; depth: number; checked: Set<string>;

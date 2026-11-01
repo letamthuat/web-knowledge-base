@@ -1057,6 +1057,20 @@ export function MarkdownViewer({ doc, downloadUrl, highlightQuery, typography }:
     requestAnimationFrame(poll);
   }, []);
 
+  // Nghe bài: "Tới chỗ đang nghe" → cuộn tới heading của đoạn đang đọc to
+  useEffect(() => {
+    const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+    const onSeg = (e: Event) => {
+      const d = (e as CustomEvent<{ docId: string; force?: boolean; segment?: { headingText?: string } }>).detail;
+      if (!d?.force || d.docId !== doc._id || !d.segment?.headingText) return;
+      const target = norm(d.segment.headingText);
+      const entry = toc.find((t) => norm(t.text) === target);
+      if (entry) scrollToHeading(entry);
+    };
+    window.addEventListener("kb:tts-segment", onSeg);
+    return () => window.removeEventListener("kb:tts-segment", onSeg);
+  }, [doc._id, toc, scrollToHeading]);
+
   if (error) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">

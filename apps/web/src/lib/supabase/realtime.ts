@@ -13,6 +13,8 @@ const TABLES = [
   // Module Học tập (0005) — realtime để tạo space/đổi tiến độ hiện ngay, đồng bộ đa thiết bị.
   "study_spaces", "study_units", "study_checkpoints", "flashcards", "review_logs",
   "quiz_attempts", "feynman_sessions", "study_sessions", "study_plans", "study_plan_tasks",
+  // Module Podcast (0006) — podcast_scripts KHÔNG realtime (nặng).
+  "podcast_series", "podcast_episodes",
 ] as const;
 
 type Listener = () => void;

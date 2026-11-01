@@ -25,7 +25,7 @@ export function moduleKeyFromRelPath(relPath: string, fallbackIndex: number): st
 }
 
 /** Trích số mục dạng "2.1.3" ở đầu tiêu đề heading. */
-function extractDottedKey(headingText: string): string | null {
+export function extractDottedKey(headingText: string): string | null {
   const m = headingText.match(/^\s*(\d+(?:\.\d+)+)\.?(?:\s|$)/);
   return m ? m[1] : null;
 }
@@ -40,10 +40,10 @@ function hashContent(s: string): string {
   return (h >>> 0).toString(16);
 }
 
-type Heading = { level: number; text: string; offset: number };
+export type Heading = { level: number; text: string; offset: number };
 
 /** Thu mọi heading (mọi cấp) kèm char-offset — offset để tính chars scope, mọi cấp để slugger dedup khớp reader. */
-function collectHeadings(markdown: string): Heading[] {
+export function collectHeadings(markdown: string): Heading[] {
   const out: Heading[] = [];
   const lines = markdown.split(/\r?\n/);
   let offset = 0;
