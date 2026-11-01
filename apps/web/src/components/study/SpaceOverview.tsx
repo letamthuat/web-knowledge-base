@@ -5,7 +5,7 @@ import { pushUrl } from "@/lib/history";
 import { createContext, useCallback, useContext, useState } from "react";
 import {
   AlertTriangle, BookOpen, CheckCircle2, ChevronDown, ChevronRight,
-  HelpCircle, Layers, Mic, RotateCcw, Sparkles,
+  HelpCircle, Layers, Mic, Play, RotateCcw, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTabSync } from "@/hooks/useTabSync";
@@ -16,6 +16,7 @@ import { useAiSettings } from "@/lib/api/ai-settings";
 import { getUnitScopeText } from "@/lib/study/materialize";
 import { requestPreQuestions } from "@/lib/study/generate";
 import { SyncSpaceModal } from "./SyncSpaceModal";
+import { DailyGoal } from "./celebrate";
 import { HEATMAP, type StudySpace, type StudyUnit, type TodayItem, type UnitStatus } from "./mock";
 
 // spaceId cho các hành động ghi (đánh dấu đọc…) — tránh thread qua nhiều lớp
@@ -63,12 +64,13 @@ const STATUS: Record<UnitStatus, { label: string; dot: string; text: string }> =
 
 // Từ 2xl các khối HÔM NAY / CẦN HỌC LẠI / heatmap chuyển sang side rail
 // (StudyRail trong StudyPageInner) — cột chính chỉ còn lộ trình.
-export function SpaceOverview({ space, onGoTab }: { space: StudySpace; onGoTab: GoTab }) {
+export function SpaceOverview({ space, onGoTab, onStartSession }: { space: StudySpace; onGoTab: GoTab; onStartSession?: () => void }) {
   return (
     <SpaceIdCtx.Provider value={space.id}>
     <div className="space-y-5">
-      <div className="2xl:hidden">
-        <TodayMenu items={space.todayMenu} onGoTab={onGoTab} spaceId={space.id} />
+      <div className="space-y-3 2xl:hidden">
+        <DailyGoal space={space} onPlan={() => onGoTab("plan")} />
+        <TodayMenu items={space.todayMenu} onGoTab={onGoTab} spaceId={space.id} onStartSession={onStartSession} />
       </div>
       <Syllabus units={space.units} onGoTab={onGoTab} />
       {space.weakSpots.length > 0 && (
@@ -96,11 +98,10 @@ const TODAY_ICON: Record<TodayItem["type"], typeof BookOpen> = {
   fix: AlertTriangle,
 };
 
-export function TodayMenu({ items, onGoTab, spaceId: spaceIdProp }: { items: TodayItem[]; onGoTab: GoTab; spaceId?: string }) {
+/** Thực thi 1 việc HÔM NAY (điều phối tab / mở reader + đánh dấu đọc). Dùng chung TodayMenu + Buổi học. */
+export function useRunTodayItem(spaceId: string, onGoTab: GoTab) {
   const openDoc = useOpenDoc();
-  const ctxSpaceId = useContext(SpaceIdCtx);
-  const spaceId = spaceIdProp || ctxSpaceId;
-  const go = (it: TodayItem) => {
+  return useCallback((it: TodayItem) => {
     switch (it.type) {
       case "read":
         if (!it.docId) return;
@@ -117,12 +118,41 @@ export function TodayMenu({ items, onGoTab, spaceId: spaceIdProp }: { items: Tod
       case "review": onGoTab("review"); return;
       case "station": return; // trạm tổng kết: chưa điều phối
     }
-  };
+  }, [openDoc, spaceId, onGoTab]);
+}
+
+export function TodayMenu({ items, onGoTab, spaceId: spaceIdProp, onStartSession }: {
+  items: TodayItem[]; onGoTab: GoTab; spaceId?: string; onStartSession?: () => void;
+}) {
+  const ctxSpaceId = useContext(SpaceIdCtx);
+  const spaceId = spaceIdProp || ctxSpaceId;
+  const go = useRunTodayItem(spaceId, onGoTab);
+  const runnable = items.filter((it) => it.type !== "station");
   return (
     <section>
       <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
         <Sparkles className="h-3.5 w-3.5 text-primary" /> HÔM NAY
       </h2>
+      {onStartSession && runnable.length > 0 && (
+        <button
+          onClick={onStartSession}
+          className="press mt-2 flex w-full items-center gap-3 rounded-xl bg-primary p-3 text-left text-primary-foreground shadow-sm transition-opacity hover:opacity-95"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/15">
+            <Play className="h-4 w-4" fill="currentColor" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold">Bắt đầu buổi học</span>
+            <span className="block text-[11px] opacity-80">Làm liền mạch {runnable.length} việc bên dưới — xong việc nào bấm “Tiếp”</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 opacity-70" />
+        </button>
+      )}
+      {items.length === 0 ? (
+        <div className="mt-2 rounded-xl border border-dashed p-4 text-center text-[12.5px] text-muted-foreground">
+          🎉 Hôm nay xong hết việc rồi. Học thêm thì chọn một tiểu mục trong lộ trình.
+        </div>
+      ) : (
       <div className="mt-2 space-y-2">
         {items.map((it, i) => {
           const Icon = TODAY_ICON[it.type];
@@ -150,6 +180,7 @@ export function TodayMenu({ items, onGoTab, spaceId: spaceIdProp }: { items: Tod
           );
         })}
       </div>
+      )}
     </section>
   );
 }

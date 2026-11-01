@@ -166,6 +166,7 @@ export function buildSpaceModel(
     sessions.filter((s) => startOfDay(s.occurredAt) === today).reduce((m, s) => m + s.activeMinutes, 0),
   );
   const streak = computeStreak(sessions, activePlan?.weekdays);
+  const activeToday = sessions.some((s) => s.isActiveRecall && startOfDay(s.occurredAt) === today);
 
   // Heatmap 84 ô (12 tuần) — mức 0-4 theo phút học chủ động/ngày (SPEC §2.9)
   const minByDay = new Map<number, number>();
@@ -242,6 +243,9 @@ export function buildSpaceModel(
     units,
     weakSpots,
     heatmap,
+    activeToday,
+    dailyGoalMin: activePlan?.targetDailyMin ?? null,
+    masteredKeys: leaves.filter((r) => statusByKey.get(r.unitKey) === "mastered").map((r) => r.unitKey),
   };
 }
 

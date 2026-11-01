@@ -3,21 +3,22 @@
 // Tab Ôn tập — flashcard THẬT từ Supabase, tổ chức theo lộ trình (module → tiểu mục).
 // Chỉ hiện tiểu mục ĐÃ CÓ card; nếu điều phối tới tiểu mục chưa có card → panel sinh AI.
 // Quên/Nhớ ghi review_logs + cập nhật interval (SRS ×2 / reset). Ôn hôm nay = card đến hạn.
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Link2, Lightbulb, Loader2, Play, Quote, Sparkles, Wrench,
+  ArrowLeft, ChevronDown, ChevronRight, Link2, Lightbulb, Loader2, Pencil, Play, Quote, Sparkles, Trash2, Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { StudySpace, StudyUnit } from "./mock";
 import { useAiSettings } from "@/lib/api/ai-settings";
 import {
-  useFlashcards, insertFlashcards, reviewFlashcard, logStudySession, isDue,
+  useFlashcards, insertFlashcards, reviewFlashcard, logStudySession, isDue, updateFlashcard, deleteFlashcard,
   type FlashcardRow, type CardType,
 } from "@/lib/api/study";
 import { getUnitScopeText } from "@/lib/study/materialize";
 import { requestGeneratedCards, type GenCard } from "@/lib/study/generate";
 import { StudyMarkdown } from "./StudyMarkdown";
 import { useOpenDoc } from "./SpaceOverview";
+import { celebrate, haptic, StreakFlame } from "./celebrate";
 
 const TYPE_META: Record<CardType, { label: string; icon: typeof Lightbulb; cls: string }> = {
   concept: { label: "Khái niệm", icon: Lightbulb, cls: "bg-blue-500/10 text-blue-500" },
@@ -67,7 +68,7 @@ export function ReviewTab({ spaceId, space, focusUnitKey }: { spaceId: string; s
   if (cards === undefined) {
     return <div className="flex items-center gap-2 py-10 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Đang tải card…</div>;
   }
-  if (session) return <ReviewSession cards={session} spaceId={spaceId} titleByKey={titleByKey} leafByKey={leafByKey} onExit={() => setSession(null)} />;
+  if (session) return <ReviewSession cards={session} spaceId={spaceId} space={space} titleByKey={titleByKey} leafByKey={leafByKey} onExit={() => setSession(null)} />;
   return (
     <CardLibrary
       spaceId={spaceId}
@@ -305,9 +306,39 @@ function UnitCardGroup({
 
 function BrowseCard({ card, leaf }: { card: FlashcardRow; leaf?: Leaf }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [front, setFront] = useState(card.front);
+  const [back, setBack] = useState(card.back);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [busy, setBusy] = useState(false);
   const meta = TYPE_META[card.type];
   const TypeIcon = meta.icon;
   const due = isDue(card);
+
+  async function save() {
+    if (!front.trim() || !back.trim()) { toast.error("Mặt trước/sau không được trống"); return; }
+    setBusy(true);
+    try {
+      await updateFlashcard(card._id, { front: front.trim(), back: back.trim() });
+      setEditing(false);
+      toast.success("Đã sửa card");
+    } catch {
+      toast.error("Sửa card thất bại");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function remove() {
+    setBusy(true);
+    try {
+      await deleteFlashcard(card._id);
+      toast.success("Đã xoá card");
+    } catch {
+      toast.error("Xoá card thất bại");
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="rounded-lg bg-muted/40">
       <div
@@ -330,7 +361,23 @@ function BrowseCard({ card, leaf }: { card: FlashcardRow; leaf?: Leaf }) {
           <span className="shrink-0 text-[10px] text-muted-foreground">ôn lại sau {card.intervalDays}d</span>
         )}
       </div>
-      {open && (
+      {open && editing && (
+        <div className="space-y-2 border-t border-border/50 p-2.5">
+          <label className="block text-[10.5px] font-semibold text-muted-foreground">MẶT TRƯỚC</label>
+          <textarea value={front} onChange={(e) => setFront(e.target.value)} rows={2} className="w-full rounded-md border bg-background p-2 text-[12.5px] outline-none focus:border-ring" />
+          <label className="block text-[10.5px] font-semibold text-muted-foreground">MẶT SAU</label>
+          <textarea value={back} onChange={(e) => setBack(e.target.value)} rows={4} className="w-full rounded-md border bg-background p-2 text-[12.5px] outline-none focus:border-ring" />
+          <div className="flex gap-2">
+            <button onClick={save} disabled={busy} className="rounded-md bg-primary px-2.5 py-1 text-[12px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40">
+              {busy ? "Đang lưu…" : "Lưu"}
+            </button>
+            <button onClick={() => { setEditing(false); setFront(card.front); setBack(card.back); }} disabled={busy} className="rounded-md border px-2.5 py-1 text-[12px] hover:bg-muted">
+              Huỷ
+            </button>
+          </div>
+        </div>
+      )}
+      {open && !editing && (
         <div className="border-t border-border/50 p-2.5">
           <StudyMarkdown className="text-[12.5px] leading-relaxed">{card.back}</StudyMarkdown>
           {card.quote && (
@@ -342,6 +389,23 @@ function BrowseCard({ card, leaf }: { card: FlashcardRow; leaf?: Leaf }) {
               <OpenDocLink docId={leaf?.docId} anchor={leaf?.anchor} />
             </div>
           )}
+          <div className="mt-2 flex items-center justify-end gap-1.5">
+            <button onClick={() => setEditing(true)} className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground">
+              <Pencil className="h-3 w-3" /> Sửa
+            </button>
+            {confirmDel ? (
+              <>
+                <button onClick={remove} disabled={busy} className="rounded-md bg-destructive px-2 py-1 text-[11px] font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-40">
+                  Xoá hẳn
+                </button>
+                <button onClick={() => setConfirmDel(false)} className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted">Thôi</button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmDel(true)} className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                <Trash2 className="h-3 w-3" /> Xoá
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -349,53 +413,147 @@ function BrowseCard({ card, leaf }: { card: FlashcardRow; leaf?: Leaf }) {
 }
 
 // ─── Phiên ôn (lật card, Quên/Nhớ) ───────────────────────────────────────────
+// - Trộn thứ tự (interleave các tiểu mục).
+// - Card "Quên" quay lại CUỐI hàng đợi tới khi "Nhớ" (relearn); lịch SRS chỉ ghi LẦN ĐẦU.
+// - Phím tắt: Space/Enter lật · ←/1 Quên · →/2 Nhớ. Mobile: vuốt trái/phải sau khi lật.
+type QueueItem = { card: FlashcardRow; relearn: boolean };
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const SWIPE_PX = 90;
+
 function ReviewSession({
-  cards, spaceId, titleByKey, leafByKey, onExit,
+  cards, spaceId, space, titleByKey, leafByKey, onExit,
 }: {
-  cards: FlashcardRow[]; spaceId: string; titleByKey: Map<string, string>; leafByKey: Map<string, Leaf>; onExit: () => void;
+  cards: FlashcardRow[]; spaceId: string; space: StudySpace; titleByKey: Map<string, string>; leafByKey: Map<string, Leaf>; onExit: () => void;
 }) {
-  const [idx, setIdx] = useState(0);
+  const [queue, setQueue] = useState<QueueItem[]>(() => shuffle(cards).map((card) => ({ card, relearn: false })));
+  const [firstRating, setFirstRating] = useState<Map<string, "remembered" | "forgot">>(new Map());
   const [flipped, setFlipped] = useState(false);
-  const [results, setResults] = useState<("remembered" | "forgot")[]>([]);
+  const [turn, setTurn] = useState(0); // key remount mỗi lượt → card mới luôn hiện mặt trước, không lộ đáp án khi lật về
+  const [dragX, setDragX] = useState(0);
+  const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const startedAt = useRef(Date.now());
+  const answers = useRef(0);
 
   const total = cards.length;
-  const done = idx >= total;
-  const card = done ? null : cards[idx];
+  const done = queue.length === 0;
+  const current = done ? null : queue[0];
+  const cleared = total - new Set(queue.map((q) => q.card._id)).size;
 
-  function answer(r: "remembered" | "forgot") {
-    const c = cards[idx];
-    void reviewFlashcard(c, r).catch(() => toast.error("Không lưu được kết quả ôn"));
-    setResults((prev) => [...prev, r]);
+  const answer = useCallback((r: "remembered" | "forgot") => {
+    const item = queue[0];
+    if (!item) return;
+    answers.current++;
+    if (!firstRating.has(item.card._id)) {
+      void reviewFlashcard(item.card, r).catch(() => toast.error("Không lưu được kết quả ôn"));
+      setFirstRating((m) => new Map(m).set(item.card._id, r));
+    }
+    haptic(r === "remembered" ? 10 : [8, 30, 8]);
+    setQueue((q) => (r === "forgot" ? [...q.slice(1), { card: item.card, relearn: true }] : q.slice(1)));
     setFlipped(false);
-    setIdx((i) => i + 1);
-  }
+    setDragX(0);
+    setTurn((t) => t + 1);
+  }, [queue, firstRating]);
+
+  // Phím tắt
+  useEffect(() => {
+    if (done) return;
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === " " || e.key === "Enter") { e.preventDefault(); setFlipped((f) => !f); return; }
+      if (!flipped) return;
+      if (e.key === "ArrowLeft" || e.key === "1") { e.preventDefault(); answer("forgot"); }
+      if (e.key === "ArrowRight" || e.key === "2") { e.preventDefault(); answer("remembered"); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [done, flipped, answer]);
 
   useEffect(() => {
-    if (done && total > 0) {
-      void logStudySession({ spaceId, activityType: "review", activeMinutes: Math.max(1, Math.round(total * 0.5)) }).catch(() => {});
-    }
+    if (!done || total === 0) return;
+    // Phút thật (cap theo số lượt để tab bỏ quên không thổi phồng)
+    const elapsed = Math.round((Date.now() - startedAt.current) / 60_000);
+    const minutes = Math.max(1, Math.min(elapsed, Math.ceil(answers.current * 1.5)));
+    void logStudySession({ spaceId, activityType: "review", activeMinutes: minutes }).catch(() => {});
+    celebrate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done]);
 
+  // Vuốt (chỉ sau khi lật) · chạm = lật
+  function onPointerDown(e: React.PointerEvent) {
+    drag.current = { x: e.clientX, y: e.clientY, moved: false };
+  }
+  function onPointerMove(e: React.PointerEvent) {
+    const d = drag.current;
+    if (!d || !flipped) return;
+    const dx = e.clientX - d.x;
+    if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(e.clientY - d.y)) { d.moved = true; setDragX(dx); }
+  }
+  function onPointerUp(e: React.PointerEvent) {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    if ((e.target as HTMLElement).closest("button, a")) { setDragX(0); return; } // "mở tài liệu →"
+    if (d.moved) {
+      if (dragX <= -SWIPE_PX) answer("forgot");
+      else if (dragX >= SWIPE_PX) answer("remembered");
+      else setDragX(0);
+      return;
+    }
+    setFlipped((f) => !f);
+  }
+
   if (done) {
-    const remembered = results.filter((r) => r === "remembered").length;
+    const ratings = [...firstRating.values()];
+    const remembered = ratings.filter((r) => r === "remembered").length;
+    const forgot = ratings.length - remembered;
+    const perfect = forgot === 0;
     return (
       <div className="flex flex-col items-center rounded-xl border bg-card px-6 py-10 text-center">
-        <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-        <h2 className="mt-3 font-display text-xl font-semibold">Xong phiên ôn!</h2>
+        <div className="text-4xl">{perfect ? "🏆" : "✅"}</div>
+        <h2 className="mt-3 font-display text-xl font-semibold">{perfect ? "Nhớ trọn cả phiên!" : "Xong phiên ôn!"}</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Nhớ {remembered}/{total} card · card Quên quay lại <b>ngày mai</b>, card Nhớ giãn ra gấp đôi khoảng cách.
+          Nhớ ngay lần đầu <b className="text-foreground">{remembered}/{total}</b> card
+          {forgot > 0 && <> · {forgot} card đã ôn lại tới khi nhớ</>}
         </p>
-        <button onClick={onExit} className="mt-4 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors hover:bg-muted">
+        <div className="mt-4 grid w-full max-w-sm grid-cols-2 gap-2 text-left">
+          <div className="rounded-lg bg-emerald-500/10 p-2.5">
+            <p className="text-[18px] font-bold tabular-nums text-emerald-600">{remembered}</p>
+            <p className="text-[11px] text-muted-foreground">giãn ra gấp đôi khoảng cách</p>
+          </div>
+          <div className="rounded-lg bg-amber-500/10 p-2.5">
+            <p className="text-[18px] font-bold tabular-nums text-amber-600">{forgot}</p>
+            <p className="text-[11px] text-muted-foreground">quay lại vào <b>ngày mai</b></p>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-2 text-[12px] text-muted-foreground">
+          <StreakFlame streak={space.streak} activeToday={space.activeToday} compact />
+          {space.activeToday ? "Hôm nay đã giữ chuỗi" : "Đang ghi nhận chuỗi…"}
+        </div>
+        <button onClick={onExit} className="mt-5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors hover:bg-muted">
           Về thư viện card
         </button>
       </div>
     );
   }
 
-  const meta = TYPE_META[card!.type];
+  const card = current!.card;
+  const relearn = current!.relearn;
+  const meta = TYPE_META[card.type];
   const TypeIcon = meta.icon;
-  const label = titleByKey.get(card!.unitKey) ?? card!.unitKey;
+  const label = titleByKey.get(card.unitKey) ?? card.unitKey;
+  const leaf = leafByKey.get(card.unitKey);
+  const swipeHint = dragX <= -SWIPE_PX / 2 ? "forgot" : dragX >= SWIPE_PX / 2 ? "remembered" : null;
+  const faceCls = "flex min-h-[260px] flex-col rounded-2xl border bg-card p-5 shadow-sm [-webkit-backface-visibility:hidden] [backface-visibility:hidden] [grid-area:1/1]";
 
   return (
     <div>
@@ -403,42 +561,63 @@ function ReviewSession({
         <button onClick={onExit} className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-muted hover:text-foreground" aria-label="Về thư viện card">
           <ArrowLeft className="h-3.5 w-3.5" />
         </button>
-        <span className="flex-1">Card {idx + 1}/{total}</span>
+        <span className="flex-1 tabular-nums">Đã thuộc {cleared}/{total}</span>
         <span className="truncate">{label}</span>
       </div>
       <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(idx / total) * 100}%` }} />
+        <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${(cleared / total) * 100}%` }} />
       </div>
 
       <div
+        key={turn}
         role="button"
         tabIndex={0}
-        onClick={() => setFlipped(!flipped)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setFlipped(!flipped); }}
-        className="mt-4 flex min-h-[260px] w-full cursor-pointer flex-col rounded-2xl border bg-card p-5 text-left shadow-sm transition-shadow hover:shadow-md"
+        aria-label={flipped ? "Mặt sau — chạm để lật lại" : "Mặt trước — chạm để xem đáp án"}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => { drag.current = null; setDragX(0); }}
+        className="study-card-in mt-4 cursor-pointer touch-pan-y select-none [perspective:1200px]"
+        style={{ transform: dragX ? `translateX(${dragX}px) rotate(${dragX / 25}deg)` : undefined, transition: dragX ? "none" : "transform 250ms var(--ease-spring, ease-out)" }}
       >
-        <span className={`flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${meta.cls}`}>
-          <TypeIcon className="h-3 w-3" /> {meta.label}
-        </span>
-        {!flipped ? (
-          <>
-            <StudyMarkdown className="mt-4 flex-1 text-[15px] font-medium leading-relaxed">{card!.front}</StudyMarkdown>
-            <p className="mt-4 text-center text-[11.5px] text-muted-foreground">Chạm để xem đáp án</p>
-          </>
-        ) : (
-          <>
-            <StudyMarkdown className="mt-4 text-[14px] leading-relaxed">{card!.back}</StudyMarkdown>
-            {card!.quote && (
+        <div
+          className="grid transition-transform duration-500 [transform-style:preserve-3d] motion-reduce:transition-none"
+          style={{ transform: flipped ? "rotateY(180deg)" : "none", transitionTimingFunction: "var(--ease-spring, ease-out)" }}
+        >
+          {/* Mặt trước */}
+          <div className={faceCls} aria-hidden={flipped}>
+            <div className="flex items-center gap-2">
+              <span className={`flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${meta.cls}`}>
+                <TypeIcon className="h-3 w-3" /> {meta.label}
+              </span>
+              {relearn && <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-semibold text-amber-600">ôn lại</span>}
+            </div>
+            <StudyMarkdown className="mt-4 flex-1 text-[15px] font-medium leading-relaxed">{card.front}</StudyMarkdown>
+            <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
+              Chạm để xem đáp án<span className="hidden can-hover:inline"> · phím Space</span>
+            </p>
+          </div>
+          {/* Mặt sau */}
+          <div
+            className={`${faceCls} [transform:rotateY(180deg)] transition-colors ${swipeHint === "forgot" ? "border-red-500/60 bg-red-500/5" : swipeHint === "remembered" ? "border-emerald-500/60 bg-emerald-500/5" : ""}`}
+            aria-hidden={!flipped}
+          >
+            <span className={`flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${meta.cls}`}>
+              <TypeIcon className="h-3 w-3" /> {meta.label}
+            </span>
+            <StudyMarkdown className="mt-4 text-[14px] leading-relaxed">{card.back}</StudyMarkdown>
+            {card.quote && (
               <div className="mt-4 rounded-lg bg-muted/60 p-2.5">
                 <div className="flex gap-2">
                   <Quote className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <StudyMarkdown className="text-[12px] italic leading-snug text-muted-foreground">{card!.quote}</StudyMarkdown>
+                  <StudyMarkdown className="text-[12px] italic leading-snug text-muted-foreground">{card.quote}</StudyMarkdown>
                 </div>
-                <OpenDocLink docId={leafByKey.get(card!.unitKey)?.docId} anchor={leafByKey.get(card!.unitKey)?.anchor} />
+                <OpenDocLink docId={leaf?.docId} anchor={leaf?.anchor} />
               </div>
             )}
-          </>
-        )}
+            <p className="mt-auto pt-4 text-center text-[11px] text-muted-foreground can-hover:hidden">← vuốt Quên · vuốt Nhớ →</p>
+          </div>
+        </div>
       </div>
 
       {flipped ? (
@@ -447,13 +626,13 @@ function ReviewSession({
             onClick={() => answer("forgot")}
             className="rounded-xl border border-red-500/30 bg-red-500/10 py-3 text-[14px] font-semibold text-red-500 transition-colors hover:bg-red-500/20"
           >
-            Quên<span className="block text-[10.5px] font-normal opacity-70">ôn lại ngày mai</span>
+            Quên<span className="block text-[10.5px] font-normal opacity-70">{relearn ? "gặp lại cuối phiên" : "ôn lại cuối phiên + ngày mai"}<span className="hidden can-hover:inline"> · ←</span></span>
           </button>
           <button
             onClick={() => answer("remembered")}
             className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-3 text-[14px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/20"
           >
-            Nhớ<span className="block text-[10.5px] font-normal opacity-70">gặp lại sau {card!.intervalDays * 2} ngày</span>
+            Nhớ<span className="block text-[10.5px] font-normal opacity-70">{relearn ? "xong card này" : `gặp lại sau ${card.intervalDays * 2} ngày`}<span className="hidden can-hover:inline"> · →</span></span>
           </button>
         </div>
       ) : (

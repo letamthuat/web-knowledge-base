@@ -2,7 +2,7 @@
 
 // Tab Kiểm tra — quiz THẬT: đề sinh AI on-demand (cache section_questions), chấm MCQ
 // deterministic + tự luận AI, lưu quiz_attempts (append-only). Lịch sử theo lộ trình.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, History, Loader2, Play, Quote, RotateCcw, Sparkles, XCircle,
 } from "lucide-react";
@@ -17,6 +17,7 @@ import {
 } from "@/lib/api/study";
 import { getUnitScopeText } from "@/lib/study/materialize";
 import { requestGeneratedQuiz, requestEssayGrades, type EssayGrade } from "@/lib/study/generate";
+import { celebrate, haptic } from "./celebrate";
 
 type Leaf = { unitKey: string; moduleKey: string; title: string; docId: string | null; anchor: string | null; isStation?: boolean };
 function unitKeyOfId(id: string): string {
@@ -110,7 +111,19 @@ export function QuizTab({ spaceId, space, focusSectionId, onGoTab }: { spaceId: 
     );
   }
   if (view.kind === "run") {
-    return <QuizRunner leaf={view.leaf} questions={view.questions} spaceId={spaceId} ai={ai} onExit={() => setView({ kind: "list" })} onGoTab={onGoTab} />;
+    return (
+      <QuizRunner
+        key={view.leaf.unitKey}
+        leaf={view.leaf}
+        questions={view.questions}
+        spaceId={spaceId}
+        ai={ai}
+        prevAttempts={attempts.filter((a) => a.unitKey === view.leaf.unitKey)}
+        unit={findUnit(space.units, view.leaf.unitKey)}
+        onExit={() => setView({ kind: "list" })}
+        onGoTab={onGoTab}
+      />
+    );
   }
   if (view.kind === "review") {
     return <AttemptReview leaf={view.leaf} attempt={view.attempt} questions={view.questions} onExit={() => setView({ kind: "list" })} onRetry={() => setView({ kind: "run", leaf: view.leaf, questions: view.questions })} />;
@@ -310,12 +323,40 @@ function OptionBadge({ i, picked }: { i: number; picked?: boolean }) {
 // ─── Quiz runner ──────────────────────────────────────────────────────────────
 type Answer = { mcqPick?: number; openText?: string; submitted: boolean };
 
+function findUnit(units: StudyUnit[], unitKey: string): StudyUnit | undefined {
+  const id = "m" + unitKey.replace(/^[Mm]/, "").replace(/\./g, "-");
+  for (const u of units) {
+    if (u.id === id) return u;
+    const hit = u.children ? findUnit(u.children, unitKey) : undefined;
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+function shuffledIndices(n: number): number[] {
+  const a = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function QuizRunner({
-  leaf, questions, spaceId, ai, onExit, onGoTab,
+  leaf, questions, spaceId, ai, prevAttempts, unit, onExit, onGoTab,
 }: {
   leaf: Leaf; questions: QuizQuestion[]; spaceId: string;
-  ai: { geminiApiKey: string | null; geminiModels: string[] | null } | null | undefined; onExit: () => void; onGoTab: GoTab;
+  ai: { geminiApiKey: string | null; geminiModels: string[] | null } | null | undefined;
+  prevAttempts: QuizAttemptRow[]; unit?: StudyUnit; onExit: () => void; onGoTab: GoTab;
 }) {
+  // Đề cache cố định → trộn thứ tự đáp án MỖI LẦN LÀM để không "nhớ vị trí".
+  // mcqPick vẫn lưu theo index GỐC nên lịch sử/xem lại không đổi.
+  const [order] = useState(() => questions.map((qq) => (qq.kind === "mcq" ? shuffledIndices(qq.options.length) : [])));
+  // Chụp lịch sử TRƯỚC lần làm này (realtime sẽ chèn lần mới vào prevAttempts)
+  const [before] = useState(() => {
+    const sorted = [...prevAttempts].sort((x, y) => x.attemptedAt - y.attemptedAt);
+    return { last: sorted.at(-1)?.score, best: sorted.length ? Math.max(...sorted.map((x) => x.score)) : undefined };
+  });
   const [qIdx, setQIdx] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>(questions.map(() => ({ submitted: false })));
   const [phase, setPhase] = useState<"run" | "grading" | "done">("run");
@@ -355,7 +396,42 @@ function QuizRunner({
     }
     setResult({ score, mcqCorrect, essayScore, grades });
     setPhase("done");
+    if (score >= 80 && (before.best ?? 0) < 80) { celebrate(); haptic([10, 40, 10]); }
   }
+
+  const canSubmit = q.kind === "mcq" ? a.mcqPick !== undefined : !!a.openText?.trim();
+  const submit = useCallback(() => {
+    if (!canSubmit || a.submitted) return;
+    patch({ submitted: true });
+    if (q.kind === "mcq") haptic(a.mcqPick === q.correct ? 10 : [8, 30, 8]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSubmit, a, q]);
+  const next = useCallback(() => {
+    if (qIdx + 1 >= total) void finish();
+    else setQIdx(qIdx + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qIdx, total, answers]);
+
+  // Phím tắt: A–D / 1–4 chọn đáp án · Enter trả lời / câu tiếp · Ctrl+Enter trong ô tự luận
+  useEffect(() => {
+    if (phase !== "run") return;
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      if (e.key === "Enter" && (!typing || e.ctrlKey || e.metaKey)) {
+        e.preventDefault(); // chặn cả "click" của nút đang focus (vd đáp án vừa bấm) → Enter luôn = trả lời/câu tiếp
+        if (a.submitted) next(); else submit();
+        return;
+      }
+      if (typing || q.kind !== "mcq" || a.submitted) return;
+      const k = e.key.toLowerCase();
+      const d = "abcd".indexOf(k) >= 0 ? "abcd".indexOf(k) : "1234".indexOf(k);
+      if (d >= 0 && d < order[qIdx].length) { e.preventDefault(); patch({ mcqPick: order[qIdx][d] }); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, a, q, qIdx, submit, next]);
 
   if (phase === "grading") {
     return (
@@ -367,18 +443,52 @@ function QuizRunner({
   }
 
   if (phase === "done" && result) {
+    const passed = result.score >= 80;
+    const firstPass = passed && (before.best ?? 0) < 80;
+    const delta = before.last !== undefined ? result.score - before.last : undefined;
+    const steps = unit && !leaf.isStation ? [
+      { label: "Đọc", done: unit.readPct >= 100 },
+      { label: "Quiz ≥80%", done: passed || (unit.quizBest ?? 0) >= 80 },
+      { label: "Flashcard", done: !!unit.cardsMade },
+      { label: "Feynman", done: unit.feynmanCount > 0 },
+    ] : null;
+    const missing = steps?.filter((x) => !x.done) ?? [];
     return (
       <div className="flex flex-col items-center rounded-xl border bg-card px-6 py-10 text-center">
-        <div className={`text-4xl font-bold ${result.score >= 80 ? "text-emerald-500" : "text-amber-500"}`}>{result.score}%</div>
+        {firstPass && <p className="mb-1 text-[12px] font-semibold text-emerald-600">🎉 Lần đầu vượt 80%!</p>}
+        <div className={`study-pop text-4xl font-bold tabular-nums ${passed ? "text-emerald-500" : "text-amber-500"}`}>{result.score}%</div>
+        {delta !== undefined && delta !== 0 && (
+          <p className={`mt-1 text-[12px] font-medium ${delta > 0 ? "text-emerald-600" : "text-muted-foreground"}`}>
+            {delta > 0 ? `↗ +${delta}% so với lần trước` : `${delta}% so với lần trước — ôn thêm rồi làm lại`}
+          </p>
+        )}
         <h2 className="mt-2 font-display text-lg font-semibold">{leaf.title}</h2>
         <p className="mt-1 max-w-sm text-[12.5px] text-muted-foreground">
           Trắc nghiệm {result.mcqCorrect}/{mcqTotal} · Tự luận {result.essayScore.toFixed(1)}/{openTotal} (AI chấm). Bài làm + nhận xét đã lưu vào lịch sử.
         </p>
+        {steps && (
+          <div className="mt-4 w-full max-w-sm rounded-lg bg-muted/50 p-3 text-left">
+            <p className="text-[11px] font-semibold text-muted-foreground">TIẾN TỚI 🟢 VỮNG ({steps.length - missing.length}/4)</p>
+            <div className="mt-2 grid grid-cols-4 gap-1.5">
+              {steps.map((st) => (
+                <div key={st.label} className={`rounded-md px-1 py-1.5 text-center text-[10.5px] font-medium ${st.done ? "bg-emerald-500/15 text-emerald-600" : "bg-background text-muted-foreground"}`}>
+                  {st.done ? "✓ " : ""}{st.label}
+                </div>
+              ))}
+            </div>
+            {missing.length > 0 && <p className="mt-2 text-[11.5px] text-muted-foreground">Còn: {missing.map((x) => x.label).join(", ")}.</p>}
+          </div>
+        )}
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <button onClick={onExit} className="rounded-lg border px-3 py-1.5 text-[13px] font-medium hover:bg-muted">Về danh sách</button>
           {result.score < 100 && (
             <button onClick={() => onGoTab("review", { unitKey: leaf.unitKey })} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-medium text-primary-foreground hover:opacity-90">
               <Sparkles className="h-3.5 w-3.5" /> Ôn/tạo flashcard tiểu mục này
+            </button>
+          )}
+          {passed && unit && unit.feynmanCount === 0 && !leaf.isStation && (
+            <button onClick={() => onGoTab("feynman", { unitKey: leaf.unitKey })} className="rounded-lg border px-3 py-1.5 text-[13px] font-medium hover:bg-muted">
+              Giảng lại (Feynman) →
             </button>
           )}
         </div>
@@ -399,7 +509,7 @@ function QuizRunner({
         <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((qIdx + 1) / total) * 100}%` }} />
       </div>
 
-      <div className="mt-4 rounded-xl border bg-card p-4">
+      <div key={qIdx} className="study-card-in mt-4 rounded-xl border bg-card p-4">
         <span className="rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground">
           {q.kind === "mcq" ? "TRẮC NGHIỆM · VẬN DỤNG" : "TỰ LUẬN NGẮN · AI CHẤM Ý"}
         </span>
@@ -407,7 +517,8 @@ function QuizRunner({
 
         {q.kind === "mcq" ? (
           <div className="mt-3 space-y-2">
-            {q.options.map((opt, i) => {
+            {order[qIdx].map((i, d) => {
+              const opt = q.options[i];
               const picked = a.mcqPick === i;
               const showResult = a.submitted;
               const isCorrect = i === q.correct;
@@ -416,10 +527,10 @@ function QuizRunner({
                   key={i}
                   disabled={a.submitted}
                   onClick={() => patch({ mcqPick: i })}
-                  className={`flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left text-[13px] leading-snug transition-colors ${showResult && isCorrect ? "border-emerald-500/50 bg-emerald-500/10" : showResult && picked && !isCorrect ? "border-red-500/50 bg-red-500/10" : picked ? "border-primary bg-primary/5" : "hover:bg-muted/60"}`}
+                  className={`flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left text-[13px] leading-snug transition-colors ${showResult && isCorrect ? "border-emerald-500/50 bg-emerald-500/10" : showResult && picked && !isCorrect ? "border-red-500/50 bg-red-500/10" : picked ? "border-primary bg-primary/5" : "hover:bg-muted/60"} ${showResult && picked ? (isCorrect ? "study-pop" : "study-shake") : ""}`}
                 >
                   <span className={`mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold ${picked ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
-                    {String.fromCharCode(65 + i)}
+                    {String.fromCharCode(65 + d)}
                   </span>
                   <div className="flex-1">
                     <StudyMarkdown>{opt}</StudyMarkdown>
@@ -461,18 +572,21 @@ function QuizRunner({
         )}
       </div>
 
-      <div className="mt-4 flex justify-end gap-2">
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <span className="mr-auto hidden text-[11px] text-muted-foreground can-hover:inline">
+          {q.kind === "mcq" ? "Phím A–D chọn · Enter trả lời" : "Ctrl+Enter để trả lời"}
+        </span>
         {!a.submitted ? (
           <button
-            disabled={q.kind === "mcq" ? a.mcqPick === undefined : !a.openText?.trim()}
-            onClick={() => patch({ submitted: true })}
+            disabled={!canSubmit}
+            onClick={submit}
             className="rounded-lg bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             Trả lời
           </button>
         ) : (
           <button
-            onClick={() => (qIdx + 1 >= total ? finish() : setQIdx(qIdx + 1))}
+            onClick={next}
             className="flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             {qIdx + 1 >= total ? "Xem kết quả" : "Câu tiếp"} <ArrowRight className="h-3.5 w-3.5" />

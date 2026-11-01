@@ -46,6 +46,9 @@ export type StudySpace = {
   units: StudyUnit[];
   weakSpots: WeakSpot[];
   heatmap?: number[]; // 84 ô (12 tuần) mức 0-4 từ phút học chủ động/ngày
+  activeToday?: boolean;       // hôm nay đã có active-recall (giữ chuỗi) chưa
+  dailyGoalMin?: number | null; // mục tiêu phút/ngày từ plan đang chạy (null = chưa có plan)
+  masteredKeys?: string[];     // unitKey các tiểu mục 🟢 — phát hiện "vừa chuyển Vững"
 };
 
 export type CardType = "concept" | "apply" | "link";

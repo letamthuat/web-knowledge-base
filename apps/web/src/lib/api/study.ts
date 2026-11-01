@@ -452,6 +452,18 @@ export async function insertFlashcards(spaceId: string, cards: NewFlashcard[]): 
   if (error) throw error;
 }
 
+/** Sửa nội dung card (AI sinh sai/khó hiểu) — giữ nguyên lịch SRS. */
+export async function updateFlashcard(cardId: string, patch: Partial<Pick<FlashcardRow, "front" | "back" | "type">>): Promise<void> {
+  const { error } = await supabase.from("flashcards").update({ ...patch, updatedAt: Date.now() }).eq("_id", cardId);
+  if (error) throw error;
+}
+
+export async function deleteFlashcard(cardId: string): Promise<void> {
+  // FK cascade xoá review_logs của card.
+  const { error } = await supabase.from("flashcards").delete().eq("_id", cardId);
+  if (error) throw error;
+}
+
 /**
  * Chấm 1 card (SRS interval nhân đôi / reset về mai) + ghi review_log append-only.
  * "Nhớ" → interval*2; "Quên" → interval=1 (mai). forgetCount30d là cache;

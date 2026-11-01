@@ -365,6 +365,32 @@ html.rm-dark .hljs { color: hsl(var(--code-fg)); }
   100% { box-shadow: 0 0 0 2px transparent; }
 }
 
+/* Học tập: card/câu hỏi mới trượt vào; đáp án đúng nảy nhẹ; đáp án sai lắc */
+.study-card-in {
+  animation: study-card-in 320ms var(--ease-spring) both;
+}
+@keyframes study-card-in {
+  from { opacity: 0; translate: 18px 0; }
+}
+.study-pop {
+  animation: study-pop 420ms var(--ease-spring);
+}
+@keyframes study-pop {
+  0% { scale: 1; }
+  40% { scale: 1.03; }
+  100% { scale: 1; }
+}
+.study-shake {
+  animation: study-shake 360ms ease-in-out;
+}
+@keyframes study-shake {
+  20%, 60% { translate: -5px 0; }
+  40%, 80% { translate: 5px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .study-card-in, .study-pop, .study-shake { animation: none; }
+}
+
 /* Tiêu đề biên tập: Newsreader với optical size */
 .font-display {
   font-optical-sizing: auto;

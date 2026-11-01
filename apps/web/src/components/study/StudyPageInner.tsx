@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Module Học tập — UI PROTOTYPE chạy trên seed data (mock.ts).
- * Sau khi chốt giao diện sẽ viết spec chi tiết rồi mới nối Supabase.
+ * Module Học tập — danh sách không gian học + 5 tab, chạy data thật (Supabase).
+ * mock.ts chỉ còn giữ TYPES. Spec: 01-specs/study/SPEC.md + SPEC-FEATURES.md.
  */
 import { pushUrl } from "@/lib/history";
 import { useEffect, useMemo, useState } from "react";
@@ -14,12 +14,14 @@ import { openNavDrawer } from "@/lib/navDrawer";
 import type { StudySpace } from "./mock";
 import { useStudyData, buildAllSpaceModels } from "@/lib/study/spaceModel";
 import { removeStudySpace } from "@/lib/api/study";
-import { Heatmap, SpaceOverview, TodayMenu, WeakSpots, type GoTab } from "./SpaceOverview";
+import { Heatmap, SpaceOverview, TodayMenu, WeakSpots, useRunTodayItem, type GoTab } from "./SpaceOverview";
+import { SessionBar, startSessionRun, type SessionRun } from "./StudySession";
 import { ReviewTab } from "./ReviewTab";
 import { QuizTab } from "./QuizTab";
 import { FeynmanTab } from "./FeynmanTab";
 import { PlanTab } from "./PlanTab";
 import { CreateSpaceModal } from "./CreateSpaceModal";
+import { DailyGoal, StreakFlame, useStudyMilestones } from "./celebrate";
 
 type TabKey = "overview" | "plan" | "review" | "quiz" | "feynman";
 
@@ -59,6 +61,7 @@ export function StudyPageInner() {
   // Điều phối có ngữ cảnh: sang tab nào thì biết highlight nội dung của tiểu mục nào
   const [focusCtx, setFocusCtx] = useState<{ sectionId?: string; unitKey?: string } | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  useStudyMilestones(models, data.loading);
 
   // Điều hướng nội bộ = đổi state + đẩy URL tương ứng (share/bookmark/back được)
   const navigate = (sid: string | null, t: TabKey, ctx?: { sectionId?: string; unitKey?: string }) => {
@@ -84,6 +87,25 @@ export function StudyPageInner() {
 
   const space = models.find((s) => s.id === spaceId) ?? null;
   const loadingSpace = spaceId !== null && space === null && data.loading;
+
+  // Buổi học: chạy liền mạch các việc HÔM NAY (StudySession.tsx)
+  const [run, setRun] = useState<SessionRun | null>(null);
+  const runItem = useRunTodayItem(space?.id ?? "", goTab);
+  useEffect(() => { setRun(null); }, [spaceId]);
+  const startSession = () => {
+    if (!space) return;
+    const r = startSessionRun(space);
+    if (!r) return;
+    setRun(r);
+    runItem(r.items[0]);
+  };
+  const nextStep = () => {
+    if (!run) return;
+    if (run.idx + 1 >= run.items.length) { setRun({ ...run, finished: true }); return; }
+    const idx = run.idx + 1;
+    setRun({ ...run, idx });
+    runItem(run.items[idx]);
+  };
 
   return (
     // 1 cột (mobile PWA + laptop); từ 2xl nới container — cả danh sách lẫn màn trong cùng độ rộng
@@ -134,14 +156,21 @@ export function StudyPageInner() {
               <h1 className="truncate font-display text-lg font-semibold leading-tight">{space.name}</h1>
               <p className="truncate text-[11px] text-muted-foreground">{space.sourceLabel}</p>
             </div>
-            <div className="flex items-center gap-1 rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-500">
-              <Flame className="h-3.5 w-3.5" /> {space.streak} ngày
-            </div>
+            <StreakFlame streak={space.streak} activeToday={space.activeToday} />
           </div>
 
           <div className="mt-3 flex min-h-0 flex-1 flex-col 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-rows-[minmax(0,1fr)] 2xl:gap-6">
             {/* Cột chính: tabs + nội dung */}
             <div className="flex min-h-0 flex-1 flex-col">
+              {run && (
+                <SessionBar
+                  run={run}
+                  space={space}
+                  onNext={nextStep}
+                  onReopen={() => runItem(run.items[run.idx])}
+                  onEnd={() => (run.finished ? setRun(null) : setRun({ ...run, finished: true }))}
+                />
+              )}
               <div className="flex shrink-0 gap-1 rounded-xl bg-muted/60 p-1">
                 {TABS.map((t) => (
                   <button
@@ -164,7 +193,7 @@ export function StudyPageInner() {
               </div>
 
               <div className="mt-4 flex-1 overflow-y-auto">
-                {tab === "overview" && <SpaceOverview space={space} onGoTab={goTab} />}
+                {tab === "overview" && <SpaceOverview space={space} onGoTab={goTab} onStartSession={run ? undefined : startSession} />}
                 {tab === "plan" && <PlanTab key={space.id} spaceId={space.id} space={space} onGoTab={goTab} />}
                 {tab === "review" && <ReviewTab spaceId={space.id} space={space} focusUnitKey={focusCtx?.unitKey} />}
                 {tab === "quiz" && <QuizTab spaceId={space.id} space={space} focusSectionId={focusCtx?.sectionId} onGoTab={goTab} />}
@@ -172,7 +201,7 @@ export function StudyPageInner() {
               </div>
             </div>
 
-            <StudyRail space={space} onGoTab={goTab} />
+            <StudyRail space={space} onGoTab={goTab} onStartSession={run ? undefined : startSession} />
           </div>
         </>
       )}
@@ -184,10 +213,11 @@ export function StudyPageInner() {
 // Việc-cần-làm + chỗ yếu + streak luôn trong tầm mắt ở mọi tab; dưới 2xl các
 // khối này nằm trong tab Tổng quan (SpaceOverview tự hiện lại).
 
-function StudyRail({ space, onGoTab }: { space: StudySpace; onGoTab: GoTab }) {
+function StudyRail({ space, onGoTab, onStartSession }: { space: StudySpace; onGoTab: GoTab; onStartSession?: () => void }) {
   return (
     <aside className="hidden min-h-0 flex-col gap-5 overflow-y-auto pb-2 2xl:flex">
-      <TodayMenu items={space.todayMenu} onGoTab={onGoTab} spaceId={space.id} />
+      <DailyGoal space={space} onPlan={() => onGoTab("plan")} />
+      <TodayMenu items={space.todayMenu} onGoTab={onGoTab} spaceId={space.id} onStartSession={onStartSession} />
       {space.weakSpots.length > 0 && <WeakSpots space={space} onGoTab={onGoTab} />}
       <Heatmap streak={space.streak} data={space.heatmap} />
     </aside>
@@ -310,9 +340,7 @@ function SpaceCard({ space, onOpen }: { space: StudySpace; onOpen: () => void })
             <Layers3 className="h-3 w-3 shrink-0" /> {space.sourceLabel}
           </p>
         </div>
-        <div className="flex items-center gap-1 rounded-full bg-orange-500/10 px-2 py-0.5 text-[11px] font-semibold text-orange-500">
-          <Flame className="h-3 w-3" /> {space.streak}
-        </div>
+        <StreakFlame streak={space.streak} activeToday={space.activeToday} compact />
       </div>
 
       <div className="mt-3.5">
