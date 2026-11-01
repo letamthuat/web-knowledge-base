@@ -51,7 +51,7 @@ export function SessionBar({ run, space, onNext, onReopen, onEnd }: {
             );
           })}
         </div>
-        <button onClick={onEnd} aria-label="Kết thúc buổi học" className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
+        <button onClick={onEnd} aria-label="Kết thúc buổi học" className="-my-1.5 flex h-9 w-9 can-hover:my-0 can-hover:h-6 can-hover:w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -63,12 +63,12 @@ export function SessionBar({ run, space, onNext, onReopen, onEnd }: {
           <p className="truncate text-[13px] font-semibold">{cur.label}</p>
           <p className="truncate text-[11px] text-muted-foreground">{curDone ? "Xong việc này ✓" : cur.detail}</p>
         </div>
-        <button onClick={onReopen} title="Mở lại việc này" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground hover:text-foreground">
+        <button onClick={onReopen} title="Mở lại việc này" aria-label="Mở lại việc này" className="flex h-10 w-10 can-hover:h-8 can-hover:w-8 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground hover:text-foreground">
           <RotateCcw className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={onNext}
-          className={`shrink-0 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-opacity hover:opacity-90 ${curDone ? "bg-primary text-primary-foreground" : "border bg-background text-muted-foreground"}`}
+          className={`min-h-10 shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-semibold can-hover:min-h-0 can-hover:text-[12.5px] transition-opacity hover:opacity-90 ${curDone ? "bg-primary text-primary-foreground" : "border bg-background text-muted-foreground"}`}
         >
           {last ? (curDone ? "Hoàn tất" : "Kết thúc") : curDone ? "Tiếp →" : "Bỏ qua →"}
         </button>
@@ -96,7 +96,7 @@ function SessionSummary({ run, space, onClose }: { run: SessionRun; space: Study
             {newlyMastered > 0 && <> · <b className="text-emerald-600">+{newlyMastered} tiểu mục 🟢</b></>}
           </p>
         </div>
-        <button onClick={onClose} aria-label="Đóng" className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
+        <button onClick={onClose} aria-label="Đóng" className="flex h-9 w-9 can-hover:h-7 can-hover:w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
           <X className="h-4 w-4" />
         </button>
       </div>

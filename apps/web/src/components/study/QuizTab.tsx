@@ -229,9 +229,9 @@ function AttemptReview({
   const grades = (attempt.aiFeedback as EssayGrade[] | null) ?? [];
   let openIdx = -1;
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <div className="flex items-center gap-2">
-        <button onClick={onExit} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Về danh sách">
+        <button onClick={onExit} className="flex h-9 w-9 items-center justify-center rounded-lg can-hover:h-7 can-hover:w-7 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Về danh sách">
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="min-w-0 flex-1">
@@ -454,7 +454,7 @@ function QuizRunner({
     ] : null;
     const missing = steps?.filter((x) => !x.done) ?? [];
     return (
-      <div className="flex flex-col items-center rounded-xl border bg-card px-6 py-10 text-center">
+      <div className="mx-auto flex max-w-2xl flex-col items-center rounded-xl border bg-card px-6 py-10 text-center">
         {firstPass && <p className="mb-1 text-[12px] font-semibold text-emerald-600">🎉 Lần đầu vượt 80%!</p>}
         <div className={`study-pop text-4xl font-bold tabular-nums ${passed ? "text-emerald-500" : "text-amber-500"}`}>{result.score}%</div>
         {delta !== undefined && delta !== 0 && (
@@ -497,9 +497,9 @@ function QuizRunner({
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <div className="flex items-center gap-2">
-        <button onClick={onExit} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Thoát quiz">
+        <button onClick={onExit} className="flex h-9 w-9 items-center justify-center rounded-lg can-hover:h-7 can-hover:w-7 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Thoát quiz">
           <ArrowLeft className="h-4 w-4" />
         </button>
         <p className="min-w-0 flex-1 truncate text-[13px] font-medium">{leaf.title}</p>

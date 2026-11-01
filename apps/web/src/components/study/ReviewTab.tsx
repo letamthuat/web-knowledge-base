@@ -390,18 +390,18 @@ function BrowseCard({ card, leaf }: { card: FlashcardRow; leaf?: Leaf }) {
             </div>
           )}
           <div className="mt-2 flex items-center justify-end gap-1.5">
-            <button onClick={() => setEditing(true)} className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground">
+            <button onClick={() => setEditing(true)} className="flex min-h-9 items-center gap-1 rounded-md px-3 py-1 text-[12px] can-hover:min-h-0 can-hover:px-2 can-hover:text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground">
               <Pencil className="h-3 w-3" /> Sửa
             </button>
             {confirmDel ? (
               <>
-                <button onClick={remove} disabled={busy} className="rounded-md bg-destructive px-2 py-1 text-[11px] font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-40">
+                <button onClick={remove} disabled={busy} className="min-h-9 rounded-md bg-destructive px-3 py-1 text-[12px] can-hover:min-h-0 can-hover:px-2 can-hover:text-[11px] font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-40">
                   Xoá hẳn
                 </button>
-                <button onClick={() => setConfirmDel(false)} className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted">Thôi</button>
+                <button onClick={() => setConfirmDel(false)} className="min-h-9 rounded-md px-3 py-1 text-[12px] can-hover:min-h-0 can-hover:px-2 can-hover:text-[11px] text-muted-foreground hover:bg-muted">Thôi</button>
               </>
             ) : (
-              <button onClick={() => setConfirmDel(true)} className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+              <button onClick={() => setConfirmDel(true)} className="flex min-h-9 items-center gap-1 rounded-md px-3 py-1 text-[12px] can-hover:min-h-0 can-hover:px-2 can-hover:text-[11px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
                 <Trash2 className="h-3 w-3" /> Xoá
               </button>
             )}
@@ -439,7 +439,7 @@ function ReviewSession({
   const [flipped, setFlipped] = useState(false);
   const [turn, setTurn] = useState(0); // key remount mỗi lượt → card mới luôn hiện mặt trước, không lộ đáp án khi lật về
   const [dragX, setDragX] = useState(0);
-  const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const drag = useRef<{ x: number; y: number; moved: boolean; onLink: boolean } | null>(null);
   const startedAt = useRef(Date.now());
   const answers = useRef(0);
 
@@ -490,11 +490,14 @@ function ReviewSession({
 
   // Vuốt (chỉ sau khi lật) · chạm = lật
   function onPointerDown(e: React.PointerEvent) {
-    drag.current = { x: e.clientX, y: e.clientY, moved: false };
+    const onLink = !!(e.target as HTMLElement).closest("button, a"); // "mở tài liệu →"
+    drag.current = { x: e.clientX, y: e.clientY, moved: false, onLink };
+    // Chuột (web): giữ sự kiện khi kéo ra ngoài card. Touch đã capture ngầm.
+    if (!onLink && e.pointerType === "mouse") e.currentTarget.setPointerCapture(e.pointerId);
   }
   function onPointerMove(e: React.PointerEvent) {
     const d = drag.current;
-    if (!d || !flipped) return;
+    if (!d || d.onLink || !flipped) return;
     const dx = e.clientX - d.x;
     if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(e.clientY - d.y)) { d.moved = true; setDragX(dx); }
   }
@@ -502,7 +505,7 @@ function ReviewSession({
     const d = drag.current;
     drag.current = null;
     if (!d) return;
-    if ((e.target as HTMLElement).closest("button, a")) { setDragX(0); return; } // "mở tài liệu →"
+    if (d.onLink) { setDragX(0); return; }
     if (d.moved) {
       if (dragX <= -SWIPE_PX) answer("forgot");
       else if (dragX >= SWIPE_PX) answer("remembered");
@@ -518,7 +521,7 @@ function ReviewSession({
     const forgot = ratings.length - remembered;
     const perfect = forgot === 0;
     return (
-      <div className="flex flex-col items-center rounded-xl border bg-card px-6 py-10 text-center">
+      <div className="mx-auto flex max-w-2xl flex-col items-center rounded-xl border bg-card px-6 py-10 text-center">
         <div className="text-4xl">{perfect ? "🏆" : "✅"}</div>
         <h2 className="mt-3 font-display text-xl font-semibold">{perfect ? "Nhớ trọn cả phiên!" : "Xong phiên ôn!"}</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
@@ -556,9 +559,9 @@ function ReviewSession({
   const faceCls = "flex min-h-[260px] flex-col rounded-2xl border bg-card p-5 shadow-sm [-webkit-backface-visibility:hidden] [backface-visibility:hidden] [grid-area:1/1]";
 
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-        <button onClick={onExit} className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-muted hover:text-foreground" aria-label="Về thư viện card">
+        <button onClick={onExit} className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-muted hover:text-foreground can-hover:h-6 can-hover:w-6" aria-label="Về thư viện card">
           <ArrowLeft className="h-3.5 w-3.5" />
         </button>
         <span className="flex-1 tabular-nums">Đã thuộc {cleared}/{total}</span>
