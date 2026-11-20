@@ -156,13 +156,17 @@ function EpisodeRow({ ep, no, next, open, onToggle, active, playing, onPlay, ctx
   const stuck = isStuck(ep);
   const pct = ep.turnCount && ep.progressIndex > 0 && !ep.completedAt ? Math.round((ep.progressIndex / ep.turnCount) * 100) : 0;
 
-  async function regenerate(missed?: string[]) {
+  /** patchFrom có → chỉ bổ sung ý sót vào kịch bản đó; không → viết lại cả tập. */
+  async function regenerate(patchFrom?: PodcastScript) {
     try {
-      await generateEpisodeScript({
-        episode: ep, seriesTitle: ctx.seriesTitle, ...episodeContext(ep, ctx.episodes), missedPoints: missed,
+      const s = await generateEpisodeScript({
+        episode: ep, seriesTitle: ctx.seriesTitle, ...episodeContext(ep, ctx.episodes), patchFrom,
         geminiApiKey: ctx.ai?.geminiApiKey, geminiModels: ctx.ai?.geminiModels,
       });
-      toast.success("Đã viết lại kịch bản");
+      if (patchFrom) {
+        const left = missedKeyPoints(s).length;
+        toast.success(left ? `Đã bổ sung — còn ${left} ý chưa phủ` : "Đã bổ sung đủ ý");
+      } else toast.success("Đã viết lại kịch bản");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Viết kịch bản thất bại");
     }
@@ -222,7 +226,7 @@ function EpisodeRow({ ep, no, next, open, onToggle, active, playing, onPlay, ctx
 
 function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
   ep: PodcastEpisodeRow;
-  onRegenerate: (missed?: string[]) => Promise<void>;
+  onRegenerate: (patchFrom?: PodcastScript) => Promise<void>;
   onRename: () => void;
   onMerge?: () => void;
   onRemove: () => void;
@@ -243,9 +247,9 @@ function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
   const missed = script ? missedKeyPoints(script) : [];
   const covered = useMemo(() => new Set(script?.turns.flatMap((t) => t.c) ?? []), [script]);
 
-  const run = async (missedPts?: string[]) => {
+  const run = async (patchFrom?: PodcastScript) => {
     setBusy(true);
-    await onRegenerate(missedPts);
+    await onRegenerate(patchFrom);
     setBusy(false);
   };
 
@@ -322,9 +326,9 @@ function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
             <ScrollText className="h-3.5 w-3.5" /> {showScript ? "Ẩn kịch bản" : "Đọc kịch bản"}
           </button>
         )}
-        {missed.length > 0 && (
-          <button onClick={() => run(missed)} disabled={busy} className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 px-2.5 py-1.5 text-[12px] text-amber-700 hover:bg-amber-500/10 disabled:opacity-50 dark:text-amber-300">
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Viết lại, bù {missed.length} ý sót
+        {missed.length > 0 && script && (
+          <button onClick={() => run(script)} disabled={busy} title="Viết thêm lượt thoại cho các ý bị sót và chèn vào đúng chỗ — giữ nguyên phần đã có" className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 px-2.5 py-1.5 text-[12px] text-amber-700 hover:bg-amber-500/10 disabled:opacity-50 dark:text-amber-300">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Bổ sung {missed.length} ý sót
           </button>
         )}
         {(ep.status === "ready" || ep.status === "error" || ep.status === "draft" || stuck) && (

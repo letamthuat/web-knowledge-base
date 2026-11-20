@@ -62,7 +62,10 @@ export function isStuck(ep: { _id: string; status: string; updatedAt: number }, 
   return ep.status === "generating" && !isGenerating(ep, now);
 }
 
-/** Sinh (hoặc tạo lại) kịch bản 1 tập. missedPoints = ý bị sót lần trước để bù. */
+/**
+ * Sinh (hoặc tạo lại) kịch bản 1 tập. missedPoints = ý bị sót lần trước để bù.
+ * patchFrom = kịch bản hiện có → chỉ viết thêm lượt cho ý sót và chèn vào (không viết lại cả tập).
+ */
 export function generateEpisodeScript(input: {
   episode: PodcastEpisodeRow;
   seriesTitle: string;
@@ -73,6 +76,7 @@ export function generateEpisodeScript(input: {
   missedPoints?: string[];
   geminiApiKey?: string | null;
   geminiModels?: string[] | null;
+  patchFrom?: PodcastScript;
 }): Promise<PodcastScript> {
   const id = input.episode._id;
   const hit = inflight.get(id);
@@ -97,6 +101,7 @@ export function generateEpisodeScript(input: {
           missedPoints: input.missedPoints,
           geminiApiKey: input.geminiApiKey ?? undefined,
           geminiModels: input.geminiModels ?? undefined,
+          script: input.patchFrom,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { script?: PodcastScript; coveredCount?: number; model?: string; error?: string };
@@ -108,7 +113,9 @@ export function generateEpisodeScript(input: {
     } catch (e) {
       const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
       const msg = timeout ? "Quá thời gian chờ viết kịch bản — bấm Viết lại" : e instanceof Error ? e.message : "Sinh kịch bản thất bại";
-      await setEpisodeStatus(id, "error", msg.slice(0, 300)).catch(() => {});
+      // Bổ sung thất bại → kịch bản cũ vẫn còn nguyên, chỉ trả tập về "ready"
+      if (input.patchFrom) await setEpisodeStatus(id, "ready").catch(() => {});
+      else await setEpisodeStatus(id, "error", msg.slice(0, 300)).catch(() => {});
       throw new Error(msg);
     }
   })();
