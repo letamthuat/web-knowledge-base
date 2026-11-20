@@ -31,10 +31,15 @@ export type DialogueTurn = { speaker: "host" | "expert"; text: string; style?: s
  * style ngắn gọn, không ghi giới tính/tuổi/tên — dài dòng làm giọng bị "trôi".
  */
 const DEFAULT_STYLE: Record<DialogueTurn["speaker"], string> = {
-  host: "curious and warm, lively conversational pace",
-  expert: "warm and clear, explaining with natural emphasis",
+  host: "curious and warm, relaxed",
+  expert: "warm and clear, natural emphasis, pausing between ideas",
 };
-export const effectiveStyle = (d: DialogueTurn) => d.style?.trim() || DEFAULT_STYLE[d.speaker];
+/** Nghe học cần nhịp thong thả: style không nói gì về nhịp → thêm "unhurried pace" (user vẫn tăng tốc được ở player). */
+const PACE_RE = /\b(pace|slow|slowly|fast|rapid|rapidly|quick|quickly|hurried|unhurried|measured|leisurely)\b/i;
+export const effectiveStyle = (d: DialogueTurn) => {
+  const s = d.style?.trim() || DEFAULT_STYLE[d.speaker];
+  return PACE_RE.test(s) ? s : `${s}, unhurried pace`;
+};
 
 /** Model/API không nhận trường style → nhớ lại để các lần sau gửi không kèm style ngay. */
 let styleRejected = false;

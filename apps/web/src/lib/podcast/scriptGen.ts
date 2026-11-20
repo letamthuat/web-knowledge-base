@@ -69,8 +69,9 @@ const AUDIO_TAG_RE = new RegExp(`[<\\[](${AUDIO_TAGS.join("|")})s?[>\\]]`, "gi")
 
 /** Phần dặn cách viết lời thoại để giọng đọc có nhấn nhá — dùng chung cho viết mới và bổ sung. */
 const DELIVERY_RULES = `NHẤN NHÁ (kịch bản được đọc bằng giọng AI — viết để nghe hay, có cảm xúc):
-- Mỗi lượt có "e" = chỉ dẫn diễn đạt TIẾNG ANH 2–6 từ cho giọng đọc, đổi theo nội dung lượt đó, vd: "curious, leaning in", "surprised, then thoughtful", "warm, explaining patiently", "emphatic, building to the key point", "playful, light laugh", "slowing down for a tricky part", "confident wrap-up". Không lặp một chỉ dẫn cho mọi lượt; không ghi giới tính/tuổi/tên.
-- Ngắt nghỉ tự nhiên bằng dấu phẩy, "..." (ngập ngừng, suy nghĩ) và " -- " (đổi ý, chen ngang).
+- Mỗi lượt có "e" = chỉ dẫn diễn đạt TIẾNG ANH 2–6 từ cho giọng đọc, đổi theo nội dung lượt đó, vd: "curious, leaning in", "surprised, then thoughtful", "warm, explaining patiently", "calm, emphasizing the key point", "playful, light laugh", "slowing down for a tricky part", "confident, unhurried wrap-up". Không lặp một chỉ dẫn cho mọi lượt; không ghi giới tính/tuổi/tên.
+- NHỊP: đây là podcast HỌC — người nghe cần kịp hiểu. Nhịp mặc định thong thả, rõ ràng; KHÔNG dùng chỉ dẫn kiểu "fast", "rapid", "excited rush", "energetic". Hào hứng thì thể hiện bằng ngữ điệu, không bằng tốc độ.
+- Ngắt nghỉ tự nhiên bằng dấu phẩy, "..." (ngập ngừng, suy nghĩ) và " -- " (đổi ý, chen ngang). Khi giải thích chuỗi ý (số liệu, các bước, so sánh), tách thành câu ngắn, mỗi ý một câu, để giọng có chỗ nghỉ.
 - Nhấn mạnh: VIẾT HOA 1 từ khoá quan trọng nhất trong câu cần nhấn (tối đa 1–2 chỗ mỗi lượt, không viết hoa cả câu).
 - Có thể chèn thẻ âm thanh (viết đúng dạng ngoặc nhọn tiếng Anh): <short pause> trước ý quan trọng, <chuckle> khi có chút hài hước, <breath> trước câu giải thích dài, <sigh> khi nói về cái khó. Dùng TIẾT CHẾ: trung bình 1 thẻ mỗi 2–3 lượt.
 - Có câu cảm thán, phản ứng ngắn tự nhiên của người nghe ("À, ra vậy!", "Khoan đã...", "Hay đấy!") để hội thoại có nhịp.`;
