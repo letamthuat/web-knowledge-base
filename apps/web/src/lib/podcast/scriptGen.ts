@@ -71,7 +71,7 @@ const AUDIO_TAG_RE = new RegExp(`[<\\[](${AUDIO_TAGS.join("|")})s?[>\\]]`, "gi")
 const DELIVERY_RULES = `NHẤN NHÁ (kịch bản được đọc bằng giọng AI — viết để nghe hay, có cảm xúc):
 - Mỗi lượt có "e" = chỉ dẫn diễn đạt TIẾNG ANH 2–6 từ cho giọng đọc, đổi theo nội dung lượt đó, vd: "curious, leaning in", "surprised, then thoughtful", "warm, explaining patiently", "calm, emphasizing the key point", "playful, light laugh", "slowing down for a tricky part", "confident, unhurried wrap-up". Không lặp một chỉ dẫn cho mọi lượt; không ghi giới tính/tuổi/tên.
 - NHỊP: đây là podcast HỌC — người nghe cần kịp hiểu. Nhịp mặc định thong thả, rõ ràng; KHÔNG dùng chỉ dẫn kiểu "fast", "rapid", "excited rush", "energetic". Hào hứng thì thể hiện bằng ngữ điệu, không bằng tốc độ.
-- Ngắt nghỉ tự nhiên bằng dấu phẩy, "..." (ngập ngừng, suy nghĩ) và " -- " (đổi ý, chen ngang). Khi giải thích chuỗi ý (số liệu, các bước, so sánh), tách thành câu ngắn, mỗi ý một câu, để giọng có chỗ nghỉ.
+- Ngắt nghỉ tự nhiên bằng dấu phẩy, "..." (ngập ngừng, suy nghĩ) và " -- " (đổi ý, chen ngang). Khi giải thích chuỗi ý (số liệu, các bước, so sánh), tách thành câu ngắn, mỗi ý một câu, để giọng có chỗ nghỉ — câu ngắn KHÔNG có nghĩa là nói ít: vẫn giữ đủ mọi chi tiết.
 - Nhấn mạnh: VIẾT HOA 1 từ khoá quan trọng nhất trong câu cần nhấn (tối đa 1–2 chỗ mỗi lượt, không viết hoa cả câu).
 - Có thể chèn thẻ âm thanh (viết đúng dạng ngoặc nhọn tiếng Anh): <short pause> trước ý quan trọng, <chuckle> khi có chút hài hước, <breath> trước câu giải thích dài, <sigh> khi nói về cái khó. Dùng TIẾT CHẾ: trung bình 1 thẻ mỗi 2–3 lượt.
 - Có câu cảm thán, phản ứng ngắn tự nhiên của người nghe ("À, ra vậy!", "Khoan đã...", "Hay đấy!") để hội thoại có nhịp.`;
@@ -100,9 +100,19 @@ export function proseChars(text: string): number {
     .trim().length;
 }
 
-/** Độ dài kịch bản mục tiêu (ký tự lời thoại) ≈ độ dài văn xuôi của nguồn — podcast học không nén. */
+/** Độ dài thô của nguồn (bỏ heading, gộp khoảng trắng) — cùng cách đếm với sourceChars lúc chia tập. */
+function rawChars(text: string): number {
+  return text.replace(/^#+\s.*$/gm, "").replace(/\s+/g, " ").trim().length;
+}
+
+/**
+ * Độ dài kịch bản mục tiêu (ký tự lời thoại). Podcast học thay cho việc đọc nguồn nên KHÔNG nén:
+ * ≈ 90% độ dài thô (code/bảng vẫn phải giải thích bằng lời), và không thấp hơn phần văn xuôi.
+ * Model bám rất sát con số được giao → đặt thấp là kịch bản ngắn theo.
+ */
 export function targetChars(sourceText: string): number {
-  return Math.max(2500, Math.min(30_000, Math.round(proseChars(sourceText) * 1.05)));
+  const t = Math.max(proseChars(sourceText) * 1.15, rawChars(sourceText) * 0.9);
+  return Math.max(2500, Math.min(30_000, Math.round(t / 100) * 100));
 }
 
 export const scriptChars = (s: Script) => s.turns.reduce((n, t) => n + t.t.length, 0);
@@ -456,8 +466,9 @@ export async function generateScript(input: ScriptInput, apiKey: string, models?
   if (missedIndexes(script).length > 0 && deadline - Date.now() > 45_000) {
     try { script = (await patchScript(script, sub, apiKey, subModels, deadline)).script; } catch { /* giữ bản gốc */ }
   }
-  if (scriptChars(script) < target * 0.75 && deadline - Date.now() > 60_000) {
-    try { script = (await deepenScript(script, sub, apiKey, subModels, deadline)).script; } catch { /* giữ bản đã có */ }
+  // Model viết dài thường "hụt hơi" → đào sâu tới khi đạt ~85% mục tiêu (tối đa 2 lượt, nếu còn thời gian)
+  for (let round = 0; round < 2 && scriptChars(script) < target * 0.85 && deadline - Date.now() > 60_000; round++) {
+    try { script = (await deepenScript(script, sub, apiKey, subModels, deadline)).script; } catch { break; }
   }
   return { script, coveredCount: coverage(script), model: result.model };
 }

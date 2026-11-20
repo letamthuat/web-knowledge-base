@@ -19,10 +19,10 @@ import { useOpenDoc } from "@/components/study/SpaceOverview";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { EpisodeSection } from "@/lib/podcast/plan";
 
-// Chưa viết: ước lượng từ độ dài nguồn (sourceChars đếm cả code/bảng — phần này được nói gọn hơn nhiều).
-const estMinutes = (ep: PodcastEpisodeRow) => (ep.scriptChars ? minutesFromChars(ep.scriptChars) : Math.max(2, Math.round((ep.sourceChars * 0.85) / 1000)));
-/** Kịch bản ngắn rõ rệt so với nguồn → gợi ý "Đào sâu thêm" (server tự kiểm lại theo độ dài văn xuôi thật). */
-const looksShort = (ep: PodcastEpisodeRow) => !!ep.scriptChars && ep.scriptChars < ep.sourceChars * 0.7;
+// Chưa viết: ước lượng theo đúng mục tiêu độ dài server giao cho model (~90% độ dài nguồn, xem targetChars).
+const estMinutes = (ep: PodcastEpisodeRow) => (ep.scriptChars ? minutesFromChars(ep.scriptChars) : Math.max(2, Math.round((ep.sourceChars * 0.9) / 1000)));
+/** Kịch bản ngắn rõ rệt so với mục tiêu → gợi ý "Đào sâu thêm" (server tự kiểm lại). */
+const looksShort = (ep: PodcastEpisodeRow) => !!ep.scriptChars && ep.scriptChars < ep.sourceChars * 0.75;
 
 export function SeriesDetail({ series, onBack }: { series: PodcastSeriesRow; onBack: () => void }) {
   const episodes = usePodcastEpisodes(series._id);
