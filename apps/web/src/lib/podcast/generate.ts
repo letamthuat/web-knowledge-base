@@ -77,6 +77,8 @@ export function generateEpisodeScript(input: {
   geminiApiKey?: string | null;
   geminiModels?: string[] | null;
   patchFrom?: PodcastScript;
+  /** Với patchFrom: "patch" = bổ sung ý sót (mặc định), "deepen" = đào sâu khi kịch bản quá ngắn. */
+  mode?: "patch" | "deepen";
 }): Promise<PodcastScript> {
   const id = input.episode._id;
   const hit = inflight.get(id);
@@ -102,6 +104,7 @@ export function generateEpisodeScript(input: {
           geminiApiKey: input.geminiApiKey ?? undefined,
           geminiModels: input.geminiModels ?? undefined,
           script: input.patchFrom,
+          mode: input.patchFrom ? input.mode ?? "patch" : undefined,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { script?: PodcastScript; coveredCount?: number; model?: string; error?: string };

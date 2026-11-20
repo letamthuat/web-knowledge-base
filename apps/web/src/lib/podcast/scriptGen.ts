@@ -82,9 +82,34 @@ export type ScriptInput = {
   prevTitle?: string; nextTitle?: string; missedPoints?: string[];
 };
 
+/**
+ * Số ký tự "văn xuôi" của nguồn — phần thật sự được nói ra: bỏ code, bảng, ảnh, URL, ký hiệu markdown.
+ * Code/bảng vẫn được giải thích nhưng bằng lời ngắn hơn nhiều so với độ dài thô.
+ */
+export function proseChars(text: string): number {
+  return text
+    .replace(/(```|~~~)[\s\S]*?\1/g, " ")         // code fence
+    .replace(/^\s*\|.*\|\s*$/gm, " ")               // dòng bảng
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")          // ảnh
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")        // link → chữ
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/^#+\s.*$/gm, " ")                     // heading
+    .replace(/^### \[.*\]$/gm, " ")
+    .replace(/[*_`>#|~-]{2,}|[*_`>#|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim().length;
+}
+
+/** Độ dài kịch bản mục tiêu (ký tự lời thoại) ≈ độ dài văn xuôi của nguồn — podcast học không nén. */
+export function targetChars(sourceText: string): number {
+  return Math.max(2500, Math.min(30_000, Math.round(proseChars(sourceText) * 1.05)));
+}
+
+export const scriptChars = (s: Script) => s.turns.reduce((n, t) => n + t.t.length, 0);
+
 const PROMPT = (b: {
   sourceText: string; episodeTitle: string; seriesTitle: string; episodeNo: number; episodeCount: number;
-  prevTitle?: string; nextTitle?: string; missedPoints?: string[];
+  prevTitle?: string; nextTitle?: string; missedPoints?: string[]; target: number;
 }) => `Bạn là biên kịch podcast giáo dục chuyên sâu bằng tiếng Việt. Chuyển NGUỒN dưới đây thành kịch bản hội thoại 2 người để người nghe HỌC ĐƯỢC THẬT — không phải tóm tắt lướt.
 
 SERIES: "${b.seriesTitle}" — Tập ${b.episodeNo}/${b.episodeCount}: "${b.episodeTitle}"
@@ -97,7 +122,8 @@ NHÂN VẬT
 BƯỚC 1 — keyPoints: liệt kê MỌI ý kiến thức bắt buộc trong nguồn (thường 8–25 ý). Mỗi ý phải CỤ THỂ: tên khái niệm + nội dung cốt lõi, kèm số liệu/công thức/điều kiện/giới hạn nếu nguồn có. Không viết ý chung chung kiểu "hiểu tầm quan trọng của X".
 
 BƯỚC 2 — turns: kịch bản phủ TẤT CẢ keyPoints.
-- Độ sâu ưu tiên hơn độ ngắn: KHÔNG lược bỏ chi tiết, ví dụ, số liệu, ngoại lệ, giới hạn có trong nguồn. Độ dài tổng xấp xỉ bằng độ dài phần văn xuôi của nguồn (có thể dài hơn khi cần giải thích).
+- Độ sâu ưu tiên hơn độ ngắn: KHÔNG lược bỏ chi tiết, ví dụ, số liệu, ngoại lệ, giới hạn có trong nguồn.
+- ĐỘ DÀI BẮT BUỘC: tổng số ký tự của mọi "t" khoảng ${b.target.toLocaleString("vi-VN")} ký tự (TỐI THIỂU ${Math.round(b.target * 0.85).toLocaleString("vi-VN")}), tức khoảng ${Math.round(b.target / 330)} lượt thoại. Đây là podcast HỌC — người nghe thay việc đọc nguồn bằng nghe, nên kịch bản ngắn hơn nguồn nghĩa là đã bỏ mất kiến thức. Mỗi ý chính cần vài lượt hỏi–đáp: nêu ý, giải thích cơ chế/lý do, ví dụ hoặc số liệu từ nguồn, rồi My tự diễn đạt lại hoặc hỏi "nếu… thì sao".
 - Trình bày keyPoints THEO ĐÚNG THỨ TỰ đã liệt kê (0, 1, 2, …) — không nhảy cóc, không gộp nhiều ý vào 1 câu lướt qua.
 - Mỗi lượt thoại có "c" = mảng chỉ số (0-based) các keyPoints mà lượt đó trình bày. Ý nào cũng phải xuất hiện trong "c" của ít nhất 1 lượt.
 - TỰ KIỂM TRA trước khi trả JSON: duyệt từ ý 0 tới ý cuối, ý nào chưa có trong "c" của lượt nào thì VIẾT THÊM lượt thoại cho ý đó ngay tại vị trí của nó.
@@ -239,10 +265,11 @@ ${b.sourceText}
 type Patch = { k: number; turns: Turn[] };
 
 /**
- * Chèn đoạn bổ sung vào đúng chỗ: ngay sau lượt cuối nói về ý có mã nhỏ hơn gần nhất (ý xếp theo
- * thứ tự nguồn), không chèn trước lời mở đầu và không chèn sau phần tổng kết (2 lượt cuối).
+ * Chèn đoạn bổ sung vào đúng chỗ, không chèn trước lời mở đầu và không sau phần tổng kết (2 lượt cuối).
+ * - "missing": ý chưa được nói → ngay sau lượt cuối nói về ý có mã nhỏ hơn gần nhất (ý xếp theo thứ tự nguồn).
+ * - "deepen": ý đã nói nhưng mỏng → ngay sau lượt cuối nói về CHÍNH ý đó.
  */
-export function mergePatches(script: Script, patches: Patch[]): Script {
+export function mergePatches(script: Script, patches: Patch[], mode: "missing" | "deepen" = "missing"): Script {
   const turns = script.turns;
   const lastTurnOf = new Map<number, number>();
   const firstTurnOf = new Map<number, number>();
@@ -251,6 +278,8 @@ export function mergePatches(script: Script, patches: Patch[]): Script {
   const minPos = turns.length > 2 ? 1 : 0;
   const maxPos = turns.length > 4 ? turns.length - 2 : turns.length;
   const placed = patches.map((p) => {
+    const own = lastTurnOf.get(p.k);
+    if (mode === "deepen" && own != null) return { ...p, pos: Math.max(minPos, Math.min(maxPos, own + 1)) };
     const prev = covered.filter((k) => k < p.k).pop();
     const next = covered.find((k) => k > p.k);
     let pos = prev != null ? lastTurnOf.get(prev)! + 1 : next != null ? firstTurnOf.get(next)! : maxPos;
@@ -269,13 +298,33 @@ export function missedIndexes(script: Script): number[] {
   return script.keyPoints.map((_, i) => i).filter((i) => !covered.has(i));
 }
 
+/** Đọc {"patches":[{k, turns}]} (hoặc mảng trần) → chỉ giữ ý thuộc `want`, mỗi ý 1 lần. */
+function parsePatches(raw: string, want: Set<number>): Patch[] {
+  type RawPatch = { k?: unknown; turns?: { s?: unknown; t?: unknown; e?: unknown }[] };
+  const parsed = parseJsonLoose(raw) as { patches?: RawPatch[] } | RawPatch[];
+  // Model đôi khi trả thẳng mảng thay vì {"patches": [...]}
+  const list = Array.isArray(parsed) ? parsed : parsed?.patches ?? [];
+  const seen = new Set<number>();
+  return list.flatMap((p) => {
+    const k = Number(p?.k);
+    if (!want.has(k) || seen.has(k)) return [];
+    const turns: Turn[] = (p.turns ?? [])
+      .map((t) => ({ s: (t?.s === "host" ? "host" : "expert") as Turn["s"], t: cleanTurnText(t?.t), e: cleanStyle(t?.e), c: [k] }))
+      .filter((t) => t.t);
+    if (!turns.length) return [];
+    seen.add(k);
+    return [{ k, turns }];
+  });
+}
+
+const coverage = (s: Script) => new Set(s.turns.flatMap((t) => t.c)).size;
+
 /** Viết thêm lượt thoại cho các ý bị sót rồi chèn vào kịch bản (không viết lại cả tập). */
 export async function patchScript(
   script: Script, input: Pick<ScriptInput, "sourceText" | "episodeTitle">, apiKey: string, models?: string[],
   deadline = Date.now() + SCRIPT_DEADLINE_MS,
 ): Promise<{ script: Script; coveredCount: number; model: string }> {
   const missed = missedIndexes(script).slice(0, 15);
-  const coverage = (s: Script) => new Set(s.turns.flatMap((t) => t.c)).size;
   if (!missed.length) return { script, coveredCount: coverage(script), model: "" };
   const want = new Set(missed);
   let value: Patch[], model: string;
@@ -289,41 +338,109 @@ export async function patchScript(
       // Rộng tay: model "thinking" (2.5+) tính cả token suy nghĩ vào giới hạn → 12k dễ bị cắt cụt JSON
       apiKey, models, deadline, maxOutputTokens: 32768, temperature: 0.6,
       accept: (raw) => {
-        type RawPatch = { k?: unknown; turns?: { s?: unknown; t?: unknown; e?: unknown }[] };
-        const parsed = parseJsonLoose(raw) as { patches?: RawPatch[] } | RawPatch[];
-        // Model đôi khi trả thẳng mảng thay vì {"patches": [...]}
-        const o = { patches: Array.isArray(parsed) ? parsed : parsed?.patches };
-        const seen = new Set<number>();
-        const patches = (o.patches ?? []).flatMap((p) => {
-          const k = Number(p?.k);
-          if (!want.has(k) || seen.has(k)) return [];
-          const turns: Turn[] = (p.turns ?? [])
-            .map((t) => ({ s: (t?.s === "host" ? "host" : "expert") as Turn["s"], t: cleanTurnText(t?.t), e: cleanStyle(t?.e), c: [k] }))
-            .filter((t) => t.t);
-          if (!turns.length) return [];
-          seen.add(k);
-          return [{ k, turns }];
-        });
+        const patches = parsePatches(raw, want);
         return patches.length ? patches : "không bổ sung được ý nào";
       },
     }));
   } catch (e) {
     throw new Error(`Không bổ sung được ý sót — ${e instanceof Error ? e.message : e}`);
   }
-  const merged = mergePatches(script, value);
+  const merged = mergePatches(script, value, "missing");
+  return { script: merged, coveredCount: coverage(merged), model };
+}
+
+// ─── Đào sâu khi kịch bản quá ngắn ──────────────────────────────────────────
+
+const DEEPEN_PROMPT = (b: {
+  episodeTitle: string; sourceText: string; current: number; target: number;
+  points: { k: number; text: string; said: string; add: number }[];
+}) =>
+`Kịch bản podcast HỌC tập "${b.episodeTitle}" (2 người: "host" = My, người học tò mò; "expert" = Minh, chuyên gia) đang QUÁ NGẮN so với nguồn: hiện ${b.current.toLocaleString("vi-VN")} ký tự, cần khoảng ${b.target.toLocaleString("vi-VN")}. Người nghe dùng podcast THAY cho việc đọc nguồn, nên phần bị nói lướt là kiến thức bị mất.
+
+Hãy ĐÀO SÂU từng ý dưới đây: viết THÊM lượt thoại mới, nối tiếp ngay sau phần đã nói về ý đó, đưa vào những gì NGUỒN có mà kịch bản CHƯA nói — cơ chế/lý do, số liệu, ví dụ, ngoại lệ, giới hạn, so sánh, hệ quả thực tế. My hỏi sâu hơn ("vì sao vậy?", "cho ví dụ thực tế?", "nếu… thì sao?") hoặc tự diễn đạt lại để Minh xác nhận/sửa.
+- KHÔNG lặp lại điều đã nói (xem "ĐÃ NÓI"), KHÔNG chào hỏi, KHÔNG tổng kết tập. Lượt đầu nối tự nhiên với câu trước đó.
+- Nguồn không còn gì thêm cho một ý thì bỏ qua ý đó (đừng bịa, đừng nói vòng vo cho dài).
+- Văn nói, KHÔNG markdown/emoji/ký hiệu →, *, #. Mỗi lượt ≤ 700 ký tự. TUYỆT ĐỐI không bịa số liệu, tên nghiên cứu, trích dẫn ngoài nguồn.
+
+${DELIVERY_RULES}
+
+CÁC Ý CẦN ĐÀO SÂU (số trong ngoặc = mã ý; "thêm ~N ký tự" là lượng nên viết thêm):
+${b.points.map((p) => `[${p.k}] ${p.text} — thêm ~${p.add} ký tự\n    ĐÃ NÓI: "${p.said}"`).join("\n")}
+
+CHỈ trả JSON (không markdown fence) đúng dạng, "k" là mã ý:
+{"patches":[{"k":0,"turns":[{"s":"host","e":"curious, leaning in","t":"..."},{"s":"expert","e":"warm, explaining patiently","t":"..."}]}]}
+
+NGUỒN:
+"""
+${b.sourceText}
+"""`;
+
+/**
+ * Kịch bản ngắn hơn mục tiêu → viết thêm cho các ý đang "mỏng" nhất (ít ký tự nhất), chèn ngay sau
+ * phần đã nói về ý đó. Không viết lại cả tập nên giữ nguyên phần đã có.
+ */
+export async function deepenScript(
+  script: Script, input: Pick<ScriptInput, "sourceText" | "episodeTitle">, apiKey: string, models?: string[],
+  deadline = Date.now() + SCRIPT_DEADLINE_MS,
+): Promise<{ script: Script; coveredCount: number; model: string }> {
+  const sourceText = input.sourceText.slice(0, 40_000);
+  const target = targetChars(sourceText);
+  const current = scriptChars(script);
+  const deficit = target - current;
+  if (deficit < target * 0.1) throw new Error("Kịch bản đã đủ dài so với nguồn");
+
+  // Ký tự mỗi ý nhận được (lượt nói nhiều ý thì chia đều) + lời đã nói để model khỏi lặp
+  const chars = script.keyPoints.map(() => 0);
+  const said = script.keyPoints.map(() => [] as string[]);
+  for (const t of script.turns) {
+    for (const k of t.c) { chars[k] += t.t.length / t.c.length; said[k].push(t.t); }
+  }
+  const avg = target / Math.max(1, script.keyPoints.length);
+  const thin = script.keyPoints
+    .map((text, k) => ({ k, text, have: chars[k] }))
+    .filter((p) => p.have < avg * 0.9)
+    .sort((a, b) => a.have - b.have)
+    .slice(0, 12);
+  const pick = thin.length ? thin : script.keyPoints.map((text, k) => ({ k, text, have: chars[k] })).slice(0, 12);
+  const totalGap = pick.reduce((s, p) => s + Math.max(0, avg - p.have), 0) || 1;
+  const points = pick.map((p) => ({
+    k: p.k, text: p.text,
+    said: said[p.k].join(" ").replace(/<[^>]*>/g, "").slice(0, 900) || "(chưa nói gì cụ thể)",
+    add: Math.round(Math.max(300, Math.min(2500, (deficit * Math.max(0, avg - p.have)) / totalGap)) / 50) * 50,
+  }));
+
+  const want = new Set(points.map((p) => p.k));
+  let value: Patch[], model: string;
+  try {
+    ({ value, model } = await callGemini<Patch[]>({
+      prompt: DEEPEN_PROMPT({ episodeTitle: input.episodeTitle, sourceText, current, target, points }),
+      apiKey, models, deadline, maxOutputTokens: 32768, temperature: 0.6,
+      accept: (raw) => {
+        const patches = parsePatches(raw, want);
+        return patches.length ? patches : "không đào sâu được ý nào";
+      },
+    }));
+  } catch (e) {
+    throw new Error(`Không đào sâu được — ${e instanceof Error ? e.message : e}`);
+  }
+  const merged = mergePatches(script, value, "deepen");
   return { script: merged, coveredCount: coverage(merged), model };
 }
 
 // ─── Viết kịch bản ──────────────────────────────────────────────────────────
 
-/** Viết kịch bản; còn ý sót thì tự gọi thêm 1 lượt bổ sung (nếu còn thời gian). */
+/**
+ * Viết kịch bản theo độ dài mục tiêu; sau đó (nếu còn thời gian) tự bổ sung ý sót và
+ * tự đào sâu khi kịch bản vẫn ngắn hơn 75% mục tiêu. Bước phụ thất bại thì giữ bản đã có.
+ */
 export async function generateScript(input: ScriptInput, apiKey: string, models?: string[]): Promise<{ script: Script; coveredCount: number; model: string }> {
   const deadline = Date.now() + SCRIPT_DEADLINE_MS;
   const sourceText = input.sourceText.slice(0, 40_000);
+  const target = targetChars(sourceText);
   let result: { value: Script; model: string };
   try {
     result = await callGemini<Script>({
-      prompt: PROMPT({ ...input, sourceText, missedPoints: input.missedPoints?.slice(0, 30) }),
+      prompt: PROMPT({ ...input, sourceText, missedPoints: input.missedPoints?.slice(0, 30), target }),
       apiKey, models, deadline, maxOutputTokens: 32768, temperature: 0.7,
       accept: (raw) => {
         const script = parseScript(raw);
@@ -334,12 +451,13 @@ export async function generateScript(input: ScriptInput, apiKey: string, models?
     throw new Error(`Không viết được kịch bản — ${e instanceof Error ? e.message : e}`);
   }
   let script = result.value;
-  // Bổ sung ý sót: chỉ khi còn đủ thời gian; thất bại thì giữ bản đã có (user vẫn bấm "Bổ sung" được sau).
+  const sub = { sourceText, episodeTitle: input.episodeTitle };
+  const subModels = [result.model, ...(models ?? [])];
   if (missedIndexes(script).length > 0 && deadline - Date.now() > 45_000) {
-    try {
-      script = (await patchScript(script, { sourceText, episodeTitle: input.episodeTitle }, apiKey, [result.model, ...(models ?? [])], deadline)).script;
-    } catch { /* giữ bản gốc */ }
+    try { script = (await patchScript(script, sub, apiKey, subModels, deadline)).script; } catch { /* giữ bản gốc */ }
   }
-  const covered = new Set(script.turns.flatMap((t) => t.c));
-  return { script, coveredCount: covered.size, model: result.model };
+  if (scriptChars(script) < target * 0.75 && deadline - Date.now() > 60_000) {
+    try { script = (await deepenScript(script, sub, apiKey, subModels, deadline)).script; } catch { /* giữ bản đã có */ }
+  }
+  return { script, coveredCount: coverage(script), model: result.model };
 }

@@ -19,7 +19,10 @@ import { useOpenDoc } from "@/components/study/SpaceOverview";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { EpisodeSection } from "@/lib/podcast/plan";
 
-const estMinutes = (ep: PodcastEpisodeRow) => (ep.scriptChars ? minutesFromChars(ep.scriptChars) : Math.max(2, Math.round((ep.sourceChars * 1.1) / 1000)));
+// Chưa viết: ước lượng từ độ dài nguồn (sourceChars đếm cả code/bảng — phần này được nói gọn hơn nhiều).
+const estMinutes = (ep: PodcastEpisodeRow) => (ep.scriptChars ? minutesFromChars(ep.scriptChars) : Math.max(2, Math.round((ep.sourceChars * 0.85) / 1000)));
+/** Kịch bản ngắn rõ rệt so với nguồn → gợi ý "Đào sâu thêm" (server tự kiểm lại theo độ dài văn xuôi thật). */
+const looksShort = (ep: PodcastEpisodeRow) => !!ep.scriptChars && ep.scriptChars < ep.sourceChars * 0.7;
 
 export function SeriesDetail({ series, onBack }: { series: PodcastSeriesRow; onBack: () => void }) {
   const episodes = usePodcastEpisodes(series._id);
@@ -157,13 +160,17 @@ function EpisodeRow({ ep, no, next, open, onToggle, active, playing, onPlay, ctx
   const pct = ep.turnCount && ep.progressIndex > 0 && !ep.completedAt ? Math.round((ep.progressIndex / ep.turnCount) * 100) : 0;
 
   /** patchFrom có → chỉ bổ sung ý sót vào kịch bản đó; không → viết lại cả tập. */
-  async function regenerate(patchFrom?: PodcastScript) {
+  async function regenerate(patchFrom?: PodcastScript, mode?: "patch" | "deepen") {
     try {
+      const before = ep.scriptChars ?? 0;
       const s = await generateEpisodeScript({
-        episode: ep, seriesTitle: ctx.seriesTitle, ...episodeContext(ep, ctx.episodes), patchFrom,
+        episode: ep, seriesTitle: ctx.seriesTitle, ...episodeContext(ep, ctx.episodes), patchFrom, mode,
         geminiApiKey: ctx.ai?.geminiApiKey, geminiModels: ctx.ai?.geminiModels,
       });
-      if (patchFrom) {
+      if (patchFrom && mode === "deepen") {
+        const after = s.turns.reduce((n, t) => n + t.t.length, 0);
+        toast.success(`Đã đào sâu: ~${minutesFromChars(before)} → ~${minutesFromChars(after)} phút`);
+      } else if (patchFrom) {
         const left = missedKeyPoints(s).length;
         toast.success(left ? `Đã bổ sung — còn ${left} ý chưa phủ` : "Đã bổ sung đủ ý");
       } else toast.success("Đã viết lại kịch bản");
@@ -226,7 +233,7 @@ function EpisodeRow({ ep, no, next, open, onToggle, active, playing, onPlay, ctx
 
 function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
   ep: PodcastEpisodeRow;
-  onRegenerate: (patchFrom?: PodcastScript) => Promise<void>;
+  onRegenerate: (patchFrom?: PodcastScript, mode?: "patch" | "deepen") => Promise<void>;
   onRename: () => void;
   onMerge?: () => void;
   onRemove: () => void;
@@ -247,9 +254,9 @@ function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
   const missed = script ? missedKeyPoints(script) : [];
   const covered = useMemo(() => new Set(script?.turns.flatMap((t) => t.c) ?? []), [script]);
 
-  const run = async (patchFrom?: PodcastScript) => {
+  const run = async (patchFrom?: PodcastScript, mode?: "patch" | "deepen") => {
     setBusy(true);
-    await onRegenerate(patchFrom);
+    await onRegenerate(patchFrom, mode);
     setBusy(false);
   };
 
@@ -326,8 +333,15 @@ function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
             <ScrollText className="h-3.5 w-3.5" /> {showScript ? "Ẩn kịch bản" : "Đọc kịch bản"}
           </button>
         )}
+        {script && missed.length === 0 && looksShort(ep) && (
+          <button onClick={() => run(script, "deepen")} disabled={busy}
+            title="Kịch bản ngắn hơn nhiều so với nguồn — viết thêm cho các ý đang nói lướt, giữ nguyên phần đã có"
+            className="flex items-center gap-1.5 rounded-lg border border-primary/40 px-2.5 py-1.5 text-[12px] text-primary hover:bg-primary/10 disabled:opacity-50">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Đào sâu thêm
+          </button>
+        )}
         {missed.length > 0 && script && (
-          <button onClick={() => run(script)} disabled={busy} title="Viết thêm lượt thoại cho các ý bị sót và chèn vào đúng chỗ — giữ nguyên phần đã có" className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 px-2.5 py-1.5 text-[12px] text-amber-700 hover:bg-amber-500/10 disabled:opacity-50 dark:text-amber-300">
+          <button onClick={() => run(script, "patch")} disabled={busy} title="Viết thêm lượt thoại cho các ý bị sót và chèn vào đúng chỗ — giữ nguyên phần đã có" className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 px-2.5 py-1.5 text-[12px] text-amber-700 hover:bg-amber-500/10 disabled:opacity-50 dark:text-amber-300">
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Bổ sung {missed.length} ý sót
           </button>
         )}
