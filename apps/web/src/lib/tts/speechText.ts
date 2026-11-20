@@ -12,7 +12,7 @@ export type SpeechSegment = {
   page?: number;
   text: string;
   /** Podcast: nhiều lượt thoại 2 giọng đọc trong 1 lần gọi TTS (text chỉ để hiển thị). */
-  dialogue?: { speaker: "host" | "expert"; text: string }[];
+  dialogue?: { speaker: "host" | "expert"; text: string; style?: string }[];
   /** Tên người nói hiện trên thanh nghe (podcast). */
   speaker?: string;
   /** Số tham chiếu của nơi dùng (podcast: chỉ số lượt thoại đầu của đoạn). */

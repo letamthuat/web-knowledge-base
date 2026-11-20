@@ -2,7 +2,7 @@
 // Podcast — sinh kịch bản 1 tập (on-demand) + đổi kịch bản thành đoạn nghe 2 giọng.
 import { getDownloadUrl } from "@/lib/api/documents";
 import { getPdfReflow } from "@/lib/pdf/reflow";
-import { saveScript, setEpisodeStatus, type PodcastEpisodeRow, type PodcastScript } from "@/lib/api/podcast";
+import { saveScript, setEpisodeStatus, turnDisplayText, type PodcastEpisodeRow, type PodcastScript } from "@/lib/api/podcast";
 import { sliceMarkdownSection, slicePdfSection, type EpisodeSection } from "./plan";
 import type { SpeechSegment } from "@/lib/tts/speechText";
 
@@ -136,14 +136,14 @@ export function missedKeyPoints(script: PodcastScript): string[] {
  */
 export function scriptToSegments(script: PodcastScript, title: string): SpeechSegment[] {
   const out: SpeechSegment[] = [];
-  let cur: { speaker: "host" | "expert"; text: string }[] = [];
+  let cur: { speaker: "host" | "expert"; text: string; style?: string }[] = [];
   let curLen = 0;
   let curRef = 0;
   const flush = () => {
     if (!cur.length) return;
     out.push({
       title,
-      text: cur.map((d) => `${d.speaker === "host" ? HOST.name : EXPERT.name}: ${d.text}`).join("\n"),
+      text: cur.map((d) => `${d.speaker === "host" ? HOST.name : EXPERT.name}: ${turnDisplayText(d.text)}`).join("\n"),
       dialogue: cur,
       speaker: `${HOST.name} & ${EXPERT.name}`,
       ref: curRef,
@@ -162,7 +162,7 @@ export function scriptToSegments(script: PodcastScript, title: string): SpeechSe
     for (const p of pieces) {
       if (cur.length && curLen + p.length > limit) flush();
       if (!cur.length) curRef = i;
-      cur.push({ speaker: t.s, text: p.trim() });
+      cur.push({ speaker: t.s, text: p.trim(), ...(t.e ? { style: t.e } : {}) });
       curLen += p.length;
     }
   });

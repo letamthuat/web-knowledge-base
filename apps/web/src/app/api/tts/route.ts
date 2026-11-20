@@ -8,7 +8,7 @@ import { GetObjectCommand, HeadObjectCommand, PutObjectCommand } from "@aws-sdk/
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createClient } from "@/lib/supabase/server";
 import { getR2Client, R2_BUCKET } from "@/lib/r2";
-import { VOICES, DEFAULT_VOICE, MAX_CHARS, requestBody, synthesize, type DialogueTurn } from "@/lib/tts/geminiTts";
+import { VOICES, DEFAULT_VOICE, MAX_CHARS, effectiveStyle, synthesize, type DialogueTurn } from "@/lib/tts/geminiTts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +24,11 @@ export async function POST(request: Request) {
 
   const dialogue = Array.isArray(body.dialogue)
     ? body.dialogue
-        .map((d) => ({ speaker: (d?.speaker === "host" ? "host" : "expert") as DialogueTurn["speaker"], text: String(d?.text ?? "").trim() }))
+        .map((d) => ({
+          speaker: (d?.speaker === "host" ? "host" : "expert") as DialogueTurn["speaker"],
+          text: String(d?.text ?? "").trim(),
+          style: typeof d?.style === "string" ? d.style.replace(/[^\p{L}\p{N} ,.'-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 80) || undefined : undefined,
+        }))
         .filter((d) => d.text)
     : undefined;
   const text = (body.text ?? "").trim();
@@ -33,8 +37,12 @@ export async function POST(request: Request) {
   if (!total) return NextResponse.json({ error: "Thiếu nội dung" }, { status: 400 });
   if (total > MAX_CHARS) return NextResponse.json({ error: "Đoạn quá dài" }, { status: 400 });
 
-  const content = dialogue ? `dialogue\n${dialogue.map((d) => `${d.speaker}:${d.text}`).join("\n")}` : `single:${voice}\n${text}`;
-  const key = `tts/v2/${createHash("sha256").update(content).digest("hex")}.mp3`;
+  // Podcast: hash gồm cả chỉ dẫn diễn đạt → đổi style là sinh lại; v3 = bản có nhấn nhá (style + thẻ âm thanh).
+  // Bài đọc 1 giọng giữ v2 — không đổi gì nên dùng lại cache cũ.
+  const content = dialogue
+    ? `dialogue\n${dialogue.map((d) => `${d.speaker}|${effectiveStyle(d)}:${d.text}`).join("\n")}`
+    : `single:${voice}\n${text}`;
+  const key = `tts/${dialogue ? "v3" : "v2"}/${createHash("sha256").update(content).digest("hex")}.mp3`;
   const r2 = getR2Client();
 
   let cached = true;
@@ -45,7 +53,7 @@ export async function POST(request: Request) {
     const apiKey = (ai as { geminiApiKey?: string | null } | null)?.geminiApiKey?.trim() || process.env.GEMINI_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "Chưa có Gemini API key (Cài đặt → AI)" }, { status: 400 });
     try {
-      const mp3 = await synthesize(requestBody({ text, voice, dialogue }), apiKey);
+      const mp3 = await synthesize({ text, voice, dialogue }, apiKey);
       await r2.send(new PutObjectCommand({
         Bucket: R2_BUCKET, Key: key, Body: mp3, ContentType: "audio/mpeg",
         CacheControl: "public, max-age=31536000, immutable",

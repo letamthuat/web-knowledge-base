@@ -24,7 +24,20 @@ export const DEFAULT_VOICE = "Kore";
 const SPEAKERS = { host: { name: "My", voice: "Kore" }, expert: { name: "Minh", voice: "Charon" } } as const;
 export const MAX_CHARS = 3000;
 
-export type DialogueTurn = { speaker: "host" | "expert"; text: string };
+export type DialogueTurn = { speaker: "host" | "expert"; text: string; style?: string };
+
+/**
+ * Chỉ dẫn diễn đạt mặc định khi lượt thoại không có (kịch bản cũ). Theo tài liệu Gemini TTS:
+ * style ngắn gọn, không ghi giới tính/tuổi/tên — dài dòng làm giọng bị "trôi".
+ */
+const DEFAULT_STYLE: Record<DialogueTurn["speaker"], string> = {
+  host: "curious and warm, lively conversational pace",
+  expert: "warm and clear, explaining with natural emphasis",
+};
+export const effectiveStyle = (d: DialogueTurn) => d.style?.trim() || DEFAULT_STYLE[d.speaker];
+
+/** Model/API không nhận trường style → nhớ lại để các lần sau gửi không kèm style ngay. */
+let styleRejected = false;
 
 /** WAV (RIFF) hoặc PCM L16 thô → mẫu 16-bit + sample rate. */
 function toPcm(buf: Buffer, mimeType: string): { samples: Int16Array; rate: number } {
@@ -62,11 +75,14 @@ async function encodeMp3(samples: Int16Array, rate: number): Promise<Buffer> {
   return Buffer.concat(out);
 }
 
-export function requestBody(input: { text?: string; voice: string; dialogue?: DialogueTurn[] }) {
+export function requestBody(input: { text?: string; voice: string; dialogue?: DialogueTurn[] }, withStyle = true) {
   if (input.dialogue) {
     return {
-      // Model TTS mới bắt buộc mỗi part ghi rõ người nói
-      contents: [{ parts: input.dialogue.map((d) => ({ text: d.text, speechMetadata: { speaker: SPEAKERS[d.speaker].name } })) }],
+      // Model TTS mới bắt buộc mỗi part ghi rõ người nói; style = cảm xúc/nhịp của lượt đó
+      contents: [{ parts: input.dialogue.map((d) => ({
+        text: d.text,
+        speechMetadata: { speaker: SPEAKERS[d.speaker].name, ...(withStyle ? { style: effectiveStyle(d) } : {}) },
+      })) }],
       generationConfig: {
         responseModalities: ["AUDIO"],
         speechConfig: { multiSpeakerVoiceConfig: { speakerVoiceConfigs: Object.values(SPEAKERS).map((s) => ({
@@ -84,12 +100,25 @@ export function requestBody(input: { text?: string; voice: string; dialogue?: Di
   };
 }
 
-export async function synthesize(body: object, apiKey: string): Promise<Buffer> {
+export async function synthesize(input: Parameters<typeof requestBody>[0], apiKey: string): Promise<Buffer> {
   let lastStatus = 0;
   for (const model of TTS_MODELS) {
-    const res = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    const styled = !!input.dialogue && !styleRejected;
+    let res = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody(input, styled)),
     });
+    // 400 khi có style → API không nhận trường này: gửi lại không kèm style (vẫn ra tiếng như trước)
+    if (res.status === 400 && styled) {
+      const errText = await res.text().catch(() => "");
+      if (/style|speech_?metadata|unknown name|invalid json payload/i.test(errText)) {
+        styleRejected = true;
+        res = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody(input, false)),
+        });
+      } else {
+        throw Object.assign(new Error(`Gemini TTS lỗi 400: ${errText.slice(0, 200)}`), { status: 502 });
+      }
+    }
     if (!res.ok) {
       lastStatus = res.status;
       if ([429, 500, 503, 404].includes(res.status)) continue; // hết quota / quá tải / model không có → model kế

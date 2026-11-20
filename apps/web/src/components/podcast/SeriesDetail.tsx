@@ -9,7 +9,7 @@ import {
 import { toast } from "sonner";
 import {
   usePodcastEpisodes, getScript, deleteSeries, deleteEpisode, mergeWithNext, renameEpisode,
-  markRecallDone, linkRecallToStudy, type PodcastSeriesRow, type PodcastEpisodeRow, type PodcastScript,
+  markRecallDone, linkRecallToStudy, turnDisplayText, type PodcastSeriesRow, type PodcastEpisodeRow, type PodcastScript,
 } from "@/lib/api/podcast";
 import { useAiSettings } from "@/lib/api/ai-settings";
 import { useTts } from "@/lib/tts/player";
@@ -313,7 +313,7 @@ function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
             <p key={i} className="text-[12.5px] leading-relaxed">
               <span className={`font-semibold ${t.s === "host" ? "text-rose-600 dark:text-rose-400" : "text-sky-600 dark:text-sky-400"}`}>
                 {t.s === "host" ? HOST.name : EXPERT.name}:
-              </span>{" "}{t.t}
+              </span>{" "}{turnDisplayText(t.t)}
             </p>
           ))}
         </div>

@@ -1,10 +1,13 @@
 // Sinh kịch bản podcast (server-only): prompt giữ chiều sâu + parse + đếm độ phủ ý bắt buộc.
 // Tách khỏi route để test trực tiếp được.
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-// Chỉ dùng khi không liệt kê được model từ API. Google khai tử model theo thời gian (vd 2.0-flash → 404),
-// nên danh sách thật được lấy động qua ListModels (discoverModels).
-const STATIC_FALLBACK = ["gemini-flash-latest", "gemini-2.5-flash"];
+// Model text hiện hành (Google tự gợi ý gemini-3.8-flash khi 2.0-flash bị khai tử) — luôn được thử,
+// kể cả khi danh sách trong Cài đặt của user đã cũ. Bổ sung thêm model tự phát hiện qua ListModels.
+const PREFERRED = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-3.8-flash-lite"];
 const NON_TEXT = /tts|image|embedding|imagen|veo|live|audio|native|preview-\d{2}-\d{2}|exp/i;
+const MAX_MODELS = 8;
+/** Model đã trả 404 (bị khai tử) — bỏ qua ở các lượt sau trong cùng instance server. */
+const deadModels = new Set<string>();
 
 /** Tổng thời gian cho cả vòng thử model — phải < maxDuration của route (300s). */
 export const SCRIPT_DEADLINE_MS = 270_000;
@@ -31,12 +34,25 @@ async function discoverModels(apiKey: string): Promise<string[]> {
   }
 }
 
-/** Model user chọn trước, sau đó model tự phát hiện — để model bị khai tử không làm hỏng cả lượt. */
+/**
+ * Thứ tự thử: model user chọn còn sống (tối đa 3) → model hiện hành → model tự phát hiện.
+ * Danh sách trong Cài đặt có thể toàn model đã khai tử, nên không để nó chiếm hết lượt thử.
+ */
 async function textModels(apiKey: string, models?: string[]): Promise<string[]> {
-  const user = (models ?? []).filter((m) => !NON_TEXT.test(m));
-  const auto = await discoverModels(apiKey);
-  const list = [...new Set([...user, ...(auto.length ? auto : STATIC_FALLBACK)])];
-  return list.slice(0, 6);
+  const alive = (m: string) => !NON_TEXT.test(m) && !deadModels.has(m) && !/gemini-(1\.|2\.0)/.test(m);
+  const user = (models ?? []).filter(alive).slice(0, 3);
+  const auto = (await discoverModels(apiKey)).filter(alive);
+  return [...new Set([...user, ...PREFERRED.filter(alive), ...auto])].slice(0, MAX_MODELS);
+}
+
+/** Parse JSON trong phản hồi model: bỏ ``` fence, nhận cả object lẫn mảng ở cấp ngoài cùng. */
+function parseJsonLoose(raw: string): unknown {
+  const s = raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+  try { return JSON.parse(s); } catch { /* thử cắt phần JSON bên trong */ }
+  const start = s.search(/[[{]/);
+  const end = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
+  if (start < 0 || end <= start) throw new Error("no json");
+  return JSON.parse(s.slice(start, end + 1));
 }
 
 /** Lỗi do key (sai/hết hạn/không có quyền) → thử model khác cũng vô ích. */
@@ -44,7 +60,20 @@ function isKeyError(status: number, body: string): boolean {
   return status === 401 || /API_KEY_INVALID|API key not valid|API key expired|PERMISSION_DENIED/i.test(body);
 }
 
-export type Turn = { s: "host" | "expert"; t: string; c: number[] };
+/** e = chỉ dẫn diễn đạt ngắn cho giọng đọc (Gemini TTS `style`), vd "curious, playful". */
+export type Turn = { s: "host" | "expert"; t: string; c: number[]; e?: string };
+
+/** Thẻ âm thanh Gemini TTS hỗ trợ (tài liệu speech-generation) — chỉ giữ những thẻ hợp với podcast học. */
+const AUDIO_TAGS = ["short pause", "long pause", "breath", "chuckle", "laugh", "sigh", "exhales", "gasp"];
+const AUDIO_TAG_RE = new RegExp(`[<\\[](${AUDIO_TAGS.join("|")})s?[>\\]]`, "gi");
+
+/** Phần dặn cách viết lời thoại để giọng đọc có nhấn nhá — dùng chung cho viết mới và bổ sung. */
+const DELIVERY_RULES = `NHẤN NHÁ (kịch bản được đọc bằng giọng AI — viết để nghe hay, có cảm xúc):
+- Mỗi lượt có "e" = chỉ dẫn diễn đạt TIẾNG ANH 2–6 từ cho giọng đọc, đổi theo nội dung lượt đó, vd: "curious, leaning in", "surprised, then thoughtful", "warm, explaining patiently", "emphatic, building to the key point", "playful, light laugh", "slowing down for a tricky part", "confident wrap-up". Không lặp một chỉ dẫn cho mọi lượt; không ghi giới tính/tuổi/tên.
+- Ngắt nghỉ tự nhiên bằng dấu phẩy, "..." (ngập ngừng, suy nghĩ) và " -- " (đổi ý, chen ngang).
+- Nhấn mạnh: VIẾT HOA 1 từ khoá quan trọng nhất trong câu cần nhấn (tối đa 1–2 chỗ mỗi lượt, không viết hoa cả câu).
+- Có thể chèn thẻ âm thanh (viết đúng dạng ngoặc nhọn tiếng Anh): <short pause> trước ý quan trọng, <chuckle> khi có chút hài hước, <breath> trước câu giải thích dài, <sigh> khi nói về cái khó. Dùng TIẾT CHẾ: trung bình 1 thẻ mỗi 2–3 lượt.
+- Có câu cảm thán, phản ứng ngắn tự nhiên của người nghe ("À, ra vậy!", "Khoan đã...", "Hay đấy!") để hội thoại có nhịp.`;
 export type Script = { keyPoints: string[]; turns: Turn[]; recall: { q: string; a: string }[] };
 
 export type ScriptInput = {
@@ -76,11 +105,13 @@ BƯỚC 2 — turns: kịch bản phủ TẤT CẢ keyPoints.
 - Ví dụ minh hoạ thêm ngoài nguồn được phép nhưng phải nói rõ là "ví dụ"; TUYỆT ĐỐI không bịa số liệu, tên nghiên cứu, trích dẫn không có trong nguồn.
 - Văn nói tự nhiên, câu không quá dài, KHÔNG markdown, KHÔNG emoji, KHÔNG ký hiệu như →, *, #. Mỗi lượt ≤ 700 ký tự; luân phiên tự nhiên (có thể 2 lượt liền của Minh khi giải thích dài).
 - Mở đầu: My chào, giới thiệu tập ${b.episodeNo}${b.prevTitle ? " (nối 1 câu với tập trước)" : ""} và nêu 1 câu hỏi gợi tò mò. Kết: My tóm lại 3–5 ý cốt lõi bằng lời mình, Minh chốt điều dễ hiểu sai nhất.
+
+${DELIVERY_RULES}
 ${b.missedPoints?.length ? `\nLƯU Ý: lần trước kịch bản BỎ SÓT các ý sau — lần này phải trình bày kỹ:\n${b.missedPoints.map((p) => `- ${p}`).join("\n")}\n` : ""}
 BƯỚC 3 — recall: 3 câu hỏi tự luận ngắn kiểm tra hiểu (không hỏi vụn vặt), mỗi câu kèm đáp án ngắn dựa trên nguồn.
 
 CHỈ trả JSON (không markdown fence) đúng dạng:
-{"keyPoints":["..."],"turns":[{"s":"host","t":"...","c":[0]}],"recall":[{"q":"...","a":"..."}]}
+{"keyPoints":["..."],"turns":[{"s":"host","e":"curious, upbeat","t":"...","c":[0]}],"recall":[{"q":"...","a":"..."}]}
 
 NGUỒN:
 """
@@ -88,12 +119,13 @@ ${b.sourceText}
 """`;
 
 function parseScript(raw: string): Script {
-  const o = JSON.parse(stripFence(raw)) as Partial<Script>;
+  const o = parseJsonLoose(raw) as Partial<Script>;
   const keyPoints = (o.keyPoints ?? []).map((k) => String(k ?? "").trim()).filter(Boolean);
   const turns: Turn[] = (o.turns ?? [])
     .map((t) => ({
       s: (t?.s === "host" ? "host" : "expert") as Turn["s"],
       t: cleanTurnText(t?.t),
+      e: cleanStyle(t?.e),
       c: Array.isArray(t?.c) ? t.c.map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n < keyPoints.length) : [],
     }))
     .filter((t) => t.t);
@@ -107,14 +139,22 @@ function parseScript(raw: string): Script {
 
 /** Làm sạch 1 lượt thoại: bỏ markdown/ký hiệu mà TTS sẽ đọc to. */
 function cleanTurnText(t: unknown): string {
-  return String(t ?? "").replace(/[*#`]/g, "").replace(/\s*(→|⇒|->)\s*/g, ", ").trim();
+  const tags: string[] = [];
+  return String(t ?? "")
+    // Giữ thẻ âm thanh hợp lệ (chuẩn hoá về <...>), bỏ mọi thẻ/ngoặc nhọn khác để TTS không đọc to
+    .replace(AUDIO_TAG_RE, (_, name: string) => { tags.push(`<${name.toLowerCase()}>`); return `\u0000${tags.length - 1}\u0000`; })
+    .replace(/<[^>]*>/g, "")
+    .replace(/[*#`]/g, "")
+    .replace(/\s*(→|⇒|->)\s*/g, ", ")
+    .replace(/\u0000(\d+)\u0000/g, (_, i: string) => tags[Number(i)])
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
-function stripFence(raw: string): string {
-  let cleaned = raw.replace(/^```(?:json)?\s*/im, "").replace(/\s*```\s*$/m, "").trim();
-  const m = cleaned.match(/\{[\s\S]*\}/);
-  if (m) cleaned = m[0];
-  return cleaned;
+/** Chỉ dẫn diễn đạt: chữ thường gọn, ≤ 80 ký tự, không ký tự lạ. */
+function cleanStyle(e: unknown): string | undefined {
+  const s = String(e ?? "").replace(/[^\p{L}\p{N} ,.'-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+  return s.length >= 3 ? s : undefined;
 }
 
 /**
@@ -148,20 +188,23 @@ async function callGemini<T>(opts: {
       const body = await res.text().catch(() => "");
       if (isKeyError(res.status, body)) throw new Error(`Gemini API key không hợp lệ hoặc không có quyền (${res.status}). Kiểm tra lại trong Cài đặt → AI.`);
       // 404 = model đã bị khai tử / không tồn tại; 429/5xx = quá tải → thử model kế tiếp
-      errors.push(`${model}: ${res.status === 404 ? "model không còn" : res.status === 429 ? "hết quota" : `lỗi ${res.status}`}`);
+      if (res.status === 404) deadModels.add(model);
+      errors.push(`${model}: ${res.status === 404 ? "model không còn" : res.status === 429 ? "hết quota" : res.status === 503 ? "đang quá tải" : `lỗi ${res.status}`}`);
       continue;
     }
     let raw = "";
+    let finish = "";
     try {
-      const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+      const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[] };
       raw = (data.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? "").join("");
+      finish = data.candidates?.[0]?.finishReason ?? "";
     } catch (e) {
       const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
       errors.push(`${model}: ${timeout ? "quá thời gian" : "phản hồi lỗi"}`);
       continue;
     }
     let out: T | string;
-    try { out = opts.accept(raw); } catch { out = "JSON lỗi"; }
+    try { out = opts.accept(raw); } catch { out = finish === "MAX_TOKENS" ? "trả lời bị cắt (quá dài)" : "JSON lỗi"; }
     if (typeof out === "string") { errors.push(`${model}: ${out}`); continue; }
     return { value: out, model };
   }
@@ -182,8 +225,10 @@ Với MỖI ý, viết 2–6 lượt thoại trình bày KỸ ý đó dựa trê
 - Văn nói tự nhiên, KHÔNG markdown, KHÔNG emoji, KHÔNG ký hiệu như →, *, #. Mỗi lượt ≤ 700 ký tự. Code: nói nó làm gì và vì sao, không đọc cú pháp. Công thức: nói bằng lời.
 - TUYỆT ĐỐI không bịa số liệu, tên nghiên cứu, trích dẫn không có trong nguồn.
 
+${DELIVERY_RULES}
+
 CHỈ trả JSON (không markdown fence) đúng dạng — mỗi ý bị sót đúng 1 phần tử, "k" là mã ý:
-{"patches":[{"k":0,"turns":[{"s":"host","t":"..."},{"s":"expert","t":"..."}]}]}
+{"patches":[{"k":0,"turns":[{"s":"host","e":"curious, leaning in","t":"..."},{"s":"expert","e":"warm, explaining patiently","t":"..."}]}]}
 
 NGUỒN:
 """
@@ -240,15 +285,19 @@ export async function patchScript(
         sourceText: input.sourceText.slice(0, 40_000),
         missed: missed.map((k) => ({ k, text: script.keyPoints[k] })),
       }),
-      apiKey, models, deadline, maxOutputTokens: 12288, temperature: 0.6,
+      // Rộng tay: model "thinking" (2.5+) tính cả token suy nghĩ vào giới hạn → 12k dễ bị cắt cụt JSON
+      apiKey, models, deadline, maxOutputTokens: 32768, temperature: 0.6,
       accept: (raw) => {
-        const o = JSON.parse(stripFence(raw)) as { patches?: { k?: unknown; turns?: { s?: unknown; t?: unknown }[] }[] };
+        type RawPatch = { k?: unknown; turns?: { s?: unknown; t?: unknown; e?: unknown }[] };
+        const parsed = parseJsonLoose(raw) as { patches?: RawPatch[] } | RawPatch[];
+        // Model đôi khi trả thẳng mảng thay vì {"patches": [...]}
+        const o = { patches: Array.isArray(parsed) ? parsed : parsed?.patches };
         const seen = new Set<number>();
         const patches = (o.patches ?? []).flatMap((p) => {
           const k = Number(p?.k);
           if (!want.has(k) || seen.has(k)) return [];
           const turns: Turn[] = (p.turns ?? [])
-            .map((t) => ({ s: (t?.s === "host" ? "host" : "expert") as Turn["s"], t: cleanTurnText(t?.t), c: [k] }))
+            .map((t) => ({ s: (t?.s === "host" ? "host" : "expert") as Turn["s"], t: cleanTurnText(t?.t), e: cleanStyle(t?.e), c: [k] }))
             .filter((t) => t.t);
           if (!turns.length) return [];
           seen.add(k);

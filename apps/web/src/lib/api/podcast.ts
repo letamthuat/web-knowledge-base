@@ -43,7 +43,11 @@ export type PodcastEpisodeRow = {
   updatedAt: number;
 };
 
-export type ScriptTurn = { s: "host" | "expert"; t: string; c: number[] };
+/** e = chỉ dẫn diễn đạt cho giọng đọc (kịch bản cũ không có). t có thể chứa thẻ âm thanh <short pause>… */
+export type ScriptTurn = { s: "host" | "expert"; t: string; c: number[]; e?: string };
+
+/** Lời thoại để HIỂN THỊ: bỏ thẻ âm thanh dành cho giọng đọc. */
+export const turnDisplayText = (t: string) => t.replace(/<[^>]*>/g, "").replace(/\s{2,}/g, " ").trim();
 export type PodcastScript = { keyPoints: string[]; turns: ScriptTurn[]; recall: { q: string; a: string }[] };
 
 async function currentUserId(): Promise<string> {
