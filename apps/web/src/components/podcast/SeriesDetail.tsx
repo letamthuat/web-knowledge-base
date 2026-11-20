@@ -14,7 +14,7 @@ import {
 import { useAiSettings } from "@/lib/api/ai-settings";
 import { useTts } from "@/lib/tts/player";
 import { playEpisode, podcastDocId, episodeContext } from "@/lib/podcast/playback";
-import { generateEpisodeScript, missedKeyPoints, minutesFromChars, HOST, EXPERT } from "@/lib/podcast/generate";
+import { generateEpisodeScript, missedKeyPoints, minutesFromChars, isGenerating, isStuck, HOST, EXPERT } from "@/lib/podcast/generate";
 import { useOpenDoc } from "@/components/study/SpaceOverview";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { EpisodeSection } from "@/lib/podcast/plan";
@@ -28,6 +28,14 @@ export function SeriesDetail({ series, onBack }: { series: PodcastSeriesRow; onB
   const [openId, setOpenId] = useState<string | null>(null);
 
   const list = useMemo(() => episodes ?? [], [episodes]);
+  // Có tập "generating" → render lại mỗi 30s để tập kẹt (lượt viết đã chết) chuyển sang cho viết lại.
+  const anyGenerating = list.some((e) => e.status === "generating");
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!anyGenerating) return;
+    const t = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(t);
+  }, [anyGenerating]);
   const ctx = { episodes: list, seriesId: series._id, seriesTitle: series.title, ai };
   const done = list.filter((e) => e.completedAt).length;
   const next = list.find((e) => !e.completedAt) ?? null;
@@ -107,7 +115,7 @@ export function SeriesDetail({ series, onBack }: { series: PodcastSeriesRow; onB
 }
 
 function NextUp({ ep, no, playing, onPlay }: { ep: PodcastEpisodeRow; no: number; playing: boolean; onPlay: () => void }) {
-  const generating = ep.status === "generating";
+  const generating = isGenerating(ep);
   return (
     <div className="mb-4 flex items-center gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent p-4">
       <button onClick={onPlay} disabled={generating} aria-label="Nghe tiếp"
@@ -144,7 +152,8 @@ function EpisodeRow({ ep, no, next, open, onToggle, active, playing, onPlay, ctx
   ep: PodcastEpisodeRow; no: number; next: PodcastEpisodeRow | null; open: boolean; onToggle: () => void;
   active: boolean; playing: boolean; onPlay: () => void; ctx: Ctx;
 }) {
-  const generating = ep.status === "generating";
+  const generating = isGenerating(ep);
+  const stuck = isStuck(ep);
   const pct = ep.turnCount && ep.progressIndex > 0 && !ep.completedAt ? Math.round((ep.progressIndex / ep.turnCount) * 100) : 0;
 
   async function regenerate(missed?: string[]) {
@@ -193,7 +202,7 @@ function EpisodeRow({ ep, no, next, open, onToggle, active, playing, onPlay, ctx
             <span>· {ep.sections.length} mục</span>
             {ep.status === "draft" && <span>· chưa viết kịch bản</span>}
             {generating && <span className="text-primary">· đang viết kịch bản…</span>}
-            {ep.status === "error" && <span className="text-destructive">· lỗi — mở để thử lại</span>}
+            {(ep.status === "error" || stuck) && <span className="text-destructive">· {stuck ? "bị gián đoạn" : "lỗi"} — mở để thử lại</span>}
             {pct > 0 && <span className="text-primary">· đang nghe {pct}%</span>}
             <CoverageChip ep={ep} />
             {ep.completedAt && !ep.recallDoneAt && ep.status === "ready" && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">3 câu nhớ</span>}
@@ -222,6 +231,7 @@ function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
   const [showScript, setShowScript] = useState(false);
   const [busy, setBusy] = useState(false);
   const openDoc = useOpenDoc();
+  const stuck = isStuck(ep);
 
   useEffect(() => {
     let alive = true;
@@ -264,8 +274,10 @@ function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
         </div>
       </div>
 
-      {ep.status === "error" && (
-        <div className="rounded-lg bg-destructive/10 px-3 py-2 text-[12px] text-destructive">{ep.error ?? "Viết kịch bản thất bại"}</div>
+      {(ep.status === "error" || stuck) && (
+        <div className="rounded-lg bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
+          {stuck ? "Lượt viết kịch bản trước bị gián đoạn (đóng tab / mất mạng). Bấm Viết lại." : ep.error ?? "Viết kịch bản thất bại"}
+        </div>
       )}
 
       {/* Ý chính (show notes) */}
@@ -315,7 +327,7 @@ function EpisodeDetail({ ep, onRegenerate, onRename, onMerge, onRemove }: {
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Viết lại, bù {missed.length} ý sót
           </button>
         )}
-        {(ep.status === "ready" || ep.status === "error" || ep.status === "draft") && (
+        {(ep.status === "ready" || ep.status === "error" || ep.status === "draft" || stuck) && (
           <button onClick={() => run()} disabled={busy} className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] hover:bg-muted disabled:opacity-50">
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} {ep.status === "draft" ? "Viết kịch bản" : "Viết lại"}
           </button>

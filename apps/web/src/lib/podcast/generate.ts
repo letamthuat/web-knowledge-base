@@ -46,6 +46,22 @@ export async function episodeSourceText(episode: PodcastEpisodeRow): Promise<str
 
 const inflight = new Map<string, Promise<PodcastScript>>();
 
+// Route /api/podcast/script chạy tối đa 300s. Quá mốc này mà tập vẫn "generating" thì chắc chắn
+// lượt viết đã chết (đóng tab, reload, mất mạng…) — coi như lỗi để user viết lại được.
+const CLIENT_TIMEOUT_MS = 320_000;
+export const STALE_GENERATING_MS = 6 * 60_000;
+
+/** Tập đang thật sự được viết (trong tab này, hoặc ở nơi khác nhưng chưa quá hạn). */
+export function isGenerating(ep: { _id: string; status: string; updatedAt: number }, now = Date.now()): boolean {
+  if (ep.status !== "generating") return false;
+  return inflight.has(ep._id) || now - ep.updatedAt < STALE_GENERATING_MS;
+}
+
+/** Tập kẹt ở "generating" (lượt viết trước bị gián đoạn). */
+export function isStuck(ep: { _id: string; status: string; updatedAt: number }, now = Date.now()): boolean {
+  return ep.status === "generating" && !isGenerating(ep, now);
+}
+
 /** Sinh (hoặc tạo lại) kịch bản 1 tập. missedPoints = ý bị sót lần trước để bù. */
 export function generateEpisodeScript(input: {
   episode: PodcastEpisodeRow;
@@ -69,6 +85,7 @@ export function generateEpisodeScript(input: {
       const res = await fetch("/api/podcast/script", {
         method: "POST",
         headers: { "content-type": "application/json" },
+        signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
         body: JSON.stringify({
           sourceText,
           episodeTitle: input.episode.title,
@@ -83,13 +100,16 @@ export function generateEpisodeScript(input: {
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { script?: PodcastScript; coveredCount?: number; model?: string; error?: string };
-      if (!res.ok || !data.script) throw new Error(data.error ?? `Lỗi ${res.status}`);
+      if (!res.ok || !data.script) {
+        throw new Error(data.error ?? (res.status === 504 ? "Máy chủ quá thời gian khi viết kịch bản — thử lại, hoặc gộp/tách tập ngắn hơn" : `Lỗi ${res.status}`));
+      }
       await saveScript(id, data.script, data.model ?? "", data.coveredCount ?? 0);
       return data.script;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Sinh kịch bản thất bại";
+      const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+      const msg = timeout ? "Quá thời gian chờ viết kịch bản — bấm Viết lại" : e instanceof Error ? e.message : "Sinh kịch bản thất bại";
       await setEpisodeStatus(id, "error", msg.slice(0, 300)).catch(() => {});
-      throw e;
+      throw new Error(msg);
     }
   })();
   inflight.set(id, p);

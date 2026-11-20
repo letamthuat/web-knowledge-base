@@ -76,6 +76,12 @@ let silentUrl: string | null = null;
 let loadToken = 0;
 let pendingSeek: number | null = null;
 let lastSaved = 0;
+/** Chỉ số đoạn mà audio.src đang giữ (-1 = chưa có) — khi đang tải đoạn mới, src vẫn là đoạn cũ. */
+let srcIndex = -1;
+/** Thời lượng thật (giây, ở 1×) của các đoạn đã tải; 0 = chưa biết → ước lượng theo số ký tự. */
+let durs: number[] = [];
+/** Gemini TTS đo được ~1060 ký tự/phút ở 1× — dùng khi chưa đoạn nào tải xong. */
+const DEFAULT_CPS = 1060 / 60;
 
 /** WAV im lặng 0.1s — tạo bằng tay để chắc chắn iOS giải mã được. */
 function silentWavUrl(): string {
@@ -107,8 +113,12 @@ function getAudio(): HTMLAudioElement {
   a.addEventListener("waiting", () => setState({ loading: true }));
   a.addEventListener("loadedmetadata", () => {
     a.playbackRate = state.rate; // iOS reset playbackRate khi đổi src
-    if (pendingSeek != null && pendingSeek < a.duration) a.currentTime = pendingSeek;
+    if (a.src === silentUrl) return;
+    if (srcIndex >= 0 && isFinite(a.duration) && a.duration > 0) durs[srcIndex] = a.duration;
+    // Vị trí kéo tới được tính từ thời lượng ƯỚC LƯỢNG → có thể vượt thời lượng thật một chút
+    if (pendingSeek != null && isFinite(a.duration)) a.currentTime = Math.min(pendingSeek, Math.max(0, a.duration - 0.5));
     pendingSeek = null;
+    if (loadingAt?.index === srcIndex) loadingAt = null;
   });
   a.addEventListener("timeupdate", () => { savePos(false); updatePositionState(); });
   a.addEventListener("ended", () => {
@@ -166,10 +176,14 @@ function prefetch(i: number) {
   }
 }
 
+/** Vị trí chờ áp dụng khi đoạn đang tải xong (để thanh tiến độ không giật về 0 trong lúc tải). */
+let loadingAt: { index: number; time: number } | null = null;
+
 async function loadIndex(i: number, seekTo: number) {
   const seg = state.segments[i];
   if (!seg) return;
   const token = ++loadToken;
+  loadingAt = { index: i, time: seekTo };
   setState({ index: i, loading: true, error: null });
   syncMediaSession();
   window.dispatchEvent(new CustomEvent("kb:tts-segment", { detail: { docId: state.docId, segment: seg, index: i } }));
@@ -178,6 +192,7 @@ async function loadIndex(i: number, seekTo: number) {
     if (token !== loadToken) return;
     const a = getAudio();
     pendingSeek = seekTo > 0 ? seekTo : null;
+    srcIndex = i;
     a.src = url;
     a.playbackRate = state.rate;
     await a.play();
@@ -214,6 +229,8 @@ export function startListening(opts: { docId: string; docTitle: string; segments
     setState({ error: "Tài liệu này không có chữ để đọc" });
     return;
   }
+  durs = [];
+  srcIndex = -1;
   setState({
     docId: opts.docId, docTitle: opts.docTitle, segments: opts.segments,
     error: null, playing: false, href: opts.href ?? null,
@@ -265,12 +282,69 @@ export function stopListening() {
   savePos(true);
   loadToken++;
   if (audio) { audio.pause(); audio.removeAttribute("src"); audio.load(); }
+  durs = [];
+  srcIndex = -1;
+  loadingAt = null;
   setState({ docId: null, segments: [], index: 0, playing: false, loading: false, error: null, href: null });
   if ("mediaSession" in navigator) navigator.mediaSession.metadata = null;
 }
 
 export function getAudioTime(): { current: number; duration: number } {
   return { current: audio?.currentTime ?? 0, duration: audio && isFinite(audio.duration) ? audio.duration : 0 };
+}
+
+export type Timeline = {
+  /** Giây đã nghe tính trên cả bài/tập (ở 1×). */
+  current: number;
+  /** Tổng thời lượng cả bài/tập — đoạn chưa tải được ước lượng theo số ký tự. */
+  total: number;
+  /** Mốc bắt đầu của từng đoạn. */
+  starts: number[];
+  /** true khi mọi đoạn đã biết thời lượng thật. */
+  exact: boolean;
+};
+
+/**
+ * Dòng thời gian của CẢ bài/tập (mỗi đoạn là 1 file audio riêng nên audio.duration chỉ là 1 đoạn).
+ * Tỉ lệ ký tự/giây tự hiệu chỉnh theo các đoạn đã tải → ước lượng chính xác dần khi nghe.
+ */
+export function getTimeline(): Timeline {
+  const segs = state.segments;
+  let knownChars = 0, knownSec = 0;
+  segs.forEach((s, i) => { if (durs[i] > 0) { knownSec += durs[i]; knownChars += s.text.length; } });
+  const cps = knownSec > 5 && knownChars > 0 ? knownChars / knownSec : DEFAULT_CPS;
+  const starts: number[] = [];
+  let total = 0;
+  let exact = segs.length > 0;
+  segs.forEach((s, i) => {
+    starts.push(total);
+    if (durs[i] > 0) total += durs[i];
+    else { total += s.text.length / cps; exact = false; }
+  });
+  const segLen = (durs[state.index] ?? 0) || (starts[state.index + 1] ?? total) - (starts[state.index] ?? 0);
+  let within = 0;
+  if (loadingAt && loadingAt.index === state.index) within = loadingAt.time;
+  else if (audio && srcIndex === state.index && audio.src !== silentUrl) within = audio.currentTime;
+  const current = Math.min(total, (starts[state.index] ?? 0) + Math.min(within, segLen));
+  return { current, total, starts, exact };
+}
+
+/** Nhảy tới giây `sec` trên dòng thời gian cả bài/tập (kéo thanh tiến độ). */
+export function seekTo(sec: number) {
+  if (!state.docId || state.segments.length === 0) return;
+  const { starts, total } = getTimeline();
+  const t = Math.max(0, Math.min(total - 0.25, sec));
+  let k = starts.length - 1;
+  while (k > 0 && starts[k] > t) k--;
+  const offset = Math.max(0, t - starts[k]);
+  const a = getAudio();
+  if (k === state.index && srcIndex === k && !loadingAt && a.src !== silentUrl && isFinite(a.duration) && !state.error) {
+    a.currentTime = Math.min(offset, Math.max(0, a.duration - 0.2));
+    savePos(true);
+    updatePositionState();
+    return;
+  }
+  void loadIndex(k, offset);
 }
 
 // ─── Media Session (màn hình khoá / tai nghe) ──────────────────────────────
@@ -298,11 +372,15 @@ function syncMediaSession() {
   set("nexttrack", () => skipSegment(1));
   set("seekbackward", (d) => seekBy(-(d.seekOffset ?? 15)));
   set("seekforward", (d) => seekBy(d.seekOffset ?? 15));
+  set("seekto", (d) => { if (d.seekTime != null) seekTo(d.seekTime); });
 }
 
+/** Màn hình khoá hiện tiến độ của cả bài/tập (kéo được nhờ handler "seekto"). */
 function updatePositionState() {
-  if (!audio || !("mediaSession" in navigator) || !isFinite(audio.duration)) return;
+  if (!audio || !("mediaSession" in navigator) || audio.src === silentUrl) return;
+  const t = getTimeline();
+  if (!(t.total > 0)) return;
   try {
-    navigator.mediaSession.setPositionState({ duration: audio.duration, position: Math.min(audio.currentTime, audio.duration), playbackRate: audio.playbackRate });
+    navigator.mediaSession.setPositionState({ duration: t.total, position: Math.min(t.current, t.total), playbackRate: audio.playbackRate || 1 });
   } catch { /* */ }
 }

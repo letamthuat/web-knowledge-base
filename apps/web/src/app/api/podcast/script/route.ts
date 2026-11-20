@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { generateScript } from "@/lib/podcast/scriptGen";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// Kịch bản dài (~16k ký tự) có thể mất 1–3 phút; scriptGen tự dừng trước hạn này (SCRIPT_DEADLINE_MS).
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   // Bắt buộc đăng nhập — route có thể dùng GEMINI_API_KEY của server làm dự phòng

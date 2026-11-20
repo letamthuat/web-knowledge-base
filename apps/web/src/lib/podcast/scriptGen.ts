@@ -1,10 +1,47 @@
 // Sinh kịch bản podcast (server-only): prompt giữ chiều sâu + parse + đếm độ phủ ý bắt buộc.
 // Tách khỏi route để test trực tiếp được.
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const DEFAULT_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
-function textModels(models?: string[]): string[] {
-  const list = (models ?? []).filter((m) => !/tts|image|embedding|imagen|veo|live|audio/i.test(m));
-  return list.length > 0 ? list : DEFAULT_MODELS;
+// Chỉ dùng khi không liệt kê được model từ API. Google khai tử model theo thời gian (vd 2.0-flash → 404),
+// nên danh sách thật được lấy động qua ListModels (discoverModels).
+const STATIC_FALLBACK = ["gemini-flash-latest", "gemini-2.5-flash"];
+const NON_TEXT = /tts|image|embedding|imagen|veo|live|audio|native|preview-\d{2}-\d{2}|exp/i;
+
+/** Tổng thời gian cho cả vòng thử model — phải < maxDuration của route (300s). */
+export const SCRIPT_DEADLINE_MS = 270_000;
+
+let discovered: { at: number; models: string[] } | null = null;
+
+/** Model flash text còn sống với key này (cache 1 giờ). Bản "lite" xếp sau, phiên bản mới xếp trước. */
+async function discoverModels(apiKey: string): Promise<string[]> {
+  if (discovered && Date.now() - discovered.at < 3_600_000) return discovered.models;
+  try {
+    const res = await fetch(`${GEMINI_BASE}?key=${apiKey}&pageSize=1000`, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
+    const ver = (m: string) => Number(m.match(/gemini-(\d+(?:\.\d+)?)/)?.[1] ?? 0);
+    const models = (data.models ?? [])
+      .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+      .map((m) => m.name.replace(/^models\//, ""))
+      .filter((m) => /^gemini-.*flash/i.test(m) && !NON_TEXT.test(m))
+      .sort((a, b) => Number(/lite/.test(a)) - Number(/lite/.test(b)) || ver(b) - ver(a));
+    discovered = { at: Date.now(), models };
+    return models;
+  } catch {
+    return [];
+  }
+}
+
+/** Model user chọn trước, sau đó model tự phát hiện — để model bị khai tử không làm hỏng cả lượt. */
+async function textModels(apiKey: string, models?: string[]): Promise<string[]> {
+  const user = (models ?? []).filter((m) => !NON_TEXT.test(m));
+  const auto = await discoverModels(apiKey);
+  const list = [...new Set([...user, ...(auto.length ? auto : STATIC_FALLBACK)])];
+  return list.slice(0, 6);
+}
+
+/** Lỗi do key (sai/hết hạn/không có quyền) → thử model khác cũng vô ích. */
+function isKeyError(status: number, body: string): boolean {
+  return status === 401 || /API_KEY_INVALID|API key not valid|API key expired|PERMISSION_DENIED/i.test(body);
 }
 
 export type Turn = { s: "host" | "expert"; t: string; c: number[] };
@@ -74,29 +111,46 @@ export async function generateScript(input: ScriptInput, apiKey: string, models?
     contents: [{ parts: [{ text: PROMPT({ ...input, sourceText: input.sourceText.slice(0, 40_000), missedPoints: input.missedPoints?.slice(0, 30) }) }] }],
     generationConfig: { temperature: 0.7, maxOutputTokens: 32768, responseMimeType: "application/json" },
   });
-  let lastError = "";
-  for (const model of textModels(models)) {
+  const deadline = Date.now() + SCRIPT_DEADLINE_MS;
+  const errors: string[] = [];
+  for (const model of await textModels(apiKey, models)) {
+    const left = deadline - Date.now();
+    if (left < 15_000) { errors.push("hết thời gian chờ"); break; }
     let res: Response;
     try {
       res = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: requestBody,
+        signal: AbortSignal.timeout(left),
       });
-    } catch (e) { lastError = `Network ${model}: ${e}`; continue; }
-    if (!res.ok) {
-      lastError = `Gemini ${res.status} on ${model}`;
-      if (![429, 503, 500].includes(res.status)) throw new Error(`${lastError}: ${(await res.text()).slice(0, 300)}`);
+    } catch (e) {
+      const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+      errors.push(timeout ? `${model}: quá thời gian` : `${model}: lỗi mạng`);
       continue;
     }
-    const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-    const raw = (data.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("");
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      if (isKeyError(res.status, body)) throw new Error(`Gemini API key không hợp lệ hoặc không có quyền (${res.status}). Kiểm tra lại trong Cài đặt → AI.`);
+      // 404 = model đã bị khai tử / không tồn tại; 429/5xx = quá tải → thử model kế tiếp
+      errors.push(`${model}: ${res.status === 404 ? "model không còn" : res.status === 429 ? "hết quota" : `lỗi ${res.status}`}`);
+      continue;
+    }
+    let raw = "";
+    try {
+      const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[] };
+      raw = (data.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? "").join("");
+    } catch (e) {
+      const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+      errors.push(`${model}: ${timeout ? "quá thời gian" : "phản hồi lỗi"}`);
+      continue;
+    }
     try {
       const script = parseScript(raw);
-      if (script.turns.length < 4 || script.keyPoints.length === 0) { lastError = `Kịch bản quá ngắn từ ${model}`; continue; }
+      if (script.turns.length < 4 || script.keyPoints.length === 0) { errors.push(`${model}: kịch bản quá ngắn`); continue; }
       const covered = new Set(script.turns.flatMap((t) => t.c));
       return { script, coveredCount: covered.size, model };
     } catch {
-      lastError = `Không parse được JSON từ ${model}`;
+      errors.push(`${model}: JSON lỗi`);
     }
   }
-  throw new Error(`Gemini lỗi. ${lastError}`);
+  throw new Error(`Không viết được kịch bản — ${errors.join("; ") || "không có model Gemini nào khả dụng"}`);
 }

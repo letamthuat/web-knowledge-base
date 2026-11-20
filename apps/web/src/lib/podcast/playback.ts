@@ -7,7 +7,7 @@ import {
   getScript, updateEpisodeProgress, markEpisodeCompleted, linkEpisodeCompletedToStudy, touchSeries,
   type PodcastEpisodeRow, type PodcastScript,
 } from "@/lib/api/podcast";
-import { generateEpisodeScript, scriptToSegments, minutesFromChars } from "./generate";
+import { generateEpisodeScript, scriptToSegments, minutesFromChars, isStuck } from "./generate";
 
 export const podcastDocId = (episodeId: string) => `podcast:${episodeId}`;
 
@@ -96,7 +96,7 @@ export async function playEpisode(ep: PodcastEpisodeRow, ctx: Ctx): Promise<void
   // Viết sẵn kịch bản tập kế trong lúc đang nghe (chỉ 1 lần gọi Gemini, chưa tốn Azure)
   const i = ctx.episodes.findIndex((e) => e._id === ep._id);
   const next = ctx.episodes[i + 1];
-  if (next && next.status === "draft" && ctx.ai?.geminiApiKey) {
+  if (next && (next.status === "draft" || isStuck(next)) && ctx.ai?.geminiApiKey) {
     ensureScript(next, ctx).catch(() => {});
   }
 }
